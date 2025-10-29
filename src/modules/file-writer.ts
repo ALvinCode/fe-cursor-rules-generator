@@ -1,6 +1,6 @@
 import * as path from "path";
 import { FileUtils } from "../utils/file-utils.js";
-import { CursorRule } from "../types.js";
+import { CursorRule, InstructionsFile } from "../types.js";
 
 /**
  * 文件写入器
@@ -37,6 +37,14 @@ export class FileWriter {
     }
 
     return writtenFiles;
+  }
+
+  /**
+   * 写入 instructions.md 文件（v1.3 新增）
+   */
+  async writeInstructions(instructions: InstructionsFile): Promise<void> {
+    await FileUtils.writeFile(instructions.filePath, instructions.content);
+    console.error(`已写入工作流指导文件: ${instructions.fileName}`);
   }
 
   /**

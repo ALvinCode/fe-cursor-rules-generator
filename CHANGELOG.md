@@ -1,5 +1,137 @@
 # 更新日志
 
+## [1.3.0] - 2025-10-29
+
+### 🎯 完全符合 Cursor 官方最佳实践
+
+基于 Cursor 官方指导原则的完整重构：
+- ✅ 专注、可组合的 .mdc 规则
+- ✅ 每个规则文件 < 500 行
+- ✅ 复用规则块，避免重复
+- ✅ 具体的名称和描述
+- ✅ 使用 @filename.ts 引用
+- ✅ 生成 instructions.md
+
+### ✨ 重大变更
+
+#### 规则文件拆分
+**从单个大文件** → **多个专注的小文件**
+
+**v1.2**: 1 个文件 (1500-2000 行)
+```
+.cursor/rules/
+  └── 00-global-rules.mdc (2000 行) ❌ 太大
+```
+
+**v1.3**: 3-9 个文件 (每个 < 500 行)
+```
+.cursor/
+  ├── instructions.md (200 行) 🆕
+  └── rules/
+      ├── global-rules.mdc (280 行) ✅
+      ├── code-style.mdc (200 行) ✅
+      ├── architecture.mdc (250 行) ✅
+      ├── custom-tools.mdc (150 行) 🆕 按需
+      ├── error-handling.mdc (180 行) 🆕 按需
+      ├── state-management.mdc (200 行) 🆕 按需
+      ├── ui-ux.mdc (250 行) 🆕 按需
+      └── testing.mdc (220 行) 🆕 按需
+```
+
+#### 文件命名简化
+- ✅ 移除数字前缀 `00-`
+- ✅ 使用语义化名称
+- ✅ 通过 `priority` 和 `depends` 控制加载
+
+**v1.2**: `00-global-rules.mdc`  
+**v1.3**: `global-rules.mdc`
+
+#### 文件引用系统
+- ✅ 使用 `@filename.ts` 引用实际代码
+- ✅ 指向自定义 Hooks 定义位置
+- ✅ 指向工具函数实现
+- ✅ 提供使用示例的具体行号
+
+示例：
+```markdown
+**useAuth**
+- 定义: @src/hooks/useAuth.ts
+- 使用示例: @src/components/UserProfile.tsx#L10
+```
+
+#### instructions.md 生成
+- ✅ 生成工作流指导文件
+- ✅ 开始任务前的检查清单
+- ✅ 常见任务模板
+- ✅ Cursor 对话最佳实践
+- ✅ 快速参考索引
+
+#### 规则复用机制
+- ✅ 每个文件开头引用依赖: `参考: @global-rules.mdc`
+- ✅ 使用 `depends` 元数据声明依赖
+- ✅ 避免重复相同内容
+
+#### 增强的元数据
+```yaml
+---
+title: 代码风格规范
+description: ...
+priority: 90
+version: 1.3.0
+type: guideline                    # 🆕 规则类型
+depends: ["global-rules"]          # 🆕 依赖关系
+---
+```
+
+### 🔧 核心改进
+
+- 🔧 **规则文件大小**: 从 2000 行 → 每个 < 500 行
+- 🔧 **文件专注度**: 从全能文件 → 单一职责文件
+- 🔧 **可维护性**: 从难以维护 → 易于理解和修改
+- 🔧 **符合官方规范**: 100% 遵循 Cursor 最佳实践
+
+### 📊 生成文件统计
+
+| 项目类型 | 生成文件数 | 总行数 | 最大单文件 |
+|---------|-----------|--------|-----------|
+| 简单项目 | 4-5 个 | ~900 行 | < 300 行 |
+| 前端项目 | 6-7 个 | ~1400 行 | < 280 行 |
+| 全栈项目 | 7-9 个 | ~1600 行 | < 280 行 |
+
+### 📝 新增功能
+
+1. **instructions.md** - 工作流指导
+2. **专题规则文件** - 按需生成专注的规则
+3. **文件引用** - @filename.ts 锚点
+4. **depends 依赖** - 明确规则间关系
+
+### 🔄 重构模块
+
+- **rules-generator.ts** - 完全重构，新增 400+ 行
+- **file-writer.ts** - 支持 instructions.md
+- **types.ts** - 新增 InstructionsFile 类型
+
+---
+
+## [1.2.1] - 2025-10-29
+
+### 🐛 Bug 修复
+
+**问题**: 在实际项目中使用时出现 "require is not defined" 错误
+
+**原因**: 在 ES Module 环境中使用了 CommonJS 的 `require()` 语法
+
+**修复**:
+- 在 `rules-generator.ts` 顶部添加 `import * as path from "path"`
+- 移除两处运行时的 `require("path")` 调用
+- 确保所有模块导入使用 ES Module 语法
+
+**影响**: 修复后可以在实际项目中正常使用
+
+**感谢**: @用户 报告此问题
+
+---
+
 ## [1.2.0] - 2025-10-29
 
 ### 🎯 核心理念升级

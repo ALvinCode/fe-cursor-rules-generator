@@ -44,7 +44,7 @@ class CursorRulesGeneratorServer {
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.2.0",
+        version: "1.3.0",
       },
       {
         capabilities: {
@@ -307,6 +307,22 @@ class CursorRulesGeneratorServer {
 
     // 9. 写入规则文件
     const writtenFiles = await this.fileWriter.writeRules(projectPath, rules);
+
+    // 9.5. 生成并写入 instructions.md（v1.3 新增）
+    const instructions = await this.rulesGenerator.generateInstructions({
+      projectPath,
+      techStack,
+      modules,
+      codeFeatures,
+      bestPractices,
+      includeModuleRules,
+      projectPractice,
+      projectConfig,
+      customPatterns,
+      fileOrganization,
+    });
+    await this.fileWriter.writeInstructions(instructions);
+    writtenFiles.push(".cursor/instructions.md");
 
     // 10. 生成摘要
     const summary = this.rulesGenerator.generateSummary(rules, projectPath);

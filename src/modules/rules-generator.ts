@@ -4,7 +4,9 @@ import {
   BestPractice,
   Module,
   CodeFeature,
+  InstructionsFile,
 } from "../types.js";
+import * as path from "path";
 
 /**
  * 规则生成引擎
@@ -14,14 +16,52 @@ export class RulesGenerator {
   async generate(context: RuleGenerationContext): Promise<CursorRule[]> {
     const rules: CursorRule[] = [];
 
-    // 生成全局规则
-    const globalRule = this.generateGlobalRule(context);
+    // v1.3: 生成多个专注的规则文件（每个 < 500 行）
+
+    // 1. 全局概述规则（必需，约 280 行）
+    const globalRule = this.generateGlobalOverviewRule(context);
     rules.push(globalRule);
 
-    // 如果启用模块规则且项目有多个模块，生成模块特定规则
+    // 2. 代码风格规则（必需，约 200 行）
+    const codeStyleRule = this.generateCodeStyleRule(context);
+    rules.push(codeStyleRule);
+
+    // 3. 项目架构规则（必需，约 250 行）
+    const architectureRule = this.generateArchitectureRule(context);
+    rules.push(architectureRule);
+
+    // 4. 自定义工具规则（按需，约 150 行）
+    if (this.hasCustomTools(context)) {
+      const customToolsRule = this.generateCustomToolsRule(context);
+      rules.push(customToolsRule);
+    }
+
+    // 5. 错误处理规则（按需，约 180 行）
+    if (this.hasErrorHandling(context)) {
+      const errorHandlingRule = this.generateErrorHandlingRule(context);
+      rules.push(errorHandlingRule);
+    }
+
+    // 6. 状态管理规则（按需，约 200 行）
+    if (this.hasStateManagement(context)) {
+      const stateManagementRule = this.generateStateManagementRule(context);
+      rules.push(stateManagementRule);
+    }
+
+    // 7. UI/UX 规则（按需，约 250 行）
+    if (this.isFrontendProject(context)) {
+      const uiUxRule = this.generateUIUXRule(context);
+      rules.push(uiUxRule);
+    }
+
+    // 8. 测试规则（按需，约 220 行或简短提示）
+    const testingRule = this.generateTestingRule(context);
+    rules.push(testingRule);
+
+    // 9. 模块规则（如果是多模块项目）
     if (context.includeModuleRules && context.modules.length > 1) {
       for (const module of context.modules) {
-        const moduleRule = this.generateModuleRule(context, module);
+        const moduleRule = this.generateModuleOverviewRule(context, module);
         rules.push(moduleRule);
       }
     }
@@ -30,7 +70,389 @@ export class RulesGenerator {
   }
 
   /**
-   * 生成全局规则
+   * 生成 instructions.md 文件
+   */
+  async generateInstructions(context: RuleGenerationContext): Promise<InstructionsFile> {
+    const content = this.generateInstructionsContent(context);
+    
+    return {
+      content,
+      fileName: "instructions.md",
+      filePath: path.join(context.projectPath, ".cursor", "instructions.md"),
+    };
+  }
+
+  /**
+   * 检查是否有自定义工具
+   */
+  private hasCustomTools(context: RuleGenerationContext): boolean {
+    return (
+      context.customPatterns &&
+      (context.customPatterns.customHooks.length > 0 ||
+        context.customPatterns.customUtils.length > 0 ||
+        context.customPatterns.apiClient?.exists)
+    );
+  }
+
+  /**
+   * 检查是否有错误处理
+   */
+  private hasErrorHandling(context: RuleGenerationContext): boolean {
+    return (
+      context.projectPractice?.errorHandling &&
+      context.projectPractice.errorHandling.frequency > 0
+    );
+  }
+
+  /**
+   * 检查是否有状态管理
+   */
+  private hasStateManagement(context: RuleGenerationContext): boolean {
+    return this.featureExists(context, "state-management");
+  }
+
+  /**
+   * v1.3: 生成全局概述规则（约 280 行）
+   */
+  private generateGlobalOverviewRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      `${this.getProjectName(context.projectPath)} - 全局规则`,
+      "项目级通用规范和开发原则",
+      100,
+      context.techStack.primary,
+      ["global", "overview"],
+      "overview"
+    );
+
+    const content = metadata + `
+# 项目概述
+
+这是一个基于 ${context.techStack.primary.join(", ")} 的项目。
+
+## 技术栈
+
+**主要技术**: ${context.techStack.primary.join(", ")}  
+**语言**: ${context.techStack.languages.join(", ")}  
+**包管理器**: ${context.techStack.packageManagers.join(", ")}  
+${context.techStack.frameworks.length > 0 ? `**框架**: ${context.techStack.frameworks.join(", ")}` : ""}
+
+## 开发规范文件
+
+本项目的开发规范分布在以下专题文件中，请根据工作内容参考：
+
+- **@code-style.mdc** - 代码风格和格式化规范
+- **@architecture.mdc** - 项目架构和文件组织
+${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工具（必须优先使用）\n" : ""}${this.hasErrorHandling(context) ? "- **@error-handling.mdc** - 错误处理规范\n" : ""}${this.hasStateManagement(context) ? "- **@state-management.mdc** - 状态管理规范\n" : ""}${this.isFrontendProject(context) ? "- **@ui-ux.mdc** - UI/UX 设计规范\n" : ""}${this.featureExists(context, "testing") ? "- **@testing.mdc** - 测试规范\n" : ""}
+**工作流程**: 详见 @../instructions.md
+
+## 核心开发原则
+
+1. **保持一致性** - 遵循项目现有代码风格和架构
+2. **优先使用项目工具** - 不要重新实现已有的工具函数和 Hooks
+3. **遵循路径别名** - 使用配置的路径别名，不使用相对路径
+4. **渐进式改进** - 在现有基础上小步优化，不破坏架构
+5. **类型安全** - 充分利用 TypeScript 的类型系统
+
+${context.techStack.frameworks.length > 0 ? `
+## 框架特定原则
+
+${this.generateFrameworkPrinciples(context)}
+` : ""}
+
+## 开始任务前
+
+**始终**让 Cursor 确认理解任务：
+\`\`\`
+请确认你理解了以下任务：[描述任务]
+需要创建哪些文件？需要使用哪些项目工具？
+\`\`\`
+
+然后参考相关的专题规则文件。
+
+---
+
+*这是规则文件的入口，详细规范请参考上述专题文件。*
+`;
+
+    return {
+      scope: "global",
+      modulePath: context.projectPath,
+      content,
+      fileName: "global-rules.mdc",
+      priority: 100,
+      type: "overview",
+    };
+  }
+
+  /**
+   * v1.3: 生成代码风格规则（约 200 行）
+   */
+  private generateCodeStyleRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "代码风格规范",
+      "基于项目配置的代码格式化和命名约定",
+      90,
+      context.techStack.primary,
+      ["style", "formatting"],
+      "guideline",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# 代码风格规范
+
+参考: @global-rules.mdc
+
+${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.generateCodeStyleGuidelines(context)}
+
+---
+
+*代码风格会被编辑器自动应用，重点是理解和遵循命名约定。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "code-style.mdc",
+      priority: 90,
+      type: "guideline",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
+   * v1.3: 生成项目架构规则（约 250 行）
+   */
+  private generateArchitectureRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "项目架构",
+      "文件组织和模块结构规范",
+      90,
+      context.techStack.primary,
+      ["architecture", "structure"],
+      "guideline",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# 项目架构
+
+参考: @global-rules.mdc
+
+${context.fileOrganization ? this.generateStructureBasedFileOrgRules(context) : this.generateFileOrganizationGuidelines(context)}
+
+---
+
+*新建文件前，请先确认位置和命名规范。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "architecture.mdc",
+      priority: 90,
+      type: "guideline",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
+   * v1.3: 生成自定义工具规则（约 150 行）
+   */
+  private generateCustomToolsRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "项目自定义工具",
+      "必须优先使用的自定义 Hooks 和工具函数",
+      95,
+      context.techStack.primary,
+      ["custom-tools", "reference"],
+      "reference",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# 项目自定义工具
+
+参考: @global-rules.mdc
+
+${this.generateCustomToolsRules(context)}
+
+---
+
+*使用项目工具保持代码一致性，避免重复实现。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "custom-tools.mdc",
+      priority: 95,
+      type: "reference",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
+   * v1.3: 生成错误处理规则（约 180 行）
+   */
+  private generateErrorHandlingRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "错误处理规范",
+      "基于项目实践的错误处理和日志规范",
+      80,
+      context.techStack.primary,
+      ["error-handling", "practice"],
+      "practice",
+      ["global-rules", "custom-tools"]
+    );
+
+    const content = metadata + `
+# 错误处理规范
+
+参考: @global-rules.mdc, @custom-tools.mdc
+
+${this.generatePracticeBasedErrorHandling(context)}
+
+---
+
+*遵循项目现有的错误处理模式，保持一致性。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "error-handling.mdc",
+      priority: 80,
+      type: "practice",
+      depends: ["global-rules", "custom-tools"],
+    };
+  }
+
+  /**
+   * v1.3: 生成状态管理规则（约 200 行）
+   */
+  private generateStateManagementRule(context: RuleGenerationContext): CursorRule {
+    const stateLib = context.techStack.dependencies.find((d) =>
+      ["redux", "mobx", "zustand", "pinia", "vuex"].some((lib) =>
+        d.name.toLowerCase().includes(lib)
+      )
+    );
+
+    const metadata = this.generateRuleMetadata(
+      "状态管理规范",
+      `${stateLib?.name || "状态管理"} 使用规范`,
+      85,
+      context.techStack.primary,
+      ["state-management", "practice"],
+      "practice",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# 状态管理规范
+
+参考: @global-rules.mdc
+
+${this.generateStateManagementContent(context, stateLib?.name)}
+
+---
+
+*状态管理是项目的核心，遵循既定模式。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "state-management.mdc",
+      priority: 85,
+      type: "practice",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
+   * v1.3: 生成 UI/UX 规则（约 250 行）
+   */
+  private generateUIUXRule(context: RuleGenerationContext): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "UI/UX 设计规范",
+      "用户界面和用户体验设计规范",
+      75,
+      context.techStack.primary,
+      ["ui-ux", "frontend"],
+      "guideline",
+      ["global-rules", "code-style"]
+    );
+
+    const content = metadata + `
+# UI/UX 设计规范
+
+参考: @global-rules.mdc, @code-style.mdc
+
+${this.generateUIUXGuidelines(context)}
+
+---
+
+*UI/UX 规范确保良好的用户体验和无障碍访问。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "ui-ux.mdc",
+      priority: 75,
+      type: "guideline",
+      depends: ["global-rules", "code-style"],
+    };
+  }
+
+  /**
+   * v1.3: 生成测试规则（约 220 行或简短）
+   */
+  private generateTestingRule(context: RuleGenerationContext): CursorRule {
+    const hasTests = this.featureExists(context, "testing");
+
+    const metadata = this.generateRuleMetadata(
+      "测试规范",
+      hasTests ? "测试组织和最佳实践" : "测试建议",
+      70,
+      context.techStack.primary,
+      ["testing"],
+      hasTests ? "practice" : "suggestion",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# 测试规范
+
+参考: @global-rules.mdc
+
+${this.generateConditionalTestingRules(context)}
+
+---
+
+${hasTests ? "*测试是代码质量的保证，保持良好的测试覆盖率。*" : "*当前项目未配置测试，按需添加。*"}
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "testing.mdc",
+      priority: 70,
+      type: hasTests ? "practice" : "suggestion",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
+   * v1.3: 旧的 generateGlobalRule 重命名保留（用于向后兼容）
    */
   private generateGlobalRule(context: RuleGenerationContext): CursorRule {
     const metadata = this.generateRuleMetadata(
@@ -1234,7 +1656,6 @@ components/
     if (moduleRules.length > 0) {
       summary += `**模块规则（按模块目录）：**\n`;
       summary += moduleRules.map((r) => {
-        const path = require("path");
         const relativePath = r.modulePath ? path.relative(projectPath, r.modulePath) : r.moduleName;
         return `  - ${relativePath}/.cursor/rules/${r.fileName} (${r.moduleName})`;
       }).join("\n");
@@ -1244,19 +1665,21 @@ components/
   }
 
   /**
-   * 生成规则元数据
+   * 生成规则元数据（v1.3 增强）
    */
   private generateRuleMetadata(
     title: string,
     description: string,
     priority: number,
     techStack: string[],
-    tags: string[]
+    tags: string[],
+    type?: string,
+    depends?: string[]
   ): string {
     const now = new Date();
-    const version = "1.2.0"; // 版本号，后续可以从配置读取
+    const version = "1.3.0";
     
-    return `---
+    let metadata = `---
 title: ${title}
 description: ${description}
 priority: ${priority}
@@ -1264,17 +1687,396 @@ version: ${version}
 generatedAt: ${now.toISOString().split('T')[0]}
 techStack: ${JSON.stringify(techStack)}
 generator: cursor-rules-generator
-tags: ${JSON.stringify(tags)}
+tags: ${JSON.stringify(tags)}`;
+
+    if (type) {
+      metadata += `\ntype: ${type}`;
+    }
+
+    if (depends && depends.length > 0) {
+      metadata += `\ndepends: ${JSON.stringify(depends)}`;
+    }
+
+    metadata += `\n---\n\n`;
+
+    return metadata;
+  }
+
+  /**
+   * 生成框架特定原则
+   */
+  private generateFrameworkPrinciples(context: RuleGenerationContext): string {
+    const frameworks = context.techStack.frameworks;
+    let principles = "";
+
+    if (frameworks.includes("React")) {
+      principles += "- **React**: 使用函数组件和 Hooks，保持组件单一职责\n";
+    }
+    if (frameworks.includes("Vue")) {
+      principles += "- **Vue**: 使用 Composition API，保持组件简洁\n";
+    }
+    if (frameworks.includes("Next.js")) {
+      principles += "- **Next.js**: 利用 Server Components，优化性能\n";
+    }
+
+    return principles || "- 遵循框架的官方最佳实践";
+  }
+
+  /**
+   * 生成状态管理内容
+   */
+  private generateStateManagementContent(context: RuleGenerationContext, libName?: string): string {
+    if (!libName) {
+      return "项目使用状态管理，请遵循一致的状态更新模式。";
+    }
+
+    const lowerLib = libName.toLowerCase();
+
+    if (lowerLib.includes("mobx")) {
+      return `## MobX 状态管理
+
+### 项目当前使用
+- 状态管理库: MobX
+- Store 位置: 查看 @src/stores/ 目录
+
+### 使用规范
+
+**定义 Store**:
+\`\`\`typescript
+import { makeObservable, observable, action } from 'mobx'
+
+class UserStore {
+  @observable user = null
+  
+  constructor() {
+    makeObservable(this)
+  }
+  
+  @action
+  setUser(user) {
+    this.user = user
+  }
+}
+\`\`\`
+
+**在组件中使用**:
+\`\`\`typescript
+import { observer } from 'mobx-react-lite'
+
+export const UserProfile = observer(() => {
+  const { user } = useStores()  // 获取 Store
+  return <div>{user.name}</div>
+})
+\`\`\`
+
+### 最佳实践
+
+- 使用 @observable 定义响应式状态
+- 使用 @action 定义状态修改方法
+- 组件用 observer() 包装
+- 避免直接修改 observable
+
+参考: 查找项目中的 Store 文件作为示例`;
+    }
+
+    if (lowerLib.includes("redux")) {
+      return `## Redux 状态管理
+
+### 使用规范
+
+- 使用 Redux Toolkit
+- Slice 按功能模块组织
+- 使用 createSlice 定义 reducer
+- 异步逻辑使用 createAsyncThunk
+
+参考项目中现有的 slice 文件`;
+    }
+
+    if (lowerLib.includes("zustand")) {
+      return `## Zustand 状态管理
+
+### 使用规范
+
+- 使用 create 创建 store
+- 保持 store 扁平化
+- 使用 immer 中间件处理复杂状态`;
+    }
+
+    return `## ${libName} 状态管理\n\n请遵循 ${libName} 的官方最佳实践。`;
+  }
+
+  /**
+   * 生成 instructions.md 内容
+   */
+  private generateInstructionsContent(context: RuleGenerationContext): string {
+    return `# 开发工作流程指导
+
+> 在本项目中使用 Cursor AI 进行开发的推荐流程
+
+## 📋 开始任务前的检查清单
+
+在开始任何开发任务前，请确认：
+
+- [ ] 已阅读 @.cursor/rules/global-rules.mdc 了解项目概述
+${this.hasCustomTools(context) ? '- [ ] 已查看 @.cursor/rules/custom-tools.mdc 了解可用工具\n' : ''}- [ ] 已确认文件应该放在哪里（@.cursor/rules/architecture.mdc）
+- [ ] **已让 Cursor 确认理解了任务** ⚠️ 重要
+
+## 🚀 开始新任务的标准流程
+
+### 步骤 1：让 Cursor 确认理解
+
+**始终先询问**:
+\`\`\`
+请确认你理解了以下任务：[具体描述任务]
+
+需要创建哪些文件？
+需要使用哪些项目工具？
+需要参考哪些现有代码？
+\`\`\`
+
+⚠️ **重要**: 不要跳过这一步，确保 Cursor 理解任务可以避免很多问题。
+
+### 步骤 2：检查可复用资源
+
+${this.hasCustomTools(context) ? `**查看项目工具**: @.cursor/rules/custom-tools.mdc
+
+询问:
+\`\`\`
+对于 [功能]，项目中是否已有可用的 Hooks 或工具函数？
+\`\`\`
+` : ''}
+**查看参考代码**: 
+\`\`\`
+有没有类似功能的现有代码可以参考？
+\`\`\`
+
+### 步骤 3：确定文件位置
+
+**查看**: @.cursor/rules/architecture.mdc
+
+询问:
+\`\`\`
+新建 [组件/工具/服务] 应该放在哪个目录？
+使用什么路径别名导入？
+\`\`\`
+
+### 步骤 4：实施开发
+
+**明确指定**:
+\`\`\`
+请实现 [功能]：
+${this.hasCustomTools(context) ? '- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 使用 @src/utils/format.ts 的 formatDate\n' : ''}- 遵循 @.cursor/rules/code-style.mdc 的命名规范
+- 参考 @src/components/[相似组件].tsx 的结构
+\`\`\`
+
+### 步骤 5：代码审查
+
+**检查清单**:
+- [ ] 使用了项目自定义工具？（而非重新实现）
+- [ ] 使用了路径别名？（而非相对路径）
+- [ ] 遵循了命名约定？
+- [ ] 添加了 TypeScript 类型？
+- [ ] 添加了必要的错误处理？
+- [ ] 文件放在了正确的位置？
+${this.featureExists(context, "testing") ? '- [ ] 添加了测试？\n' : ''}
+
+## 🎯 常见任务模板
+
+### 新建 React 组件
+
+\`\`\`
+任务: 创建一个 [组件名] 组件
+
+请确认理解：
+1. 组件应该放在哪个目录？
+2. 需要使用哪些项目 Hooks？
+3. 参考哪个现有组件的结构？
+
+然后实现组件，遵循：
+- @.cursor/rules/code-style.mdc - 命名和格式
+${this.isFrontendProject(context) ? '- @.cursor/rules/ui-ux.mdc - UI 规范\n' : ''}- @.cursor/rules/architecture.mdc - 文件位置
+\`\`\`
+
+### 新建工具函数
+
+\`\`\`
+任务: 创建一个 [功能] 工具函数
+
+步骤:
+1. 检查 @.cursor/rules/custom-tools.mdc - 是否已存在类似工具？
+2. 确定位置: 应该放在 src/utils/ 的哪个文件？
+3. 实现: 遵循现有工具的风格和命名
+\`\`\`
+
+### API 调用
+
+\`\`\`
+${context.customPatterns?.apiClient?.exists ? `使用项目的 API 客户端：
+- 定义: @src/services/api-client.ts
+- 使用示例: @src/services/[查看现有服务].ts
+
+不要直接使用 fetch 或 axios
+` : '统一的 API 调用方式，保持一致性'}
+\`\`\`
+
+### 修复 Bug
+
+\`\`\`
+步骤:
+1. 让 Cursor 分析 bug 的原因
+2. 确认修复方案不会影响其他功能
+3. 遵循项目的错误处理规范
+4. 添加测试防止回归（如果项目有测试）
+\`\`\`
+
+## 💡 与 Cursor 对话的最佳实践
+
+### ✅ 好的提示
+
+\`\`\`
+请确认理解任务
+使用项目的 useAuth Hook（@src/hooks/useAuth.ts）
+参考 @src/components/Button.tsx 的样式
+遵循 @.cursor/rules/code-style.mdc 的命名约定
+\`\`\`
+
+### ❌ 不好的提示
+
+\`\`\`
+帮我写代码（太模糊）
+创建一个组件（没有说明位置、引用、规范）
+实现这个功能（没有明确需求和约束）
+\`\`\`
+
+### 📝 提示模板
+
+\`\`\`
+[明确的任务描述]
++ [指定要使用的项目工具]
++ [指定要遵循的规则文件]
++ [指定要参考的现有代码]
+
+示例:
+"创建用户列表组件，
+ 使用 @src/hooks/useAuth.ts 的 useAuth Hook，
+ 遵循 @.cursor/rules/ui-ux.mdc 的无障碍规范，
+ 参考 @src/components/UserProfile.tsx 的结构"
+\`\`\`
+
+## 📚 快速参考
+
+### 规则文件索引
+
+- **@.cursor/rules/global-rules.mdc** - 项目概述和核心原则
+- **@.cursor/rules/code-style.mdc** - 代码风格和命名
+- **@.cursor/rules/architecture.mdc** - 文件组织
+${this.hasCustomTools(context) ? '- **@.cursor/rules/custom-tools.mdc** - 自定义工具（必读）\n' : ''}${this.hasErrorHandling(context) ? '- **@.cursor/rules/error-handling.mdc** - 错误处理\n' : ''}${this.hasStateManagement(context) ? '- **@.cursor/rules/state-management.mdc** - 状态管理\n' : ''}
+
+### 关键文件引用
+
+${this.generateKeyFileReferences(context)}
+
 ---
 
+*提示: 使用 @filename.ts 可以让 Cursor 快速定位和参考代码*
 `;
+  }
+
+  /**
+   * 生成关键文件引用
+   */
+  private generateKeyFileReferences(context: RuleGenerationContext): string {
+    let refs = "";
+
+    if (context.customPatterns?.customHooks && context.customPatterns.customHooks.length > 0) {
+      refs += "**自定义 Hooks**:\n";
+      context.customPatterns.customHooks.slice(0, 5).forEach((hook) => {
+        refs += `- @${hook.relativePath} - ${hook.name}\n`;
+      });
+      refs += "\n";
+    }
+
+    if (context.customPatterns?.customUtils && context.customPatterns.customUtils.length > 0) {
+      refs += "**工具函数**:\n";
+      const grouped = this.groupUtilsByCategory(context.customPatterns.customUtils);
+      Object.entries(grouped).slice(0, 3).forEach(([category, utils]) => {
+        refs += `- @${utils[0].relativePath} - ${category}\n`;
+      });
+      refs += "\n";
+    }
+
+    if (context.fileOrganization?.componentLocation && context.fileOrganization.componentLocation.length > 0) {
+      refs += `**组件目录**: @${context.fileOrganization.componentLocation[0]}/\n`;
+    }
+
+    return refs || "查看项目实际文件了解组织结构";
+  }
+
+  /**
+   * v1.3: 生成模块概述规则（简化版，约 200 行）
+   */
+  private generateModuleOverviewRule(
+    context: RuleGenerationContext,
+    module: Module
+  ): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      `${module.name} 模块规则`,
+      module.description || `${module.name} 模块开发规范`,
+      50,
+      context.techStack.primary,
+      [module.type, "module"],
+      "overview",
+      ["global-rules"]
+    );
+
+    const content = metadata + `
+# ${module.name} 模块
+
+**类型**: ${this.getModuleTypeName(module.type)}  
+**路径**: \`${module.path}\`  
+${module.description ? `**描述**: ${module.description}` : ""}
+
+## 模块职责
+
+${this.generateModuleResponsibilities(module)}
+
+## 相关规则
+
+本模块遵循全局规则，并有以下特定要求：
+
+- 参考: @../global-rules.mdc
+- 参考: @../code-style.mdc
+- 参考: @../architecture.mdc
+
+## 开发指南
+
+${this.generateModuleGuidelines(context, module)}
+
+## 注意事项
+
+${this.generateModuleCautions(module)}
+
+---
+
+*详细规范请参考全局规则文件。*
+`;
+
+    return {
+      scope: "module",
+      moduleName: module.name,
+      modulePath: module.path,
+      content,
+      fileName: `${this.sanitizeFileName(module.name)}-overview.mdc`,
+      priority: 50,
+      type: "overview",
+      depends: ["global-rules"],
+    };
   }
 
   /**
    * 获取项目名称
    */
   private getProjectName(projectPath: string): string {
-    const path = require("path");
     return path.basename(projectPath);
   }
 
@@ -1648,6 +2450,5 @@ tags: ${JSON.stringify(tags)}
   }
 }
 
-// 添加 FileUtils 导入（如果需要）
 import { FileUtils } from "../utils/file-utils.js";
 

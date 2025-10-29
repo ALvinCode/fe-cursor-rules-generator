@@ -62,12 +62,20 @@ export interface ConsistencyReport {
 }
 
 export interface CursorRule {
-  scope: "global" | "module";
+  scope: "global" | "module" | "specialized"; // v1.3: 添加 specialized 专题规则
   moduleName?: string;
   modulePath?: string; // 模块的路径，用于确定规则文件的写入位置（global 为项目根目录，module 为模块目录）
   content: string;
   fileName: string;
   priority: number;
+  type?: string; // v1.3: 规则类型（overview, guideline, reference, practice）
+  depends?: string[]; // v1.3: 依赖的其他规则文件
+}
+
+export interface InstructionsFile {
+  content: string;
+  fileName: string; // instructions.md
+  filePath: string; // .cursor/instructions.md
 }
 
 export interface ProjectPractice {
