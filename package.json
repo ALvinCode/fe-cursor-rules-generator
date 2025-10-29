@@ -1,0 +1,35 @@
+{
+  "name": "cursor-rules-generator",
+  "version": "1.0.0",
+  "description": "一个智能 MCP Server，根据项目实际情况自动生成 Cursor Rules",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "cursor-rules-generator": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "npm run build && node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "cursor",
+    "rules",
+    "ai",
+    "code-generation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "glob": "^11.0.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
+
