@@ -15,6 +15,10 @@ import { ConsistencyChecker } from "./modules/consistency-checker.js";
 import { RulesGenerator } from "./modules/rules-generator.js";
 import { FileWriter } from "./modules/file-writer.js";
 import { RuleValidator } from "./modules/rule-validator.js";
+import { PracticeAnalyzer } from "./modules/practice-analyzer.js";
+import { ConfigParser } from "./modules/config-parser.js";
+import { CustomPatternDetector } from "./modules/custom-pattern-detector.js";
+import { FileStructureLearner } from "./modules/file-structure-learner.js";
 
 /**
  * Cursor Rules Generator MCP Server
@@ -31,12 +35,16 @@ class CursorRulesGeneratorServer {
   private rulesGenerator: RulesGenerator;
   private fileWriter: FileWriter;
   private ruleValidator: RuleValidator;
+  private practiceAnalyzer: PracticeAnalyzer;
+  private configParser: ConfigParser;
+  private customPatternDetector: CustomPatternDetector;
+  private fileStructureLearner: FileStructureLearner;
 
   constructor() {
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.1.0",
+        version: "1.2.0",
       },
       {
         capabilities: {
@@ -55,6 +63,10 @@ class CursorRulesGeneratorServer {
     this.rulesGenerator = new RulesGenerator();
     this.fileWriter = new FileWriter();
     this.ruleValidator = new RuleValidator();
+    this.practiceAnalyzer = new PracticeAnalyzer();
+    this.configParser = new ConfigParser();
+    this.customPatternDetector = new CustomPatternDetector();
+    this.fileStructureLearner = new FileStructureLearner();
 
     this.setupToolHandlers();
   }
@@ -221,6 +233,38 @@ class CursorRulesGeneratorServer {
       techStack
     );
 
+    // 4.5 解析项目配置（v1.2 新增）
+    console.error("解析项目配置...");
+    const projectConfig = await this.configParser.parseProjectConfig(projectPath);
+
+    // 4.6 分析项目实践（v1.2 新增）
+    console.error("分析项目实践...");
+    const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(projectPath, files);
+    const codeStyle = await this.practiceAnalyzer.analyzeCodeStyle(projectPath, files);
+    const componentPattern = await this.practiceAnalyzer.analyzeComponentPatterns(projectPath, files);
+    
+    const projectPractice = {
+      errorHandling,
+      codeStyle,
+      componentPattern,
+    };
+
+    // 4.7 检测自定义模式（v1.2 新增）
+    console.error("检测自定义模式...");
+    const customHooks = await this.customPatternDetector.detectCustomHooks(projectPath, files);
+    const customUtils = await this.customPatternDetector.detectCustomUtils(projectPath, files);
+    const apiClient = await this.customPatternDetector.detectAPIClient(projectPath, files);
+    
+    const customPatterns = {
+      customHooks,
+      customUtils,
+      apiClient,
+    };
+
+    // 4.8 学习文件组织结构（v1.2 新增）
+    console.error("学习文件组织结构...");
+    const fileOrganization = await this.fileStructureLearner.learnStructure(projectPath, files);
+
     // 5. 获取最佳实践（通过 Context7）
     const bestPractices = await this.context7Integration.getBestPractices(
       techStack.dependencies
@@ -246,7 +290,7 @@ class CursorRulesGeneratorServer {
       }
     }
 
-    // 8. 生成规则
+    // 8. 生成规则（v1.2 增强）
     const rules = await this.rulesGenerator.generate({
       projectPath,
       techStack,
@@ -254,6 +298,11 @@ class CursorRulesGeneratorServer {
       codeFeatures,
       bestPractices,
       includeModuleRules,
+      // v1.2 新增字段
+      projectPractice,
+      projectConfig,
+      customPatterns,
+      fileOrganization,
     });
 
     // 9. 写入规则文件

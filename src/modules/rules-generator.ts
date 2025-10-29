@@ -75,9 +75,13 @@ ${this.generateDevelopmentGuidelines(context)}
 
 # 代码风格
 
-${this.generateCodeStyleGuidelines(context)}
+${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.generateCodeStyleGuidelines(context)}
 
 ---
+
+${context.customPatterns ? this.generateCustomToolsRules(context) : ""}
+
+${context.customPatterns && context.customPatterns.customHooks.length > 0 ? "---\n\n" : ""}
 
 # 最佳实践
 
@@ -87,7 +91,7 @@ ${this.generateBestPracticesSection(context.bestPractices)}
 
 # 文件组织
 
-${this.generateFileOrganizationGuidelines(context)}
+${context.fileOrganization ? this.generateStructureBasedFileOrgRules(context) : this.generateFileOrganizationGuidelines(context)}
 
 ---
 
@@ -274,13 +278,13 @@ ${f.examples.length > 0 ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}`
 `;
     }
 
-    // 添加错误处理指南
-    guidelines += this.generateErrorHandlingGuidelines(context);
+    // 添加错误处理指南（使用基于项目实践的版本）
+    guidelines += context.projectPractice 
+      ? this.generatePracticeBasedErrorHandling(context)
+      : this.generateErrorHandlingGuidelines(context);
 
-    // 添加测试相关指南
-    if (context.codeFeatures["testing"]) {
-      guidelines += this.generateTestingGuidelines(context);
-    }
+    // 添加测试相关指南（按需生成）
+    guidelines += this.generateConditionalTestingRules(context);
 
     // 添加 UI/UX 规范（前端项目）
     if (this.isFrontendProject(context)) {
@@ -1250,7 +1254,7 @@ components/
     tags: string[]
   ): string {
     const now = new Date();
-    const version = "1.1.0"; // 版本号，后续可以从配置读取
+    const version = "1.2.0"; // 版本号，后续可以从配置读取
     
     return `---
 title: ${title}
@@ -1299,5 +1303,351 @@ tags: ${JSON.stringify(tags)}
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
   }
+
+  /**
+   * 生成基于项目配置的代码风格规则（v1.2）
+   */
+  generateConfigBasedStyleRules(context: RuleGenerationContext): string {
+    if (!context.projectConfig) {
+      return this.generateCodeStyleGuidelines(context);
+    }
+
+    let rules = `## 代码风格（基于项目配置）\n\n`;
+
+    // 使用项目实际配置
+    if (context.projectConfig.prettier) {
+      const p = context.projectConfig.prettier;
+      rules += `### 项目配置 (Prettier)\n\n`;
+      rules += `项目使用 Prettier 进行代码格式化，配置如下：\n\n`;
+      rules += `- **缩进**: ${p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`}\n`;
+      rules += `- **引号**: ${p.singleQuote ? "单引号" : "双引号"}\n`;
+      rules += `- **分号**: ${p.semi ? "使用分号" : "不使用分号"}\n`;
+      rules += `- **行长度**: ${p.printWidth || 80} 字符\n`;
+      rules += `- **尾随逗号**: ${p.trailingComma || "none"}\n\n`;
+      rules += `⚠️ **重要**: 这些是项目的实际配置，生成代码时会自动应用。\n`;
+      rules += `请确保编辑器已配置 Prettier 自动格式化。\n\n`;
+    } else if (context.projectPractice?.codeStyle) {
+      // 使用分析出的代码风格
+      const style = context.projectPractice.codeStyle;
+      rules += `### 项目当前实践（分析得出）\n\n`;
+      rules += `通过分析项目代码，发现以下风格模式：\n\n`;
+      rules += `- **变量声明**: 主要使用 ${style.variableDeclaration === "const-let" ? "const/let" : "var"}\n`;
+      rules += `- **函数风格**: ${style.functionStyle === "arrow" ? "箭头函数" : "function 声明"}\n`;
+      rules += `- **字符串引号**: ${style.stringQuote === "single" ? "单引号" : style.stringQuote === "double" ? "双引号" : "混合"}\n`;
+      rules += `- **分号**: ${style.semicolon === "always" ? "使用" : style.semicolon === "never" ? "不使用" : "混合"}\n\n`;
+      rules += `### 建议\n`;
+      rules += `✅ **短期**: 保持与现有代码一致的风格\n`;
+      if (style.variableDeclaration === "var") {
+        rules += `💡 **长期**: 考虑逐步迁移到 const/let 以提高代码质量\n`;
+      }
+      if (style.stringQuote === "mixed") {
+        rules += `💡 **长期**: 建议统一使用单引号或配置 Prettier\n`;
+      }
+      rules += `\n`;
+    }
+
+    // 添加路径别名信息
+    if (context.projectConfig?.pathAliases && Object.keys(context.projectConfig.pathAliases).length > 0) {
+      rules += `### 路径别名（必须使用）\n\n`;
+      rules += `项目配置了以下路径别名，生成代码时必须使用：\n\n`;
+      for (const [alias, target] of Object.entries(context.projectConfig.pathAliases)) {
+        rules += `- \`${alias}\` → \`${target}\`\n`;
+      }
+      rules += `\n示例：\n`;
+      rules += `\`\`\`typescript\n`;
+      const firstAlias = Object.keys(context.projectConfig.pathAliases)[0];
+      rules += `// ✅ 正确 - 使用路径别名\n`;
+      rules += `import { Component } from '${firstAlias}/Component';\n\n`;
+      rules += `// ❌ 错误 - 不要使用相对路径\n`;
+      rules += `import { Component } from '../../../Component';\n`;
+      rules += `\`\`\`\n\n`;
+    }
+
+    return rules;
+  }
+
+  /**
+   * 生成基于项目实践的错误处理规则（v1.2 - 三段式）
+   */
+  generatePracticeBasedErrorHandling(context: RuleGenerationContext): string {
+    if (!context.projectPractice?.errorHandling) {
+      return this.generateErrorHandlingGuidelines(context);
+    }
+
+    const eh = context.projectPractice.errorHandling;
+    let rules = `## 错误处理规范\n\n`;
+
+    // 第一段：项目当前实践
+    rules += `### 项目当前实践\n\n`;
+
+    if (eh.type === "none" || eh.frequency === 0) {
+      rules += `⚠️ 项目当前未实施系统的错误处理。\n\n`;
+    } else {
+      rules += `项目主要使用 **${eh.type === "try-catch" ? "try-catch" : "Promise.catch()"}** 处理错误（发现 ${eh.frequency} 处）\n\n`;
+
+      if (eh.customErrorTypes.length > 0) {
+        rules += `**自定义错误类型**：\n`;
+        rules += eh.customErrorTypes.map((t: string) => `- \`${t}\``).join("\n") + "\n\n";
+      }
+
+      rules += `**日志方式**：${eh.loggingMethod === "console" ? "console.log/error" : eh.loggingMethod === "logger-library" ? `日志库 (${eh.loggerLibrary})` : "未检测到"}\n\n`;
+    }
+
+    // 第二段：短期建议
+    rules += `### 短期建议（保持兼容）\n\n`;
+
+    if (eh.type === "none") {
+      rules += `💡 建议为关键操作添加基础错误处理：\n`;
+      rules += `\`\`\`typescript\n`;
+      rules += `try {\n`;
+      rules += `  await criticalOperation();\n`;
+      rules += `} catch (error) {\n`;
+      rules += `  console.error('操作失败:', error);\n`;
+      rules += `  // 提供用户友好的错误提示\n`;
+      rules += `}\n`;
+      rules += `\`\`\`\n\n`;
+    } else {
+      rules += `✅ 继续使用现有的 ${eh.type} 模式保持一致性\n\n`;
+
+      if (eh.loggingMethod === "console") {
+        rules += `💡 改进建议：为 console.error 添加更多上下文信息\n`;
+        rules += `\`\`\`typescript\n`;
+        rules += `console.error('[错误类型]', { userId, timestamp, error, context });\n`;
+        rules += `\`\`\`\n\n`;
+      }
+    }
+
+    // 第三段：长期建议
+    rules += `### 长期建议（可选改进）\n\n`;
+
+    if (eh.loggingMethod === "console") {
+      rules += `💡 考虑引入结构化日志系统（如 winston 或 pino）：\n`;
+      rules += `- 便于生产环境调试\n`;
+      rules += `- 支持日志级别和过滤\n`;
+      rules += `- 可以集成到监控系统\n\n`;
+    }
+
+    if (eh.customErrorTypes.length === 0) {
+      rules += `💡 考虑定义自定义错误类型以提高错误处理的精确性\n\n`;
+    }
+
+    rules += `💡 考虑引入错误监控服务（如 Sentry）跟踪生产环境错误\n\n`;
+
+    return rules;
+  }
+
+  /**
+   * 生成自定义工具使用规则（v1.2）
+   */
+  generateCustomToolsRules(context: RuleGenerationContext): string {
+    if (!context.customPatterns || (context.customPatterns.customHooks.length === 0 && context.customPatterns.customUtils.length === 0)) {
+      return "";
+    }
+
+    let rules = `## 项目自定义工具（优先使用）\n\n`;
+
+    // 自定义 Hooks
+    if (context.customPatterns.customHooks.length > 0) {
+      rules += `### 自定义 Hooks\n\n`;
+      rules += `项目定义了以下自定义 hooks，**生成代码时必须优先使用**：\n\n`;
+
+      const topHooks = context.customPatterns.customHooks.slice(0, 10);
+      for (const hook of topHooks) {
+        rules += `**${hook.name}** ${hook.description ? `- ${hook.description}` : ""}\n`;
+        rules += `- 位置: \`${hook.relativePath}\`\n`;
+        rules += `- 使用频率: ${hook.frequency > 10 ? "高" : hook.frequency > 3 ? "中" : "低"} (${hook.frequency} 处)\n`;
+        if (hook.usage) {
+          rules += `- 使用方式:\n`;
+          rules += `  \`\`\`typescript\n`;
+          rules += `  ${hook.usage}\n`;
+          rules += `  \`\`\`\n`;
+        }
+        rules += `\n`;
+      }
+    }
+
+    // 自定义工具函数
+    if (context.customPatterns.customUtils.length > 0) {
+      rules += `### 自定义工具函数\n\n`;
+      rules += `项目定义了以下工具函数，**生成代码时必须优先使用**：\n\n`;
+
+      // 按类别分组
+      const utilsByCategory = this.groupUtilsByCategory(context.customPatterns.customUtils);
+
+      for (const [category, utils] of Object.entries(utilsByCategory)) {
+        rules += `**${category}**:\n`;
+        for (const util of utils.slice(0, 5)) {
+          rules += `- \`${util.name}\` (${util.relativePath})\n`;
+          if (util.signature) {
+            rules += `  \`\`\`typescript\n  ${util.signature}\n  \`\`\`\n`;
+          }
+        }
+        rules += `\n`;
+      }
+    }
+
+    // API 客户端
+    if (context.customPatterns.apiClient?.exists) {
+      const api = context.customPatterns.apiClient;
+      rules += `### API 客户端\n\n`;
+      rules += `项目使用自定义的 API 客户端：**\`${api.name}\`**\n`;
+      rules += `- 位置: \`${FileUtils.getRelativePath(context.projectPath, api.filePath)}\`\n`;
+      if (api.hasErrorHandling) {
+        rules += `- ✅ 已内置错误处理\n`;
+      }
+      if (api.hasAuth) {
+        rules += `- ✅ 已内置认证处理\n`;
+      }
+      rules += `\n**使用要求**:\n`;
+      rules += `\`\`\`typescript\n`;
+      rules += `// ✅ 正确 - 使用项目的 API 客户端\n`;
+      rules += `import { ${api.name} } from '@/services/${api.name}';\n`;
+      rules += `const data = await ${api.name}.get('/endpoint');\n\n`;
+      rules += `// ❌ 错误 - 不要直接使用 fetch 或 axios\n`;
+      rules += `const response = await fetch('/api/endpoint');\n`;
+      rules += `\`\`\`\n\n`;
+    }
+
+    rules += `### ⚠️ 重要规则\n\n`;
+    rules += `1. **优先使用项目自定义工具**，不要重新实现或引入第三方替代\n`;
+    rules += `2. **保持一致性**，使用相同的工具确保代码可维护性\n`;
+    rules += `3. **新增工具时**，遵循现有工具的命名和组织方式\n\n`;
+
+    return rules;
+  }
+
+  /**
+   * 按类别分组工具函数
+   */
+  private groupUtilsByCategory(utils: any[]): Record<string, any[]> {
+    const grouped: Record<string, any[]> = {};
+    for (const util of utils) {
+      if (!grouped[util.category]) {
+        grouped[util.category] = [];
+      }
+      grouped[util.category].push(util);
+    }
+    return grouped;
+  }
+
+  /**
+   * 生成基于项目结构的文件组织规则（v1.2）
+   */
+  generateStructureBasedFileOrgRules(context: RuleGenerationContext): string {
+    if (!context.fileOrganization) {
+      return this.generateFileOrganizationGuidelines(context);
+    }
+
+    const org = context.fileOrganization;
+    let rules = `## 文件组织规范（基于项目实际结构）\n\n`;
+
+    // 项目目录结构
+    rules += `### 项目目录结构\n\n`;
+    rules += `项目采用以下目录组织方式，**生成代码时必须遵循**：\n\n`;
+    rules += `\`\`\`\n`;
+
+    // 显示主要目录
+    const topDirs = org.structure.filter((d) => !d.path.includes("/")).slice(0, 10);
+    for (const dir of topDirs) {
+      rules += `${dir.path}/  # ${dir.purpose} (${dir.fileCount} 个文件)\n`;
+      
+      // 显示子目录
+      const children = org.structure.filter(
+        (d) => d.path.startsWith(dir.path + "/") && d.path.split("/").length === 2
+      ).slice(0, 5);
+      
+      for (const child of children) {
+        const childName = child.path.split("/").pop();
+        rules += `  ├── ${childName}/  # ${child.purpose}\n`;
+      }
+    }
+
+    rules += `\`\`\`\n\n`;
+
+    // 文件创建规则
+    rules += `### 新建文件规则\n\n`;
+
+    if (org.componentLocation.length > 0) {
+      rules += `**新建组件**:\n`;
+      rules += `- 位置: \`${org.componentLocation[0]}/\`\n`;
+      rules += `- 命名: ${org.namingConvention.components}\n`;
+      if (org.namingConvention.useIndexFiles) {
+        rules += `- 结构: 每个组件一个目录，使用 index 文件导出\n`;
+        rules += `  \`\`\`\n`;
+        rules += `  components/Button/\n`;
+        rules += `    ├── index.tsx\n`;
+        rules += `    ├── Button.tsx\n`;
+        rules += `    └── styles.ts\n`;
+        rules += `  \`\`\`\n`;
+      }
+      rules += `\n`;
+    }
+
+    if (org.utilsLocation.length > 0) {
+      rules += `**新建工具函数**:\n`;
+      rules += `- 位置: \`${org.utilsLocation[0]}/\`\n`;
+      rules += `- 按功能分类创建文件（如 date.ts, validation.ts）\n\n`;
+    }
+
+    // 导入规范
+    if (context.projectConfig?.pathAliases && Object.keys(context.projectConfig.pathAliases).length > 0) {
+      rules += `### 导入规范\n\n`;
+      rules += `**必须使用路径别名**，不要使用相对路径：\n`;
+      rules += `\`\`\`typescript\n`;
+      rules += `// ✅ 正确\n`;
+      const aliases = Object.keys(context.projectConfig.pathAliases);
+      if (aliases.length > 0) {
+        rules += `import { Button } from '${aliases[0]}/components/Button';\n`;
+      }
+      rules += `\n// ❌ 错误\n`;
+      rules += `import { Button } from '../../../components/Button';\n`;
+      rules += `\`\`\`\n\n`;
+    }
+
+    return rules;
+  }
+
+  /**
+   * 检查功能是否在项目中存在
+   */
+  private featureExists(context: RuleGenerationContext, featureName: string): boolean {
+    // 检查代码特征
+    if (context.codeFeatures[featureName]) {
+      return context.codeFeatures[featureName].frequency > 0;
+    }
+
+    // 检查依赖
+    const featureDeps: Record<string, string[]> = {
+      "testing": ["jest", "vitest", "mocha", "@testing-library"],
+      "state-management": ["redux", "zustand", "mobx", "pinia", "vuex"],
+      "styling": ["styled-components", "@emotion", "tailwindcss", "@mui"],
+    };
+
+    if (featureDeps[featureName]) {
+      return context.techStack.dependencies.some((d) =>
+        featureDeps[featureName].some((lib) => d.name.includes(lib))
+      );
+    }
+
+    return false;
+  }
+
+  /**
+   * 生成按需的测试规则（v1.2）
+   */
+  generateConditionalTestingRules(context: RuleGenerationContext): string {
+    const hasTests = this.featureExists(context, "testing");
+
+    if (!hasTests) {
+      // 项目没有测试 - 简短提示
+      return `## 测试\n\n### 当前状态\n⚠️ 项目当前未配置测试框架\n\n### 建议\n💡 如需添加测试，建议考虑：\n- **Jest** 或 **Vitest**（单元测试）\n- **@testing-library/react**（React 组件测试）\n- **Cypress** 或 **Playwright**（E2E 测试）\n\n`;
+    }
+
+    // 项目有测试 - 生成详细规则
+    return this.generateTestingGuidelines(context);
+  }
 }
+
+// 添加 FileUtils 导入（如果需要）
+import { FileUtils } from "../utils/file-utils.js";
 

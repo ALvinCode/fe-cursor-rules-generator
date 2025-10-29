@@ -113,11 +113,13 @@ priority: 50
 **场景 1: 在 `frontend/src/components/Button.tsx` 工作**
 
 加载的规则：
+
 1. ✅ `00-global-rules.mdc` (全局 TypeScript、Git 等规范)
 2. ✅ `frontend-rules.mdc` (React 组件规范)
 3. ❌ 不加载 `backend-rules.mdc`
 
 Cursor 提示示例：
+
 ```
 建议使用函数组件和 Hooks（来自 frontend-rules）
 使用 TypeScript 严格模式（来自 global-rules）
@@ -126,11 +128,13 @@ Cursor 提示示例：
 **场景 2: 在 `backend/src/routes/users.ts` 工作**
 
 加载的规则：
+
 1. ✅ `00-global-rules.mdc`
 2. ✅ `backend-rules.mdc` (Express API 规范)
 3. ❌ 不加载 `frontend-rules.mdc`
 
 Cursor 提示示例：
+
 ```
 实施适当的错误处理机制（来自 backend-rules）
 使用 TypeScript 严格模式（来自 global-rules）
@@ -354,6 +358,7 @@ my-project/
 ```
 
 **问题**：
+
 - ❌ 前端开发时看到后端规则提示（干扰）
 - ❌ 所有规则混在一起，难以管理
 - ❌ 无法针对模块位置提供精准建议
@@ -369,6 +374,7 @@ my-project/
 ```
 
 **优势**：
+
 - ✅ 精准加载，减少干扰
 - ✅ 模块独立，易于维护
 - ✅ 规则继承，全局+局部
@@ -412,4 +418,3 @@ my-project/
 5. **易于维护**：模块规则独立，便于更新
 
 无论你的项目是简单的单页应用，还是复杂的 Monorepo 多包项目，或是微服务架构，都能获得恰当的规则配置！🎯
-

@@ -70,6 +70,32 @@ export interface CursorRule {
   priority: number;
 }
 
+export interface ProjectPractice {
+  errorHandling: any; // ErrorHandlingPattern from practice-analyzer
+  codeStyle: any; // CodeStylePattern from practice-analyzer
+  componentPattern: any; // ComponentPattern from practice-analyzer
+}
+
+export interface ProjectConfiguration {
+  prettier?: any; // PrettierConfig from config-parser
+  eslint?: any; // ESLintConfig from config-parser
+  typescript?: any; // TSConfig from config-parser
+  pathAliases: Record<string, string>;
+}
+
+export interface CustomPatterns {
+  customHooks: any[]; // CustomHook[] from custom-pattern-detector
+  customUtils: any[]; // CustomUtil[] from custom-pattern-detector
+  apiClient?: any; // APIClientInfo from custom-pattern-detector
+}
+
+export interface FileOrganizationInfo {
+  structure: any[]; // DirectoryPurpose[] from file-structure-learner
+  componentLocation: string[];
+  utilsLocation: string[];
+  namingConvention: any;
+}
+
 export interface RuleGenerationContext {
   projectPath: string;
   techStack: TechStack;
@@ -77,5 +103,10 @@ export interface RuleGenerationContext {
   codeFeatures: Record<string, CodeFeature>;
   bestPractices: BestPractice[];
   includeModuleRules: boolean;
+  // v1.2 新增字段
+  projectPractice?: ProjectPractice;
+  projectConfig?: ProjectConfiguration;
+  customPatterns?: CustomPatterns;
+  fileOrganization?: FileOrganizationInfo;
 }
 
