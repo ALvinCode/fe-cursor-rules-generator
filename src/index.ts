@@ -14,6 +14,7 @@ import { CodeAnalyzer } from "./modules/code-analyzer.js";
 import { ConsistencyChecker } from "./modules/consistency-checker.js";
 import { RulesGenerator } from "./modules/rules-generator.js";
 import { FileWriter } from "./modules/file-writer.js";
+import { RuleValidator } from "./modules/rule-validator.js";
 
 /**
  * Cursor Rules Generator MCP Server
@@ -29,12 +30,13 @@ class CursorRulesGeneratorServer {
   private consistencyChecker: ConsistencyChecker;
   private rulesGenerator: RulesGenerator;
   private fileWriter: FileWriter;
+  private ruleValidator: RuleValidator;
 
   constructor() {
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.0.0",
+        version: "1.1.0",
       },
       {
         capabilities: {
@@ -52,6 +54,7 @@ class CursorRulesGeneratorServer {
     this.consistencyChecker = new ConsistencyChecker();
     this.rulesGenerator = new RulesGenerator();
     this.fileWriter = new FileWriter();
+    this.ruleValidator = new RuleValidator();
 
     this.setupToolHandlers();
   }
@@ -138,6 +141,26 @@ class CursorRulesGeneratorServer {
               required: ["projectPath"],
             },
           },
+          {
+            name: "validate_rules",
+            description:
+              "验证 Cursor Rules 文件的格式和内容是否正确，检查元数据完整性、Markdown 格式等。",
+            inputSchema: {
+              type: "object",
+              properties: {
+                projectPath: {
+                  type: "string",
+                  description: "项目根目录的绝对路径",
+                },
+                validateModules: {
+                  type: "boolean",
+                  description: "是否验证模块目录中的规则文件（默认为 true）",
+                  default: true,
+                },
+              },
+              required: ["projectPath"],
+            },
+          },
         ] as Tool[],
       };
     });
@@ -156,6 +179,8 @@ class CursorRulesGeneratorServer {
             return await this.handleCheckConsistency(args);
           case "update_project_description":
             return await this.handleUpdateDescription(args);
+          case "validate_rules":
+            return await this.handleValidateRules(args);
           default:
             throw new Error(`未知的工具: ${name}`);
         }
@@ -378,6 +403,55 @@ ${summary}
         {
           type: "text",
           text: `✅ 描述文件已更新！\n\n更新的内容：\n${report.inconsistencies.map((inc) => `  - ${inc.description}`).join("\n")}`,
+        },
+      ],
+    };
+  }
+
+  /**
+   * 处理验证规则的请求
+   */
+  private async handleValidateRules(args: any) {
+    const projectPath = args.projectPath as string;
+    const validateModules = (args.validateModules as boolean) ?? true;
+    const path = await import("path");
+
+    const allResults = [];
+
+    // 验证全局规则
+    const globalRulesDir = path.join(projectPath, ".cursor", "rules");
+    const globalResults = await this.ruleValidator.validateRulesDirectory(
+      globalRulesDir
+    );
+    allResults.push(...globalResults);
+
+    // 如果启用模块验证，验证模块规则
+    if (validateModules) {
+      const files = await this.projectAnalyzer.collectFiles(projectPath);
+      const modules = await this.moduleDetector.detectModules(
+        projectPath,
+        files
+      );
+
+      for (const module of modules) {
+        if (module.path !== projectPath) {
+          const moduleRulesDir = path.join(module.path, ".cursor", "rules");
+          const moduleResults = await this.ruleValidator.validateRulesDirectory(
+            moduleRulesDir
+          );
+          allResults.push(...moduleResults);
+        }
+      }
+    }
+
+    // 生成报告
+    const report = this.ruleValidator.generateReport(allResults);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: report,
         },
       ],
     };
