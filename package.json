@@ -1,6 +1,6 @@
 {
   "name": "cursor-rules-generator",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "一个智能 MCP Server，根据项目实际情况自动生成 Cursor Rules",
   "type": "module",
   "main": "dist/index.js",
@@ -11,7 +11,8 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "dev": "npm run build && node dist/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "bash scripts/quick-test.sh"
   },
   "keywords": [
     "mcp",

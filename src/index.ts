@@ -46,7 +46,7 @@ class CursorRulesGeneratorServer {
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.3.5",
+        version: "1.3.6",
       },
       {
         capabilities: {
@@ -652,25 +652,92 @@ class CursorRulesGeneratorServer {
     // 构建输出消息（包含进度日志）
     let outputMessage = progressLog.join('');
     
-    outputMessage += `✅ Cursor Rules 生成成功！
+    outputMessage += `\n✅ Cursor Rules 生成成功！\n\n`;
+    outputMessage += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    outputMessage += `## 📁 生成的文件 (${writtenFiles.length} 个)\n\n`;
+    outputMessage += writtenFiles.map((f) => `  ✅ ${f}`).join("\n") + "\n\n";
 
-📁 生成的文件：
-${writtenFiles.map((f) => `  - ${f}`).join("\n")}
+    outputMessage += `## 📊 项目分析结果\n\n`;
+    outputMessage += `**技术栈**: ${techStack.primary.join(", ")}\n`;
+    outputMessage += `**文件数量**: ${files.length} 个\n`;
+    outputMessage += `**模块数量**: ${modules.length} 个\n`;
+    outputMessage += `**代码特征**: ${Object.keys(codeFeatures).length} 项\n`;
+    if (customHooks.length > 0) {
+      outputMessage += `**自定义 Hooks**: ${customHooks.length} 个\n`;
+    }
+    if (customUtils.length > 0) {
+      outputMessage += `**自定义工具函数**: ${customUtils.length} 个\n`;
+    }
+    if (frontendRouter) {
+      outputMessage += `**前端路由**: ${frontendRouter.info.framework}\n`;
+    }
+    if (backendRouter) {
+      outputMessage += `**后端路由**: ${backendRouter.info.framework}\n`;
+    }
+    outputMessage += `\n`;
 
-📊 项目分析结果：
-  - 主要技术栈: ${techStack.primary.join(", ")}
-  - 检测到的模块: ${modules.length} 个
-  - 代码特征: ${Object.keys(codeFeatures).length} 项
-${frontendRouter ? `  - 前端路由: ${frontendRouter.info.framework}` : ""}
-${backendRouter ? `  - 后端路由: ${backendRouter.info.framework}` : ""}
+    // 添加项目文件结构图
+    if (fileOrganization && fileOrganization.structure.length > 0) {
+      outputMessage += `## 📁 项目文件结构\n\n`;
+      outputMessage += this.generateProjectStructureTree(fileOrganization, projectPath);
+      outputMessage += `\n`;
+      
+      // 添加结构说明
+      outputMessage += `**结构说明**:\n`;
+      if (fileOrganization.componentLocation.length > 0) {
+        outputMessage += `- 组件目录: \`${fileOrganization.componentLocation[0]}\`\n`;
+      }
+      if (fileOrganization.utilsLocation.length > 0) {
+        outputMessage += `- 工具函数: \`${fileOrganization.utilsLocation[0]}\`\n`;
+      }
+      if (fileOrganization.hooksLocation && fileOrganization.hooksLocation.length > 0) {
+        outputMessage += `- Hooks 目录: \`${fileOrganization.hooksLocation[0]}\`\n`;
+      }
+      if (fileOrganization.apiLocation && fileOrganization.apiLocation.length > 0) {
+        outputMessage += `- API 服务: \`${fileOrganization.apiLocation[0]}\`\n`;
+      }
+      if (frontendRouter && frontendRouter.info.location.length > 0) {
+        outputMessage += `- 路由目录: \`${frontendRouter.info.location[0]}\`\n`;
+      }
+      outputMessage += `\n`;
+    }
 
-${consistencyReport.hasInconsistencies ? `⚠️  一致性检查：
-  - 发现 ${consistencyReport.inconsistencies.length} 处不一致
-  ${descriptionUpdated ? "  - ✅ 描述文件已更新" : "  - ℹ️  描述文件未更新（请手动确认）"}
-` : ""}
-📝 规则摘要：
-${summary}
-`;
+    // 详细的一致性检查报告
+    if (consistencyReport.hasInconsistencies) {
+      outputMessage += `## ⚠️ 一致性检查发现问题 (${consistencyReport.inconsistencies.length} 处)\n\n`;
+      
+      for (let i = 0; i < consistencyReport.inconsistencies.length; i++) {
+        const inc = consistencyReport.inconsistencies[i];
+        outputMessage += `**问题 ${i + 1}**: ${inc.description}\n`;
+        outputMessage += `- 类型: ${this.getInconsistencyTypeLabel(inc.type)}\n`;
+        outputMessage += `- 严重程度: ${inc.severity === 'high' ? '🔴 高' : inc.severity === 'medium' ? '🟡 中' : '🟢 低'}\n`;
+        if (inc.actualValue) {
+          outputMessage += `- 实际情况: ${inc.actualValue}\n`;
+        }
+        if (inc.documentedValue) {
+          outputMessage += `- 文档记录: ${inc.documentedValue}\n`;
+        }
+        if (inc.suggestedFix) {
+          outputMessage += `- 建议修复: ${inc.suggestedFix}\n`;
+        }
+        outputMessage += `\n`;
+      }
+      
+      if (descriptionUpdated) {
+        outputMessage += `✅ 描述文件已自动更新\n\n`;
+      } else {
+        outputMessage += `ℹ️ 描述文件未自动更新\n\n`;
+        outputMessage += `**如需更新**，请运行：\n`;
+        outputMessage += `\`\`\`\n`;
+        outputMessage += `update_project_description\n`;
+        outputMessage += `\`\`\`\n\n`;
+      }
+      
+      outputMessage += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    }
+    
+    outputMessage += `📝 规则摘要：\n${summary}\n\n`;
 
     // 添加不确定性报告（详细版本）
     if (uncertainties.length > 0) {
@@ -945,6 +1012,63 @@ ${summary}
         },
       ],
     };
+  }
+
+  /**
+   * 生成项目结构树
+   */
+  private generateProjectStructureTree(fileOrg: any, projectPath: string): string {
+    const projectName = require("path").basename(projectPath);
+    let tree = "```\n";
+    tree += `${projectName}/\n`;
+    
+    // 获取顶级目录
+    const topDirs = fileOrg.structure
+      .filter((d: any) => !d.path.includes("/"))
+      .sort((a: any, b: any) => b.fileCount - a.fileCount)
+      .slice(0, 12);
+    
+    for (let i = 0; i < topDirs.length; i++) {
+      const dir = topDirs[i];
+      const isLast = i === topDirs.length - 1;
+      const prefix = isLast ? "└──" : "├──";
+      const purpose = dir.purpose !== "其他" ? ` # ${dir.purpose}` : "";
+      
+      tree += `${prefix} ${dir.path}/ (${dir.fileCount} 个文件)${purpose}\n`;
+      
+      // 显示重要的子目录（前 5 个）
+      if (!isLast && i < 8) {
+        const children = fileOrg.structure
+          .filter((d: any) => d.path.startsWith(dir.path + "/") && d.path.split("/").length === 2)
+          .slice(0, 5);
+        
+        for (let j = 0; j < children.length; j++) {
+          const child = children[j];
+          const childName = child.path.split("/").pop();
+          const childIsLast = j === children.length - 1;
+          const childPrefix = childIsLast ? "    └──" : "    ├──";
+          const childPurpose = child.purpose !== "其他" ? ` # ${child.purpose}` : "";
+          
+          tree += `${childPrefix} ${childName}/  (${child.fileCount})${childPurpose}\n`;
+        }
+      }
+    }
+    
+    tree += "```\n";
+    return tree;
+  }
+
+  /**
+   * 获取不一致类型的中文标签
+   */
+  private getInconsistencyTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      "missing-doc": "文档缺失",
+      "outdated-doc": "文档过时",
+      "wrong-tech-stack": "技术栈描述错误",
+      "missing-feature": "功能描述缺失",
+    };
+    return labels[type] || type;
   }
 
   private groupFilesByType(files: string[]): Record<string, number> {
