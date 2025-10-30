@@ -89,6 +89,12 @@ export interface ProjectConfiguration {
   eslint?: any; // ESLintConfig from config-parser
   typescript?: any; // TSConfig from config-parser
   pathAliases: Record<string, string>;
+  commands?: {
+    format?: string;
+    lint?: string;
+    lintFix?: string;
+    typeCheck?: string;
+  };
 }
 
 export interface CustomPatterns {

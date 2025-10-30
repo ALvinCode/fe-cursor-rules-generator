@@ -2310,7 +2310,7 @@ ${this.hasCustomTools(context) ? '- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 
 - 参考 @src/components/[相似组件].tsx 的结构
 \`\`\`
 
-### 步骤 5：代码审查
+### 步骤 5：代码审查和格式化 ⚠️ 重要
 
 **检查清单**:
 - [ ] 使用了项目自定义工具？（而非重新实现）
@@ -2319,7 +2319,21 @@ ${this.hasCustomTools(context) ? '- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 
 - [ ] 添加了 TypeScript 类型？
 - [ ] 添加了必要的错误处理？
 - [ ] 文件放在了正确的位置？
-${this.featureExists(context, "testing") ? '- [ ] 添加了测试？\n' : ''}
+${this.featureExists(context, "testing") ? '- [ ] 添加了测试？\n' : ''}- [ ] **运行了代码格式化？** ⚠️ 必须
+- [ ] **运行了 lint 检查和修复？** ⚠️ 必须
+
+### 代码格式化（必需步骤）
+
+**每次生成代码后必须运行**：
+
+${this.generateFormattingCommandsSection(context)}
+
+**提示 Cursor**:
+\`\`\`
+生成代码后，请询问我：
+"需要我运行格式化和 lint 命令吗？"
+然后执行相应的命令。
+\`\`\`
 
 ## 🎯 常见任务模板
 
@@ -2421,6 +2435,56 @@ ${this.generateKeyFileReferences(context)}
 
 *提示: 使用 @filename.ts 可以让 Cursor 快速定位和参考代码*
 `;
+  }
+
+  /**
+   * 生成格式化命令章节
+   */
+  private generateFormattingCommandsSection(context: RuleGenerationContext): string {
+    let section = "";
+    
+    if (context.projectConfig?.commands) {
+      const cmds = context.projectConfig.commands;
+      
+      if (cmds.format || cmds.lintFix || cmds.lint) {
+        section += `\`\`\`bash\n`;
+        
+        if (cmds.format) {
+          section += `# 1. 格式化代码\n${cmds.format}\n\n`;
+        }
+        
+        if (cmds.lintFix) {
+          section += `# 2. 修复 lint 问题\n${cmds.lintFix}\n\n`;
+        } else if (cmds.lint) {
+          section += `# 2. 检查 lint\n${cmds.lint}\n\n`;
+        }
+        
+        if (cmds.typeCheck) {
+          section += `# 3. 类型检查\n${cmds.typeCheck}\n`;
+        }
+        
+        section += `\`\`\`\n\n`;
+        
+        section += `**一键运行（推荐）**:\n`;
+        section += `\`\`\`bash\n`;
+        const oneLineCmd: string[] = [];
+        if (cmds.format) oneLineCmd.push(cmds.format);
+        if (cmds.lintFix) oneLineCmd.push(cmds.lintFix);
+        section += `${oneLineCmd.join(' && ')}\n`;
+        section += `\`\`\`\n\n`;
+      } else {
+        section += `\`\`\`bash\n`;
+        section += `# 项目未配置格式化命令，使用以下方式：\n`;
+        section += `npx prettier --write [文件路径]\n`;
+        section += `npx eslint --fix [文件路径]\n`;
+        section += `\`\`\`\n\n`;
+      }
+    } else {
+      section += `项目未检测到格式化命令。\n`;
+      section += `建议配置 package.json 中的 scripts。\n\n`;
+    }
+    
+    return section;
   }
 
   /**
@@ -2567,8 +2631,31 @@ ${this.generateModuleCautions(module)}
       rules += `- **分号**: ${p.semi ? "使用分号" : "不使用分号"}\n`;
       rules += `- **行长度**: ${p.printWidth || 80} 字符\n`;
       rules += `- **尾随逗号**: ${p.trailingComma || "none"}\n\n`;
-      rules += `⚠️ **重要**: 这些是项目的实际配置，生成代码时会自动应用。\n`;
-      rules += `请确保编辑器已配置 Prettier 自动格式化。\n\n`;
+      rules += `**配置文件**: @.prettierrc\n\n`;
+      
+      rules += `### ⚠️ 代码格式化要求\n\n`;
+      rules += `**生成代码时**，Cursor 必须：\n`;
+      rules += `1. 尽量遵循上述 Prettier 配置\n`;
+      rules += `2. 使用${p.singleQuote ? "单引号" : "双引号"}包裹字符串\n`;
+      rules += `3. 使用 ${p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`}缩进\n`;
+      rules += `4. ${p.semi ? "添加" : "不添加"}分号\n\n`;
+      
+      rules += `**生成代码后**，必须运行格式化命令：\n\n`;
+      
+      if (context.projectConfig.commands?.format) {
+        rules += `\`\`\`bash\n`;
+        rules += `${context.projectConfig.commands.format}\n`;
+        rules += `\`\`\`\n\n`;
+        rules += `**提示**: 生成代码后，请主动询问：\n`;
+        rules += `\`\`\`\n`;
+        rules += `需要我运行格式化命令吗？\n`;
+        rules += `${context.projectConfig.commands.format}\n`;
+        rules += `\`\`\`\n\n`;
+      } else {
+        rules += `\`\`\`bash\n`;
+        rules += `npx prettier --write [文件路径]\n`;
+        rules += `\`\`\`\n\n`;
+      }
     } else if (context.projectPractice?.codeStyle) {
       // 使用分析出的代码风格
       const style = context.projectPractice.codeStyle;
@@ -2587,6 +2674,72 @@ ${this.generateModuleCautions(module)}
         rules += `💡 **长期**: 建议统一使用单引号或配置 Prettier\n`;
       }
       rules += `\n`;
+    }
+
+    // ESLint 配置和命令
+    if (context.projectConfig.eslint || context.projectConfig.commands?.lint) {
+      rules += `### ESLint 代码检查\n\n`;
+      
+      if (context.projectConfig.eslint) {
+        rules += `项目使用 ESLint 进行代码质量检查。\n\n`;
+        rules += `**配置文件**: @.eslintrc\n\n`;
+      }
+      
+      if (context.projectConfig.commands?.lint || context.projectConfig.commands?.lintFix) {
+        rules += `**生成代码后必须运行**：\n\n`;
+        rules += `\`\`\`bash\n`;
+        if (context.projectConfig.commands?.lint) {
+          rules += `# 1. 检查问题\n`;
+          rules += `${context.projectConfig.commands.lint}\n\n`;
+        }
+        if (context.projectConfig.commands?.lintFix) {
+          rules += `# 2. 自动修复\n`;
+          rules += `${context.projectConfig.commands.lintFix}\n`;
+        }
+        rules += `\`\`\`\n\n`;
+        
+        rules += `**提示**: 生成代码后，Cursor 应主动询问：\n`;
+        rules += `\`\`\`\n`;
+        rules += `需要我运行 lint 检查和修复吗？\n`;
+        if (context.projectConfig.commands?.lintFix) {
+          rules += `${context.projectConfig.commands.lintFix}\n`;
+        }
+        rules += `\`\`\`\n\n`;
+      }
+    }
+
+    // 完整的代码生成后流程
+    if (context.projectConfig.commands) {
+      rules += `### 代码生成后的标准流程\n\n`;
+      rules += `**每次生成代码后，Cursor 必须提示运行**：\n\n`;
+      rules += `\`\`\`bash\n`;
+      
+      const steps: string[] = [];
+      if (context.projectConfig.commands.format) {
+        steps.push(`# 1. 格式化代码\n${context.projectConfig.commands.format}`);
+      }
+      if (context.projectConfig.commands.lintFix) {
+        steps.push(`# 2. 修复 lint 问题\n${context.projectConfig.commands.lintFix}`);
+      } else if (context.projectConfig.commands.lint) {
+        steps.push(`# 2. 检查 lint\n${context.projectConfig.commands.lint}`);
+      }
+      if (context.projectConfig.commands.typeCheck) {
+        steps.push(`# 3. 类型检查\n${context.projectConfig.commands.typeCheck}`);
+      }
+      
+      rules += steps.join('\n\n');
+      rules += `\n\`\`\`\n\n`;
+      
+      rules += `**Cursor 的标准提示**：\n`;
+      rules += `\`\`\`\n`;
+      rules += `代码已生成。需要我运行以下命令确保代码符合项目规范吗？\n\n`;
+      if (context.projectConfig.commands.format) {
+        rules += `${context.projectConfig.commands.format}  # 格式化\n`;
+      }
+      if (context.projectConfig.commands.lintFix) {
+        rules += `${context.projectConfig.commands.lintFix}  # 修复问题\n`;
+      }
+      rules += `\`\`\`\n\n`;
     }
 
     // 添加路径别名信息

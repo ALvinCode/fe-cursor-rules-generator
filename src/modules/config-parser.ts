@@ -45,6 +45,13 @@ export interface ProjectConfig {
     eslint: boolean;
     typescript: boolean;
   };
+  // v1.3.4 新增：格式化命令
+  commands?: {
+    format?: string;
+    lint?: string;
+    lintFix?: string;
+    typeCheck?: string;
+  };
 }
 
 export class ConfigParser {
@@ -76,7 +83,85 @@ export class ConfigParser {
     // 提取路径别名
     config.pathAliases = await this.extractPathAliases(projectPath);
 
+    // v1.3.4: 检测格式化命令
+    config.commands = await this.detectFormattingCommands(projectPath);
+
     return config;
+  }
+
+  /**
+   * 检测项目的格式化和 lint 命令
+   */
+  private async detectFormattingCommands(
+    projectPath: string
+  ): Promise<{
+    format?: string;
+    lint?: string;
+    lintFix?: string;
+    typeCheck?: string;
+  }> {
+    const packageJsonPath = path.join(projectPath, "package.json");
+    if (!(await FileUtils.fileExists(packageJsonPath))) {
+      return {};
+    }
+
+    const content = await FileUtils.readFile(packageJsonPath);
+    const pkg = JSON.parse(content);
+
+    if (!pkg.scripts) {
+      return {};
+    }
+
+    const commands: any = {};
+
+    // 查找格式化命令
+    commands.format = this.findCommand(pkg.scripts, [
+      "format",
+      "prettier",
+      "fmt",
+    ]);
+
+    // 查找 lint 命令
+    commands.lint = this.findCommand(pkg.scripts, ["lint", "eslint"]);
+
+    // 查找 lint fix 命令
+    commands.lintFix = this.findCommand(pkg.scripts, [
+      "lint:fix",
+      "eslint:fix",
+      "fix",
+    ]);
+
+    // 查找类型检查命令
+    commands.typeCheck = this.findCommand(pkg.scripts, [
+      "type-check",
+      "typecheck",
+      "tsc",
+    ]);
+
+    return commands;
+  }
+
+  /**
+   * 查找匹配的命令
+   */
+  private findCommand(
+    scripts: Record<string, string>,
+    keywords: string[]
+  ): string | undefined {
+    for (const keyword of keywords) {
+      if (scripts[keyword]) {
+        return `npm run ${keyword}`;
+      }
+    }
+
+    // 检查命令值中是否包含关键词
+    for (const [key, value] of Object.entries(scripts)) {
+      if (keywords.some((kw) => value.toLowerCase().includes(kw))) {
+        return `npm run ${key}`;
+      }
+    }
+
+    return undefined;
   }
 
   /**
