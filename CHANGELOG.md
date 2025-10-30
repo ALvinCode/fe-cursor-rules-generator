@@ -1,5 +1,138 @@
 # 更新日志
 
+## [1.3.2] - 2025-10-29
+
+### ✨ 新增功能
+
+#### 路由规则生成系统
+- ✅ **通用路由检测器**：
+  - 自动检测前端路由（Next.js, React Router, Vue Router, Nuxt, Remix）
+  - 自动检测后端路由（Express, Fastify, NestJS, Django, Flask）
+  - 支持文件系统路由、配置式路由、编程式路由
+  
+- ✅ **路由模式分析**：
+  - 分析路由组织方式（集中/分散/按功能模块）
+  - 分析 URL 命名规范（kebab-case/camelCase/snake_case）
+  - 检测动态路由模式（[id], :id, <id>）
+  - 检测路由分组（Next.js的(group)语法）
+  - 检测布局嵌套
+  - 检测路由守卫/中间件
+  - 检测懒加载使用
+  - 检测路由元信息
+  - **检测动态生成的路由**（通过脚本生成）
+
+- ✅ **路由实例提取**：
+  - 提取实际路由文件路径
+  - 推断路由对应的 URL
+  - 使用 @filename.ts 引用实际代码
+  - 分类展示（静态路由、动态路由、API 路由）
+
+- ✅ **分离的路由规则文件**：
+  - `frontend-routing.mdc` - 前端路由规范（约 300 行）
+  - `api-routing.mdc` - 后端 API 路由规范（约 300 行）
+  - 按需生成（仅当检测到路由时）
+  - 完全基于项目实际情况
+
+- ✅ **特殊情况处理**：
+  - 识别通过脚本动态生成的路由
+  - 规则中明确说明使用脚本而非手动创建
+  - 遵循项目实际的路由生成方式
+
+### 🔧 改进
+
+- 新增模块：`router-detector.ts` (330+ 行)
+- 增强 `rules-generator.ts`：新增路由规则生成方法（+250 行）
+- 增强 `index.ts`：整合路由检测流程
+- 更新 `types.ts`：添加 RouterInfo、RoutingPattern、RouteExample 类型
+
+### 📝 新增规则文件
+
+**frontend-routing.mdc** (约 300 行):
+```markdown
+# 前端路由规范
+
+## 项目当前使用
+- 路由系统: Next.js App Router
+- 路由类型: 文件系统路由
+- 路由位置: @app/
+
+## 路由组织方式
+- 组织模式: 按功能模块组织
+- URL 命名: kebab-case
+- 文件命名: page.tsx
+
+## 实际路由示例
+### 静态路由
+- @app/dashboard/page.tsx → /dashboard
+### 动态路由
+- @app/users/[id]/page.tsx → /users/:id
+
+## 新建路由时
+[具体步骤]
+
+## 路由分组
+[如果项目使用]
+
+## 路由守卫
+[如果项目有]
+
+## 短期规范
+✅ 保持现有组织方式
+
+## 长期建议
+💡 考虑懒加载优化
+```
+
+**api-routing.mdc** (约 300 行):
+```markdown
+# API 路由规范
+
+## 项目当前使用
+- 路由系统: Express
+- 路由类型: 编程式路由
+- 路由位置: @src/routes/
+
+## API 路由组织
+- 组织模式: 分散定义（按模块）
+
+## 实际 API 路由示例
+### @src/routes/users.ts
+- GET /api/users
+- POST /api/users
+- GET /api/users/:id
+
+## RESTful API 设计
+[规范说明]
+
+## 新建 API 路由时
+[具体步骤]
+
+## 短期规范
+✅ 保持 RESTful 设计
+
+## 长期建议
+💡 考虑 API 文档生成
+```
+
+---
+
+## [1.3.1] - 2025-10-29
+
+### 🐛 Bug 修复
+
+**问题**: 生成规则时会创建不必要的 `.gitkeep` 文件
+
+**原因**: 代码使用 `.gitkeep` 作为占位文件来创建目录
+
+**修复**: 
+- 移除 `.gitkeep` 创建逻辑
+- `FileUtils.writeFile()` 已经会自动创建父目录
+- 规则文件本身就能保证目录存在
+
+**影响**: 生成的 `.cursor/rules/` 目录更干净，只包含规则文件
+
+---
+
 ## [1.3.0] - 2025-10-29
 
 ### 🎯 完全符合 Cursor 官方最佳实践

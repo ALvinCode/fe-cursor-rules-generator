@@ -104,6 +104,41 @@ export interface FileOrganizationInfo {
   namingConvention: any;
 }
 
+export interface RouterInfo {
+  exists: boolean;
+  type: "file-based" | "config-based" | "programmatic" | "mixed";
+  framework: string;
+  version?: string;
+  location: string[];
+}
+
+export interface RoutingPattern {
+  organization: "centralized" | "distributed" | "feature-based" | "mixed";
+  urlNaming: "kebab-case" | "camelCase" | "snake_case" | "mixed";
+  fileNaming: string;
+  dynamicRoutePattern: string;
+  dynamicRouteExamples: string[];
+  hasRouteGroups: boolean;
+  groupPattern?: string;
+  supportsLayouts: boolean;
+  layoutPattern?: string;
+  hasGuards: boolean;
+  guardFiles?: string[];
+  usesLazyLoading: boolean;
+  hasRouteMeta: boolean;
+  navigationMethod?: string;
+  isDynamicGenerated: boolean;
+  generationScript?: string;
+}
+
+export interface RouteExample {
+  filePath: string;
+  url: string;
+  type: "static" | "dynamic" | "nested" | "api";
+  method?: string;
+  hasGuard?: boolean;
+}
+
 export interface RuleGenerationContext {
   projectPath: string;
   techStack: TechStack;
@@ -116,5 +151,8 @@ export interface RuleGenerationContext {
   projectConfig?: ProjectConfiguration;
   customPatterns?: CustomPatterns;
   fileOrganization?: FileOrganizationInfo;
+  // v1.3.x 新增字段
+  frontendRouter?: { info: RouterInfo; pattern: RoutingPattern; examples: RouteExample[]; dynamicAnalysis?: any };
+  backendRouter?: { info: RouterInfo; pattern: RoutingPattern; examples: RouteExample[] };
 }
 

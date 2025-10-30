@@ -19,6 +19,7 @@ import { PracticeAnalyzer } from "./modules/practice-analyzer.js";
 import { ConfigParser } from "./modules/config-parser.js";
 import { CustomPatternDetector } from "./modules/custom-pattern-detector.js";
 import { FileStructureLearner } from "./modules/file-structure-learner.js";
+import { RouterDetector } from "./modules/router-detector.js";
 
 /**
  * Cursor Rules Generator MCP Server
@@ -39,12 +40,13 @@ class CursorRulesGeneratorServer {
   private configParser: ConfigParser;
   private customPatternDetector: CustomPatternDetector;
   private fileStructureLearner: FileStructureLearner;
+  private routerDetector: RouterDetector;
 
   constructor() {
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.3.0",
+        version: "1.3.3",
       },
       {
         capabilities: {
@@ -67,6 +69,7 @@ class CursorRulesGeneratorServer {
     this.configParser = new ConfigParser();
     this.customPatternDetector = new CustomPatternDetector();
     this.fileStructureLearner = new FileStructureLearner();
+    this.routerDetector = new RouterDetector();
 
     this.setupToolHandlers();
   }
@@ -265,6 +268,53 @@ class CursorRulesGeneratorServer {
     console.error("学习文件组织结构...");
     const fileOrganization = await this.fileStructureLearner.learnStructure(projectPath, files);
 
+    // 4.9 检测路由系统（v1.3.x 新增，完整的 6 步分析）
+    console.error("检测路由系统...");
+    const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(projectPath, files);
+    const backendRouterInfo = await this.routerDetector.detectBackendRouter(projectPath, files);
+    
+    const uncertainties: any[] = [];  // 收集需要确认的问题
+    
+    let frontendRouter;
+    if (frontendRouterInfo) {
+      const pattern = await this.routerDetector.analyzeRoutingPattern(projectPath, files, frontendRouterInfo);
+      const examples = await this.routerDetector.extractRouteExamples(projectPath, files, frontendRouterInfo, pattern);
+      
+      // 完整的动态路由分析（6 步流程）
+      const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(projectPath, files, frontendRouterInfo);
+      
+      // 应用分析结果
+      if (dynamicAnalysis.isDynamic) {
+        pattern.isDynamicGenerated = true;
+        pattern.generationScript = dynamicAnalysis.recommendation.method;
+      }
+      
+      frontendRouter = { 
+        info: frontendRouterInfo, 
+        pattern, 
+        examples,
+        dynamicAnalysis,  // 包含完整分析结果
+      };
+      
+      // 收集需要确认的问题
+      if (dynamicAnalysis.needsConfirmation) {
+        uncertainties.push({
+          topic: '前端路由生成方式',
+          ...dynamicAnalysis.recommendation,
+          questions: dynamicAnalysis.confirmationQuestions,
+        });
+      }
+    }
+
+    let backendRouter;
+    if (backendRouterInfo) {
+      const pattern = await this.routerDetector.analyzeRoutingPattern(projectPath, files, backendRouterInfo);
+      const examples = await this.routerDetector.extractRouteExamples(projectPath, files, backendRouterInfo, pattern);
+      
+      // 后端路由通常不需要动态生成检测（一般是手写的）
+      backendRouter = { info: backendRouterInfo, pattern, examples };
+    }
+
     // 5. 获取最佳实践（通过 Context7）
     const bestPractices = await this.context7Integration.getBestPractices(
       techStack.dependencies
@@ -290,7 +340,7 @@ class CursorRulesGeneratorServer {
       }
     }
 
-    // 8. 生成规则（v1.2 增强）
+    // 8. 生成规则（v1.2 增强, v1.3.x 路由支持）
     const rules = await this.rulesGenerator.generate({
       projectPath,
       techStack,
@@ -303,6 +353,9 @@ class CursorRulesGeneratorServer {
       projectConfig,
       customPatterns,
       fileOrganization,
+      // v1.3.x 新增字段
+      frontendRouter,
+      backendRouter,
     });
 
     // 9. 写入规则文件
@@ -327,11 +380,8 @@ class CursorRulesGeneratorServer {
     // 10. 生成摘要
     const summary = this.rulesGenerator.generateSummary(rules, projectPath);
 
-    return {
-      content: [
-        {
-          type: "text",
-          text: `✅ Cursor Rules 生成成功！
+    // 构建输出消息
+    let outputMessage = `✅ Cursor Rules 生成成功！
 
 📁 生成的文件：
 ${writtenFiles.map((f) => `  - ${f}`).join("\n")}
@@ -340,6 +390,8 @@ ${writtenFiles.map((f) => `  - ${f}`).join("\n")}
   - 主要技术栈: ${techStack.primary.join(", ")}
   - 检测到的模块: ${modules.length} 个
   - 代码特征: ${Object.keys(codeFeatures).length} 项
+${frontendRouter ? `  - 前端路由: ${frontendRouter.info.framework}` : ""}
+${backendRouter ? `  - 后端路由: ${backendRouter.info.framework}` : ""}
 
 ${consistencyReport.hasInconsistencies ? `⚠️  一致性检查：
   - 发现 ${consistencyReport.inconsistencies.length} 处不一致
@@ -347,12 +399,53 @@ ${consistencyReport.hasInconsistencies ? `⚠️  一致性检查：
 ` : ""}
 📝 规则摘要：
 ${summary}
+`;
 
+    // 添加不确定性报告
+    if (uncertainties.length > 0) {
+      outputMessage += `\n⚠️  需要您确认的问题：\n\n`;
+      
+      for (const uncertainty of uncertainties) {
+        outputMessage += `**${uncertainty.topic}**\n\n`;
+        outputMessage += `检测结果：\n`;
+        outputMessage += `- 确定性：${uncertainty.certainty === 'certain' ? '✅ 确定' : uncertainty.certainty === 'likely' ? '⚠️ 可能' : 'ℹ️ 不确定'}\n`;
+        outputMessage += `- 当前使用：\`${uncertainty.method}\`\n`;
+        outputMessage += `- 选择理由：${uncertainty.explanation}\n`;
+        
+        if (uncertainty.alternatives && uncertainty.alternatives.length > 0) {
+          outputMessage += `- 其他选项：\n`;
+          for (const alt of uncertainty.alternatives) {
+            outputMessage += `  - ${alt}\n`;
+          }
+        }
+        
+        outputMessage += `\n`;
+        
+        if (uncertainty.certainty !== 'certain') {
+          outputMessage += `❓ 如果不正确，请告诉我正确的方式，我将更新规则文件。\n`;
+        }
+        
+        if (uncertainty.source) {
+          outputMessage += `📄 信息来源：${uncertainty.source}\n`;
+        }
+        
+        outputMessage += `\n`;
+      }
+    }
+
+    outputMessage += `
 💡 提示：
   - 全局规则会在项目任何位置生效
   - 模块规则只在对应模块目录中生效
   - Cursor 会根据当前打开的文件位置自动加载相应规则
-`,
+  - 阅读 .cursor/instructions.md 了解开发工作流程
+`;
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: outputMessage,
         },
       ],
     };

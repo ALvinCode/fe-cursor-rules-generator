@@ -54,11 +54,23 @@ export class RulesGenerator {
       rules.push(uiUxRule);
     }
 
-    // 8. 测试规则（按需，约 220 行或简短提示）
+    // 8. 前端路由规则（按需，约 300 行）
+    if (context.frontendRouter && context.frontendRouter.info.exists) {
+      const frontendRoutingRule = this.generateFrontendRoutingRule(context);
+      rules.push(frontendRoutingRule);
+    }
+
+    // 9. 后端路由规则（按需，约 300 行）
+    if (context.backendRouter && context.backendRouter.info.exists) {
+      const backendRoutingRule = this.generateBackendRoutingRule(context);
+      rules.push(backendRoutingRule);
+    }
+
+    // 10. 测试规则（按需，约 220 行或简短提示）
     const testingRule = this.generateTestingRule(context);
     rules.push(testingRule);
 
-    // 9. 模块规则（如果是多模块项目）
+    // 11. 模块规则（如果是多模块项目）
     if (context.includeModuleRules && context.modules.length > 1) {
       for (const module of context.modules) {
         const moduleRule = this.generateModuleOverviewRule(context, module);
@@ -142,7 +154,7 @@ ${context.techStack.frameworks.length > 0 ? `**框架**: ${context.techStack.fra
 
 - **@code-style.mdc** - 代码风格和格式化规范
 - **@architecture.mdc** - 项目架构和文件组织
-${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工具（必须优先使用）\n" : ""}${this.hasErrorHandling(context) ? "- **@error-handling.mdc** - 错误处理规范\n" : ""}${this.hasStateManagement(context) ? "- **@state-management.mdc** - 状态管理规范\n" : ""}${this.isFrontendProject(context) ? "- **@ui-ux.mdc** - UI/UX 设计规范\n" : ""}${this.featureExists(context, "testing") ? "- **@testing.mdc** - 测试规范\n" : ""}
+${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工具（必须优先使用）\n" : ""}${this.hasErrorHandling(context) ? "- **@error-handling.mdc** - 错误处理规范\n" : ""}${this.hasStateManagement(context) ? "- **@state-management.mdc** - 状态管理规范\n" : ""}${context.frontendRouter ? "- **@frontend-routing.mdc** - 前端路由规范\n" : ""}${context.backendRouter ? "- **@api-routing.mdc** - API 路由规范\n" : ""}${this.isFrontendProject(context) ? "- **@ui-ux.mdc** - UI/UX 设计规范\n" : ""}${this.featureExists(context, "testing") ? "- **@testing.mdc** - 测试规范\n" : ""}
 **工作流程**: 详见 @../instructions.md
 
 ## 核心开发原则
@@ -410,6 +422,435 @@ ${this.generateUIUXGuidelines(context)}
       type: "guideline",
       depends: ["global-rules", "code-style"],
     };
+  }
+
+  /**
+   * v1.3.x: 生成前端路由规则（约 300 行）
+   */
+  private generateFrontendRoutingRule(context: RuleGenerationContext): CursorRule {
+    const router = context.frontendRouter!;
+    const metadata = this.generateRuleMetadata(
+      "前端路由规范",
+      `${router.info.framework} 路由组织和使用规范`,
+      85,
+      context.techStack.primary,
+      ["routing", "frontend", "navigation"],
+      "practice",
+      ["global-rules", "architecture"]
+    );
+
+    const content = metadata + `
+# 前端路由规范
+
+参考: @global-rules.mdc, @architecture.mdc
+
+## 项目当前使用
+
+**路由系统**: ${router.info.framework}${router.info.version ? ` (${router.info.version})` : ""}  
+**路由类型**: ${this.getRouterTypeDescription(router.info.type)}  
+**路由位置**: ${router.info.location.map((l) => `\`@${l}\``).join(", ")}
+
+${this.generateFrontendRouterContent(router, context)}
+
+---
+
+*路由是应用的骨架，保持清晰的路由结构。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "frontend-routing.mdc",
+      priority: 85,
+      type: "practice",
+      depends: ["global-rules", "architecture"],
+    };
+  }
+
+  /**
+   * v1.3.x: 生成后端路由规则（约 300 行）
+   */
+  private generateBackendRoutingRule(context: RuleGenerationContext): CursorRule {
+    const router = context.backendRouter!;
+    const metadata = this.generateRuleMetadata(
+      "API 路由规范",
+      `${router.info.framework} API 路由组织和使用规范`,
+      85,
+      context.techStack.primary,
+      ["api", "routing", "backend"],
+      "practice",
+      ["global-rules", "architecture"]
+    );
+
+    const content = metadata + `
+# API 路由规范
+
+参考: @global-rules.mdc, @architecture.mdc
+
+## 项目当前使用
+
+**路由系统**: ${router.info.framework}  
+**路由类型**: ${this.getRouterTypeDescription(router.info.type)}  
+**路由位置**: ${router.info.location.map((l) => `\`@${l}\``).join(", ")}
+
+${this.generateBackendRouterContent(router, context)}
+
+---
+
+*API 路由要保持 RESTful 设计，清晰的资源组织。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "api-routing.mdc",
+      priority: 85,
+      type: "practice",
+      depends: ["global-rules", "architecture"],
+    };
+  }
+
+  /**
+   * 生成前端路由器内容
+   */
+  private generateFrontendRouterContent(
+    router: { info: any; pattern: any; examples: any[] },
+    context: RuleGenerationContext
+  ): string {
+    const { info, pattern, examples } = router;
+    let content = "";
+
+    // 路由生成方式（带确定性标注）
+    const dynamicAnalysis = (router as any).dynamicAnalysis;
+    if (dynamicAnalysis && dynamicAnalysis.isDynamic) {
+      content += this.generateDynamicRoutingSection(dynamicAnalysis);
+    }
+    
+    // 路由组织方式
+    content += `## 路由组织方式\n\n`;
+    content += `**组织模式**: ${this.getOrganizationDescription(pattern.organization)}\n`;
+    content += `**URL 命名**: ${pattern.urlNaming}\n`;
+    content += `**文件命名**: ${pattern.fileNaming}\n\n`;
+
+    // 实际示例
+    if (examples.length > 0) {
+      content += `## 实际路由示例\n\n`;
+      
+      const staticRoutes = examples.filter((e) => e.type === "static").slice(0, 3);
+      if (staticRoutes.length > 0) {
+        content += `### 静态路由\n\n`;
+        for (const route of staticRoutes) {
+          content += `- **@${route.filePath}** → \`${route.url}\`\n`;
+        }
+        content += `\n`;
+      }
+
+      const dynamicRoutes = examples.filter((e) => e.type === "dynamic").slice(0, 3);
+      if (dynamicRoutes.length > 0) {
+        content += `### 动态路由\n\n`;
+        for (const route of dynamicRoutes) {
+          content += `- **@${route.filePath}** → \`${route.url}\`\n`;
+        }
+        content += `\n**参数获取**: 参见实际文件中的代码示例\n\n`;
+      }
+    }
+
+    // 新建路由规范
+    content += `## 新建路由时\n\n`;
+    content += this.generateNewRouteGuidelines(info, pattern, examples);
+
+    // 路由特性
+    if (pattern.hasRouteGroups) {
+      content += `## 路由分组\n\n`;
+      content += `项目使用 ${pattern.groupPattern} 语法组织相关路由。\n\n`;
+      content += `示例: 参见现有路由分组结构\n\n`;
+    }
+
+    if (pattern.hasGuards) {
+      content += `## 路由守卫\n\n`;
+      content += `项目使用路由守卫/中间件进行权限控制。\n\n`;
+      if (pattern.guardFiles && pattern.guardFiles.length > 0) {
+        content += `参考: @${pattern.guardFiles[0]}\n\n`;
+      }
+    }
+
+    if (pattern.usesLazyLoading) {
+      content += `## 路由懒加载\n\n`;
+      content += `项目使用懒加载优化性能。\n\n`;
+      content += `✅ 继续为大型页面使用懒加载\n\n`;
+    }
+
+    // 短期和长期建议
+    content += `## 短期规范\n\n`;
+    content += `✅ 保持现有的路由组织方式\n`;
+    content += `✅ 遵循命名规范（${pattern.urlNaming}）\n`;
+    if (!pattern.isDynamicGenerated) {
+      content += `💡 为新路由添加注释说明其用途\n`;
+    }
+    content += `\n`;
+
+    content += `## 长期建议\n\n`;
+    if (!pattern.hasRouteMeta) {
+      content += `💡 考虑添加路由元信息（标题、权限要求等）\n`;
+    }
+    if (!pattern.usesLazyLoading) {
+      content += `💡 考虑为大型页面使用懒加载优化性能\n`;
+    }
+    content += `\n`;
+
+    return content;
+  }
+
+  /**
+   * 生成后端路由器内容
+   */
+  private generateBackendRouterContent(
+    router: { info: any; pattern: any; examples: any[] },
+    context: RuleGenerationContext
+  ): string {
+    const { info, pattern, examples } = router;
+    let content = "";
+
+    // API 路由组织
+    content += `## API 路由组织\n\n`;
+    content += `**组织模式**: ${this.getOrganizationDescription(pattern.organization)}\n`;
+    content += `**URL 命名**: ${pattern.urlNaming}\n\n`;
+
+    if (pattern.isDynamicGenerated) {
+      content += `⚠️ **注意**: 项目路由通过脚本动态生成\n`;
+      content += `生成脚本: \`${pattern.generationScript}\`\n\n`;
+    }
+
+    // 实际 API 示例
+    if (examples.length > 0) {
+      content += `## 实际 API 路由示例\n\n`;
+      
+      const grouped = this.groupExamplesByFile(examples);
+      for (const [file, routes] of Object.entries(grouped).slice(0, 3)) {
+        content += `### @${file}\n\n`;
+        for (const route of routes.slice(0, 5)) {
+          content += `- \`${route.method || "GET"} ${route.url}\`\n`;
+        }
+        content += `\n`;
+      }
+    }
+
+    // RESTful 规范
+    if (info.framework === "Express" || info.framework === "Fastify") {
+      content += `## RESTful API 设计\n\n`;
+      content += `项目 API 遵循 RESTful 设计原则：\n\n`;
+      content += `- \`GET /resources\` - 获取列表\n`;
+      content += `- \`GET /resources/:id\` - 获取单个\n`;
+      content += `- \`POST /resources\` - 创建\n`;
+      content += `- \`PUT /resources/:id\` - 更新\n`;
+      content += `- \`DELETE /resources/:id\` - 删除\n\n`;
+    }
+
+    // 新建 API 规范
+    content += `## 新建 API 路由时\n\n`;
+    content += this.generateNewAPIRouteGuidelines(info, pattern, examples);
+
+    // 中间件
+    if (pattern.hasGuards) {
+      content += `## 中间件使用\n\n`;
+      content += `项目使用中间件进行认证、验证等处理。\n\n`;
+      if (pattern.guardFiles) {
+        content += `参考: @${pattern.guardFiles[0]}\n\n`;
+      }
+    }
+
+    content += `## 短期规范\n\n`;
+    content += `✅ 保持 RESTful API 设计原则\n`;
+    content += `✅ 遵循现有的路由组织方式\n`;
+    if (!pattern.isDynamicGenerated) {
+      content += `💡 为复杂 API 添加注释说明\n`;
+    }
+    content += `\n`;
+
+    content += `## 长期建议\n\n`;
+    content += `💡 考虑 API 文档生成（OpenAPI/Swagger）\n`;
+    content += `💡 考虑 API 版本管理（/api/v1/, /api/v2/）\n`;
+    content += `\n`;
+
+    return content;
+  }
+
+  /**
+   * 生成新建路由指南
+   */
+  private generateNewRouteGuidelines(
+    info: any,
+    pattern: any,
+    examples: any[]
+  ): string {
+    let guidelines = "";
+
+    if (info.framework.includes("Next.js")) {
+      if (info.version === "App Router") {
+        guidelines += `### 步骤\n\n`;
+        guidelines += `1. 在 \`app/\` 目录确定路由路径\n`;
+        guidelines += `2. 创建文件夹（URL 路径）\n`;
+        guidelines += `3. 创建 \`page.tsx\`（页面组件）\n`;
+        if (pattern.supportsLayouts) {
+          guidelines += `4. 如需布局，创建 \`layout.tsx\`\n`;
+        }
+        guidelines += `\n`;
+
+        if (examples.length > 0) {
+          guidelines += `参考示例: @${examples[0].filePath}\n\n`;
+        }
+      }
+    } else if (info.framework === "React Router") {
+      guidelines += `### 步骤\n\n`;
+      guidelines += `1. 在路由配置文件添加路由定义\n`;
+      guidelines += `2. 创建对应的页面组件\n`;
+      if (pattern.usesLazyLoading) {
+        guidelines += `3. 大型页面使用懒加载\n`;
+      }
+      guidelines += `\n`;
+    }
+
+    return guidelines;
+  }
+
+  /**
+   * 生成新建 API 路由指南
+   */
+  private generateNewAPIRouteGuidelines(
+    info: any,
+    pattern: any,
+    examples: any[]
+  ): string {
+    let guidelines = "";
+
+    if (info.framework === "Express") {
+      guidelines += `### 步骤\n\n`;
+      guidelines += `1. 在 \`routes/\` 目录创建或选择模块文件\n`;
+      guidelines += `2. 定义路由处理器\n`;
+      guidelines += `3. 使用 \`express.Router()\` 导出\n`;
+      guidelines += `4. 在主文件注册路由\n\n`;
+
+      if (examples.length > 0) {
+        guidelines += `参考示例: @${examples[0].filePath}\n\n`;
+      }
+    } else if (info.framework === "Django") {
+      guidelines += `### 步骤\n\n`;
+      guidelines += `1. 在应用的 \`urls.py\` 添加路由\n`;
+      guidelines += `2. 创建对应的视图函数\n`;
+      guidelines += `3. 在主 \`urls.py\` 包含应用路由\n\n`;
+    }
+
+    return guidelines;
+  }
+
+  /**
+   * 获取路由类型描述
+   */
+  private getRouterTypeDescription(type: string): string {
+    const descriptions: Record<string, string> = {
+      "file-based": "文件系统路由（约定式）",
+      "config-based": "配置式路由（声明式）",
+      "programmatic": "编程式路由（代码定义）",
+      "mixed": "混合模式",
+    };
+    return descriptions[type] || type;
+  }
+
+  /**
+   * 获取组织方式描述
+   */
+  private getOrganizationDescription(org: string): string {
+    const descriptions: Record<string, string> = {
+      "centralized": "集中管理",
+      "distributed": "分散定义",
+      "feature-based": "按功能模块组织",
+      "mixed": "混合方式",
+    };
+    return descriptions[org] || org;
+  }
+
+  /**
+   * 生成动态路由章节（带确定性标注）
+   */
+  private generateDynamicRoutingSection(analysis: any): string {
+    let section = `## 路由生成方式\n\n`;
+    
+    const certaintyLabels: Record<string, string> = {
+      'certain': '✅ [确定]',
+      'likely': '⚠️ [可能]',
+      'uncertain': 'ℹ️ [不确定]',
+    };
+    
+    const label = certaintyLabels[analysis.recommendation.certainty] || 'ℹ️ [未知]';
+    section += `### ${label} ${analysis.recommendation.explanation}\n\n`;
+    
+    if (analysis.documentation.found) {
+      // 基于文档
+      section += `**文档来源**: @${analysis.documentation.file}\n\n`;
+      section += `项目文档说明：\n`;
+      section += `> ${analysis.documentation.section.slice(0, 200)}...\n\n`;
+      section += `**生成方法**: \`${analysis.recommendation.method}\`\n\n`;
+      
+      if (analysis.documentation.file) {
+        section += `详见: @${analysis.documentation.file} 的路由章节\n\n`;
+      }
+    } else if (analysis.recommendation.certainty === 'certain' || analysis.recommendation.certainty === 'likely') {
+      // 基于高置信度检测
+      section += `**检测到的方法**: \`${analysis.recommendation.method}\`\n\n`;
+      
+      if (analysis.scripts.files.length > 0) {
+        section += `**脚本文件**: @${analysis.scripts.files[0]}\n`;
+      }
+      
+      section += `\n**使用方法**:\n`;
+      section += `\`\`\`bash\n${analysis.recommendation.method}\n\`\`\`\n\n`;
+    } else {
+      // 不确定
+      section += `检测到项目可能使用脚本动态生成路由，但无法完全确定。\n\n`;
+      
+      section += `**可能的选项**:\n`;
+      if (analysis.scripts.commands.length > 0) {
+        section += `命令：\n`;
+        for (const cmd of analysis.scripts.commands) {
+          section += `- \`${cmd}\`\n`;
+        }
+      }
+      if (analysis.scripts.files.length > 0) {
+        section += `脚本：\n`;
+        for (const file of analysis.scripts.files) {
+          section += `- @${file}\n`;
+        }
+      }
+      
+      section += `\n**当前假设**: 使用 \`${analysis.recommendation.method}\`\n`;
+      section += `（${analysis.recommendation.explanation}）\n\n`;
+      
+      section += `❓ **请确认**: 如果不正确，请告诉我正确的方式，我将更新此规则。\n\n`;
+    }
+    
+    if (analysis.recommendation.certainty === 'certain') {
+      section += `✅ **新建路由时**: 使用上述方法生成路由，保持一致性。\n\n`;
+    } else {
+      section += `⚠️ **新建路由时**: 请先确认正确的生成方式，然后使用。\n\n`;
+    }
+    
+    return section;
+  }
+  
+  /**
+   * 按文件分组示例
+   */
+  private groupExamplesByFile(examples: any[]): Record<string, any[]> {
+    const grouped: Record<string, any[]> = {};
+    for (const example of examples) {
+      if (!grouped[example.filePath]) {
+        grouped[example.filePath] = [];
+      }
+      grouped[example.filePath].push(example);
+    }
+    return grouped;
   }
 
   /**

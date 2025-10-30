@@ -22,10 +22,7 @@ export class FileWriter {
       const baseDir = rule.modulePath || projectPath;
       const rulesDir = path.join(baseDir, ".cursor", "rules");
       
-      // 确保目录存在
-      await FileUtils.writeFile(path.join(rulesDir, ".gitkeep"), "");
-      
-      // 写入规则文件
+      // 写入规则文件（FileUtils.writeFile 会自动创建目录）
       const filePath = path.join(rulesDir, rule.fileName);
       await FileUtils.writeFile(filePath, rule.content);
       
