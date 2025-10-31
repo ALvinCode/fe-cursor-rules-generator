@@ -6,29 +6,57 @@
 
 **基于用户反馈的改进**
 
-#### 问题 1：进度显示不够详细
+#### 问题 1：执行入口不清晰
 
 **改进**：
-- ✅ 完整显示 11 个任务的执行进度
-- ✅ 每个任务显示具体结果
-- ✅ 进度日志包含在最终输出中
+- ✅ 首句明确提示 `cursor-rules-generator` 已被调用
+- ✅ 执行前输出待办列表
+- ✅ 执行后展示任务状态对比
 
 **输出示例**：
 ```
-📋 开始生成 Cursor Rules
+cursor-rules-generator 已被调用，开始处理项目：/path/to/project
 
-🔄 [1/11] 收集项目文件...
-✅ [1/11] 完成 - 发现 234 个文件
+## cursor-rules-generator 待办列表
 
-🔄 [2/11] 检测技术栈...
-✅ [2/11] 完成 - React, TypeScript, MobX
+cursor-rules-generator 在执行前规划了以下任务：
 
-...
+- [ ] 1. 收集项目文件
+- [ ] 2. 分析技术栈与模块架构
+- [ ] 3. 检查项目配置
+- ...
 
-✅ [11/11] 完成 - 所有文件已写入
+执行完成后的状态：
+
+- [x] 1. 收集项目文件
+- [x] 2. 分析技术栈与模块架构
+- [x] 3. 检查项目配置
+- ...
 ```
 
-#### 问题 2：一致性检查信息不明确
+#### 问题 2：执行过程缺少上下文
+
+**改进**：
+- ✅ `cursor-rules-generator` 以任务编号输出执行记录
+- ✅ 每个任务附带状态与详细说明
+- ✅ 全文统一使用 `cursor-rules-generator` 作为主语
+
+**输出示例**：
+```
+## cursor-rules-generator 执行记录
+
+### 任务 1: 收集项目文件
+状态: ✅ 已完成
+cursor-rules-generator 已收集 234 个有效文件。
+cursor-rules-generator 识别主要文件类型：ts (180)，tsx (42)，json (12)
+
+### 任务 2: 分析技术栈与模块架构
+状态: ✅ 已完成
+cursor-rules-generator 识别主要技术栈：React，TypeScript
+cursor-rules-generator 检测到 3 个模块，并提取 8 项代码特征
+```
+
+#### 问题 3：一致性检查信息不明确
 
 **改进**：
 - ✅ 详细列出每个不一致的问题
@@ -39,37 +67,32 @@
 
 **输出示例**：
 ```
-## ⚠️ 一致性检查发现问题 (2 处)
+## cursor-rules-generator 工作总结
 
-**问题 1**: README 中未提及主要技术栈: TypeScript
-- 类型: 文档缺失
-- 严重程度: 🟡 中
-- 实际情况: TypeScript
-- 建议修复: 在 README 的技术栈部分添加 TypeScript
+### 注意事项
 
-**问题 2**: README 中未描述重要功能: 项目使用自定义组件结构
-- 类型: 功能描述缺失
-- 严重程度: 🟢 低
-- 实际情况: 项目使用自定义组件结构
-- 建议修复: 在 README 的功能描述部分添加...
+cursor-rules-generator 检测到 2 处描述不一致：
+问题 1（严重程度：中） - README 未提及 TypeScript；实际：TypeScript；文档：JavaScript；建议处理：补充 README
+问题 2（严重程度：低） - README 未描述自定义组件结构；实际：存在自定义组件库；建议处理：补充功能说明
 ```
 
-#### 问题 3：缺少项目文件结构展示
+#### 问题 4：缺少项目文件结构展示
 
 **改进**：
 - ✅ 自动生成项目文件结构树
 - ✅ 显示主要目录及文件数量
-- ✅ 标注每个目录的用途（组件、工具、API等）
+- ✅ 标注每个目录的用途（组件、工具、API 等）
 - ✅ 显示子目录层级
 - ✅ 提供结构说明（组件目录、工具目录等）
 
 **输出示例**：
 ```
-## 📁 项目文件结构
+## cursor-rules-generator 工作总结
 
-```
+### 项目分析结果
+
 aaclub_mboss/
-├── src/ (856 个文件) # 其他
+├── src/ (856 个文件) # 源代码
     ├── components/  (123) # 组件
     ├── hooks/  (8) # Hooks
     ├── utils/  (25) # 工具
@@ -80,16 +103,13 @@ aaclub_mboss/
 └── ...
 ```
 
-**结构说明**:
-- 组件目录: `src/components`
-- 工具函数: `src/utils`
-- Hooks 目录: `src/hooks`
-- API 服务: `src/services`
-- 路由目录: `app/`
-```
+cursor-rules-generator 将组件目录定位为 `src/components`；cursor-rules-generator 将工具函数目录定位为 `src/utils`；cursor-rules-generator 将 Hooks 目录定位为 `src/hooks`
 
 ### 🔧 技术改进
 
+- 统一输出主语为 `cursor-rules-generator`
+- 新增待办列表与任务状态对比
+- 新增任务执行记录与详细说明
 - 增强项目分析结果展示
 - 新增项目文件结构树生成
 - 新增一致性问题类型标签

@@ -2083,26 +2083,57 @@ components/
    * 生成规则摘要
    */
   generateSummary(rules: CursorRule[], projectPath: string): string {
-    const globalRules = rules.filter((r) => r.scope === "global");
-    const moduleRules = rules.filter((r) => r.scope === "module");
+    const descriptionByFile: Record<string, string> = {
+      "global-rules.mdc": "项目全局导航与核心原则",
+      "code-style.mdc": "代码格式、命名与风格要求",
+      "architecture.mdc": "文件组织与模块架构规范",
+      "custom-tools.mdc": "项目自定义 Hooks 与工具函数清单",
+      "error-handling.mdc": "错误处理与日志管理实践",
+      "state-management.mdc": "状态管理库的使用准则",
+      "ui-ux.mdc": "组件交互与 UI/UX 规范",
+      "frontend-routing.mdc": "前端路由定义与导航策略",
+      "api-routing.mdc": "后端或 API 路由组织规范",
+      "testing.mdc": "测试策略与断言准则",
+      "00-global-rules.mdc": "项目全局导航与核心原则",
+    };
 
-    let summary = `生成了 ${rules.length} 个规则文件：\n\n`;
+    const lines: string[] = [];
+    lines.push("cursor-rules-generator 输出以下规则文件：");
 
-    if (globalRules.length > 0) {
-      summary += `**全局规则（项目根目录）：**\n`;
-      summary += globalRules.map((r) => `  - .cursor/rules/${r.fileName}`).join("\n");
-      summary += "\n\n";
+    for (const rule of rules) {
+      const relativePath = rule.scope === "module" && rule.modulePath
+        ? path.join(path.relative(projectPath, rule.modulePath), ".cursor", "rules", rule.fileName)
+        : path.join(".cursor", "rules", rule.fileName);
+
+      let description = descriptionByFile[rule.fileName];
+
+      if (!description) {
+        switch (rule.type) {
+          case "overview":
+            description = "模块概述与职责";
+            break;
+          case "guideline":
+            description = "工作流程与实现指引";
+            break;
+          case "practice":
+            description = "基于项目的实践规范";
+            break;
+          case "reference":
+            description = "可复用的参考资料";
+            break;
+          default:
+            description = "项目专用开发规范";
+        }
+      }
+
+      if (rule.scope === "module") {
+        description = `${rule.moduleName || "模块"} 专属规范：${description}`;
+      }
+
+      lines.push(`- ${relativePath}：${description}`);
     }
 
-    if (moduleRules.length > 0) {
-      summary += `**模块规则（按模块目录）：**\n`;
-      summary += moduleRules.map((r) => {
-        const relativePath = r.modulePath ? path.relative(projectPath, r.modulePath) : r.moduleName;
-        return `  - ${relativePath}/.cursor/rules/${r.fileName} (${r.moduleName})`;
-      }).join("\n");
-    }
-
-    return summary;
+    return lines.join("\n");
   }
 
   /**
