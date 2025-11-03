@@ -1,5 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import { logger } from "./logger.js";
+import { FileOperationError } from "./errors.js";
 
 /**
  * 文件工具类
@@ -177,7 +179,7 @@ export class FileUtils {
         }
       }
     } catch (error) {
-      console.error(`读取目录失败 ${dirPath}:`, error);
+      logger.error(`读取目录失败 ${dirPath}`, error);
     }
 
     return files;
@@ -190,7 +192,7 @@ export class FileUtils {
     try {
       return await fs.readFile(filePath, "utf-8");
     } catch (error) {
-      console.error(`读取文件失败 ${filePath}:`, error);
+      logger.error(`读取文件失败 ${filePath}`, error);
       return "";
     }
   }
@@ -204,8 +206,8 @@ export class FileUtils {
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(filePath, content, "utf-8");
     } catch (error) {
-      console.error(`写入文件失败 ${filePath}:`, error);
-      throw error;
+      logger.error(`写入文件失败 ${filePath}`, error);
+      throw new FileOperationError(`无法写入文件: ${filePath}`, error instanceof Error ? error : undefined);
     }
   }
 

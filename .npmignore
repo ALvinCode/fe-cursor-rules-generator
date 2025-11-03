@@ -1,0 +1,51 @@
+# Source files
+src/
+tsconfig.json
+
+# Development files
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (keep main README)
+docs/
+*.md
+!README.md
+!README.zh-CN.md
+!LICENSE
+!CHANGELOG.md
+
+# Scripts
+scripts/
+mcp-config-example.json
+
+# Development and testing
+node_modules/
+*.log
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+test/
+tests/
+*.test.ts
+*.spec.ts
+
+# Build artifacts (keep dist/)
+*.map
+!dist/**/*.map
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

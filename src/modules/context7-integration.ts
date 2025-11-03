@@ -1,4 +1,5 @@
 import { BestPractice, Dependency } from "../types.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * Context7 集成模块
@@ -26,7 +27,7 @@ export class Context7Integration {
           practices.push(practice);
         }
       } catch (error) {
-        console.error(`获取 ${dep.name} 最佳实践失败:`, error);
+        logger.debug(`获取 ${dep.name} 最佳实践失败`, error);
         // 继续处理其他依赖
       }
     }

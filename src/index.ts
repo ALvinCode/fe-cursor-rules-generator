@@ -22,6 +22,8 @@ import { FileStructureLearner } from "./modules/file-structure-learner.js";
 import { RouterDetector } from "./modules/router-detector.js";
 import { CursorRule, InstructionsFile } from "./types.js";
 import path from "path";
+import { logger } from "./utils/logger.js";
+import { createErrorResponse } from "./utils/errors.js";
 
 /**
  * Cursor Rules Generator MCP Server
@@ -219,14 +221,8 @@ class CursorRulesGeneratorServer {
             throw new Error(`未知的工具: ${name}`);
         }
       } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `错误: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
+        logger.error("工具调用失败", error, { tool: name, args });
+        return createErrorResponse(error);
       }
     });
   }
@@ -242,8 +238,11 @@ class CursorRulesGeneratorServer {
     output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     
     // 执行所有分析任务，收集信息
-    const analysisResults: any = {};
-    const uncertainties: any[] = [];
+    const uncertainties: Array<{
+      taskNumber?: number;
+      topic: string;
+      analysis?: any;
+    }> = [];
     
     output += `## 📊 分析任务清单\n\n`;
     
@@ -414,16 +413,22 @@ class CursorRulesGeneratorServer {
    * 估算规则文件数量
    */
   private estimateRuleFileCount(
-    techStack: any,
+    techStack: { frameworks: string[] },
     customToolsCount: number,
-    frontendRouter: any,
-    backendRouter: any
+    frontendRouter: { exists: boolean } | { info: { exists: boolean } } | null,
+    backendRouter: { exists: boolean } | { info: { exists: boolean } } | null
   ): number {
     let count = 4; // global, code-style, architecture, instructions
     if (customToolsCount > 0) count++;
     if (techStack.frameworks.some((f: string) => ["React", "Vue", "Angular"].includes(f))) count++;
-    if (frontendRouter) count++;
-    if (backendRouter) count++;
+    const frontendExists = frontendRouter && ('exists' in frontendRouter 
+      ? frontendRouter.exists 
+      : 'info' in frontendRouter && frontendRouter.info.exists);
+    const backendExists = backendRouter && ('exists' in backendRouter
+      ? backendRouter.exists
+      : 'info' in backendRouter && backendRouter.info.exists);
+    if (frontendExists) count++;
+    if (backendExists) count++;
     return count;
   }
 
@@ -431,16 +436,22 @@ class CursorRulesGeneratorServer {
    * 估算总行数
    */
   private estimateTotalLines(
-    techStack: any,
+    techStack: { frameworks: string[] },
     customToolsCount: number,
-    frontendRouter: any,
-    backendRouter: any
+    frontendRouter: { exists: boolean } | { info: { exists: boolean } } | null,
+    backendRouter: { exists: boolean } | { info: { exists: boolean } } | null
   ): number {
     let lines = 900; // 基础文件
     if (customToolsCount > 0) lines += 150;
     if (techStack.frameworks.some((f: string) => ["React", "Vue"].includes(f))) lines += 250;
-    if (frontendRouter) lines += 300;
-    if (backendRouter) lines += 300;
+    const frontendExists = frontendRouter && ('exists' in frontendRouter
+      ? frontendRouter.exists
+      : 'info' in frontendRouter && frontendRouter.info.exists);
+    const backendExists = backendRouter && ('exists' in backendRouter
+      ? backendRouter.exists
+      : 'info' in backendRouter && backendRouter.info.exists);
+    if (frontendExists) lines += 300;
+    if (backendExists) lines += 300;
     return lines;
   }
 
@@ -1043,7 +1054,7 @@ class CursorRulesGeneratorServer {
   /**
    * 生成项目结构树
    */
-  private generateProjectStructureTree(fileOrg: any, projectPath: string): string {
+  private generateProjectStructureTree(fileOrg: { structure: Array<{ path: string; purpose: string; fileCount: number }> }, projectPath: string): string {
     const projectName = path.basename(projectPath);
     let tree = "```\n";
     tree += `${projectName}/\n`;
@@ -1109,14 +1120,17 @@ class CursorRulesGeneratorServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("Cursor Rules Generator MCP Server 已启动");
+    logger.info("Cursor Rules Generator MCP Server 已启动", {
+      version: "1.3.6",
+      logLevel: logger.getLogLevel(),
+    });
   }
 }
 
 // 启动服务器
 const server = new CursorRulesGeneratorServer();
 server.run().catch((error) => {
-  console.error("服务器启动失败:", error);
+  logger.error("服务器启动失败", error);
   process.exit(1);
 });
 

@@ -7,6 +7,17 @@
   "bin": {
     "cursor-rules-generator": "dist/index.js"
   },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
@@ -19,10 +30,24 @@
     "cursor",
     "rules",
     "ai",
-    "code-generation"
+    "code-generation",
+    "model-context-protocol",
+    "cursor-ai",
+    "development-tools"
   ],
-  "author": "",
+  "author": {
+    "name": "Zheng Kuo",
+    "url": "https://github.com/ALvinCode"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ALvinCode/fe-cursor-rules-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ALvinCode/fe-cursor-rules-generator/issues"
+  },
+  "homepage": "https://github.com/ALvinCode/fe-cursor-rules-generator#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "glob": "^11.0.0",

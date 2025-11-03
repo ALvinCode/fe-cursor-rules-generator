@@ -1,5 +1,6 @@
 import * as path from "path";
 import { FileUtils } from "../utils/file-utils.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * 配置文件解析器
@@ -258,7 +259,7 @@ export class ConfigParser {
         const cleanContent = content.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
         return JSON.parse(cleanContent);
       } catch (error) {
-        console.error("解析 tsconfig.json 失败:", error);
+        logger.debug("解析 tsconfig.json 失败", error);
       }
     }
     return undefined;

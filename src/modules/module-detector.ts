@@ -1,6 +1,7 @@
 import * as path from "path";
 import { FileUtils } from "../utils/file-utils.js";
 import { Module } from "../types.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * 模块检测器
@@ -104,7 +105,7 @@ export class ModuleDetector {
         }
       }
     } catch (error) {
-      console.error(`扫描工作区失败 ${dirPath}:`, error);
+      logger.debug(`扫描工作区失败 ${dirPath}`, error);
     }
 
     return modules;

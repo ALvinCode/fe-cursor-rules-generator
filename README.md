@@ -310,6 +310,44 @@ priority: 100
 - `venv`, `env`
 - `target`, `bin`, `obj`
 
+## ⚙️ 环境变量配置
+
+支持通过环境变量控制日志级别和调试模式：
+
+### 日志级别
+
+```bash
+# 设置日志级别（DEBUG, INFO, WARN, ERROR, NONE）
+export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
+
+# 或在 Cursor 配置中设置
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "node",
+      "args": ["/path/to/dist/index.js"],
+      "env": {
+        "CURSOR_RULES_GENERATOR_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+### 调试模式
+
+```bash
+# 启用调试模式（自动将日志级别设为 DEBUG）
+export CURSOR_RULES_GENERATOR_DEBUG=true
+```
+
+**日志级别说明**：
+- `DEBUG`: 输出所有日志，包括详细的调试信息
+- `INFO`: 输出信息性日志（默认）
+- `WARN`: 仅输出警告和错误
+- `ERROR`: 仅输出错误
+- `NONE`: 不输出任何日志
+
 ## ⚠️ 注意事项
 
 1. **首次生成**：首次生成可能需要几秒钟，取决于项目大小
@@ -317,6 +355,7 @@ priority: 100
 3. **覆盖规则**：再次生成会覆盖现有的规则文件
 4. **手动编辑**：建议将自定义规则放在独立文件中，避免被覆盖
 5. **Context7**：Context7 集成是可选的，未配置不影响基本功能
+6. **日志输出**：日志会输出到 stderr，不会干扰 MCP 协议通信
 
 ## 📄 许可证
 
@@ -326,7 +365,112 @@ MIT
 
 欢迎提交 Issue 和 Pull Request！
 
+### 贡献指南
+
+1. **Fork 本仓库**
+2. **创建功能分支** (`git checkout -b feature/AmazingFeature`)
+3. **提交更改** (`git commit -m 'Add some AmazingFeature'`)
+4. **推送到分支** (`git push origin feature/AmazingFeature`)
+5. **开启 Pull Request**
+
+### 开发环境设置
+
+```bash
+# 克隆仓库
+git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
+cd cursor-rules-generator
+
+# 安装依赖
+npm install
+
+# 开发模式（自动编译）
+npm run watch
+
+# 编译
+npm run build
+
+# 测试
+npm test
+```
+
+### 代码规范
+
+- 使用 TypeScript 编写，遵循严格类型检查
+- 使用统一的日志系统（`src/utils/logger.ts`）
+- 使用统一的错误处理（`src/utils/errors.ts`）
+- 遵循现有的代码风格和模块化结构
+
+## 📁 项目结构
+
+### 目录结构
+
+```
+cursor-rules-generator/
+├── src/                          # 源代码
+│   ├── index.ts                  # MCP Server 主入口
+│   ├── types.ts                  # TypeScript 类型定义
+│   ├── modules/                  # 核心功能模块（14 个）
+│   │   ├── project-analyzer.ts   # 项目文件收集
+│   │   ├── tech-stack-detector.ts # 技术栈检测
+│   │   ├── module-detector.ts    # 模块结构识别
+│   │   ├── code-analyzer.ts      # 代码特征分析
+│   │   ├── practice-analyzer.ts  # 项目实践分析
+│   │   ├── config-parser.ts      # 配置文件解析
+│   │   ├── custom-pattern-detector.ts # 自定义模式检测
+│   │   ├── file-structure-learner.ts  # 文件结构学习
+│   │   ├── router-detector.ts    # 路由系统检测
+│   │   ├── consistency-checker.ts # 一致性检查
+│   │   ├── rules-generator.ts    # 规则生成引擎
+│   │   ├── file-writer.ts        # 文件写入器
+│   │   ├── rule-validator.ts    # 规则验证器
+│   │   └── context7-integration.ts # Context7 集成
+│   └── utils/                    # 工具类
+│       ├── logger.ts             # 日志工具
+│       ├── errors.ts             # 错误处理
+│       └── file-utils.ts         # 文件操作工具
+├── docs/                         # 文档目录
+│   ├── architecture/            # 架构设计文档
+│   └── guides/                  # 使用指南
+├── scripts/                      # 脚本文件
+│   └── quick-test.sh            # 快速测试脚本
+├── dist/                         # 编译输出（自动生成）
+├── package.json                  # 项目配置
+├── tsconfig.json                 # TypeScript 配置
+├── README.md                     # 项目说明（本文档）
+├── README.zh-CN.md               # 中文详细文档
+├── CHANGELOG.md                  # 版本更新日志
+└── LICENSE                       # MIT 许可证
+```
+
+### 核心模块说明
+
+**分析模块**（9 个）：
+- `project-analyzer.ts` - 收集项目文件
+- `tech-stack-detector.ts` - 检测技术栈和依赖
+- `module-detector.ts` - 识别多模块结构
+- `code-analyzer.ts` - 分析代码特征
+- `practice-analyzer.ts` - 分析项目实践规范
+- `config-parser.ts` - 解析配置文件（Prettier、ESLint 等）
+- `custom-pattern-detector.ts` - 检测自定义工具和模式
+- `file-structure-learner.ts` - 学习文件组织结构
+- `router-detector.ts` - 检测路由系统
+
+**规则相关**（3 个）：
+- `rules-generator.ts` - 规则生成引擎（核心模块）
+- `file-writer.ts` - 写入规则文件
+- `rule-validator.ts` - 验证规则文件
+
+**其他模块**（2 个）：
+- `consistency-checker.ts` - 检查文档一致性
+- `context7-integration.ts` - Context7 MCP 集成
+
+### 工具类
+
+- `logger.ts` - 统一的日志系统，支持日志级别控制
+- `errors.ts` - 统一的错误处理体系
+- `file-utils.ts` - 文件操作工具（递归扫描、读写文件等）
+
 ## 📮 反馈
 
-如有问题或建议，请创建 Issue。
+如有问题或建议，请创建 [Issue](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)。
 

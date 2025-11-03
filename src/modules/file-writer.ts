@@ -1,6 +1,7 @@
 import * as path from "path";
 import { FileUtils } from "../utils/file-utils.js";
 import { CursorRule, InstructionsFile } from "../types.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * 文件写入器
@@ -30,7 +31,7 @@ export class FileWriter {
       const relativePath = path.relative(projectPath, filePath);
       writtenFiles.push(relativePath);
       
-      console.error(`已写入规则文件: ${relativePath}`);
+      logger.debug(`已写入规则文件: ${relativePath}`);
     }
 
     return writtenFiles;
@@ -41,7 +42,7 @@ export class FileWriter {
    */
   async writeInstructions(instructions: InstructionsFile): Promise<void> {
     await FileUtils.writeFile(instructions.filePath, instructions.content);
-    console.error(`已写入工作流指导文件: ${instructions.fileName}`);
+    logger.debug(`已写入工作流指导文件: ${instructions.fileName}`);
   }
 
   /**
@@ -67,7 +68,7 @@ export class FileWriter {
           if (file.endsWith(".mdc") || file.endsWith(".md")) {
             const filePath = path.join(rulesDir, file);
             await fs.unlink(filePath);
-            console.error(`已删除旧规则文件: ${path.relative(projectPath, filePath)}`);
+            logger.debug(`已删除旧规则文件: ${path.relative(projectPath, filePath)}`);
           }
         }
       } catch (error) {

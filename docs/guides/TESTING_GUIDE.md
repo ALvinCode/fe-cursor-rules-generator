@@ -5,7 +5,7 @@
 ### 1. 确保项目已编译
 
 ```bash
-cd /Users/advance/Documents/cursor-rules-generator
+cd /path/to/cursor-rules-generator
 npm install
 npm run build
 ```
@@ -21,7 +21,7 @@ ls -la dist/
 ```bash
 # 获取项目绝对路径
 pwd
-# 输出: /Users/advance/Documents/cursor-rules-generator
+# 输出: /path/to/cursor-rules-generator
 ```
 
 ---
@@ -30,7 +30,7 @@ pwd
 
 ### 步骤 1: 找到配置文件
 
-**macOS**:
+**macOS/Linux**:
 ```bash
 open ~/Library/Application\ Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/
 ```
@@ -598,10 +598,10 @@ mkdir -p packages/mobile-app
 
 如果遇到问题：
 
-1. 查看 [TESTING.md](TESTING.md) 中的详细测试步骤
-2. 查看 [ARCHITECTURE.md](ARCHITECTURE.md) 了解工作原理
-3. 查看 [HIERARCHY_EXAMPLE.md](HIERARCHY_EXAMPLE.md) 查看示例
-4. 创建 GitHub Issue 报告问题
+1. 查看 [GETTING_STARTED.md](./GETTING_STARTED.md) 中的快速开始指南
+2. 查看 [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) 了解工作原理
+3. 查看 [../architecture/HIERARCHY_EXAMPLE.md](../architecture/HIERARCHY_EXAMPLE.md) 查看示例
+4. 创建 [GitHub Issue](https://github.com/ALvinCode/fe-cursor-rules-generator/issues) 报告问题
 
 祝测试顺利！🚀
 
