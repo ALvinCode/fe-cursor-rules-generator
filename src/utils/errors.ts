@@ -41,6 +41,7 @@ export class ValidationError extends AppError {
  * 文件操作错误
  */
 export class FileOperationError extends AppError {
+  public cause?: Error;
   constructor(message: string, originalError?: Error) {
     super(message, 'FILE_OPERATION_ERROR', 500);
     if (originalError) {
@@ -53,6 +54,7 @@ export class FileOperationError extends AppError {
  * 项目分析错误
  */
 export class ProjectAnalysisError extends AppError {
+  public cause?: Error;
   constructor(message: string, originalError?: Error) {
     super(message, 'PROJECT_ANALYSIS_ERROR', 500);
     if (originalError) {
@@ -65,6 +67,7 @@ export class ProjectAnalysisError extends AppError {
  * 配置解析错误
  */
 export class ConfigParseError extends AppError {
+  public cause?: Error;
   constructor(message: string, originalError?: Error) {
     super(message, 'CONFIG_PARSE_ERROR', 500);
     if (originalError) {
@@ -77,6 +80,7 @@ export class ConfigParseError extends AppError {
  * MCP 工具调用错误
  */
 export class ToolCallError extends AppError {
+  public cause?: Error;
   constructor(message: string, originalError?: Error) {
     super(message, 'TOOL_CALL_ERROR', 500);
     if (originalError) {

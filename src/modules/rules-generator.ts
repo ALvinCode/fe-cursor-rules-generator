@@ -7,14 +7,131 @@ import {
   InstructionsFile,
 } from "../types.js";
 import * as path from "path";
+import { findBestFrameworkMatch, getFrameworkFormatTemplate, FrameworkMatch } from "./framework-matcher.js";
+import { logger } from "../utils/logger.js";
+import { BestPracticeExtractor } from "./best-practice-extractor.js";
+import { BestPracticeComparator } from "./best-practice-comparator.js";
+import { SuggestionCollector } from "./suggestion-collector.js";
+import { BestPracticeWebSearcher } from "./best-practice-web-searcher.js";
 
 /**
  * 规则生成引擎
  * 结合项目特征和最佳实践，生成 Cursor Rules
  */
 export class RulesGenerator {
-  async generate(context: RuleGenerationContext): Promise<CursorRule[]> {
+  private frameworkMatch: FrameworkMatch | null = null;
+  private suggestionCollector: SuggestionCollector;
+  private bestPracticeExtractor: BestPracticeExtractor;
+  private bestPracticeComparator: BestPracticeComparator;
+  private webSearcher: BestPracticeWebSearcher;
+
+  constructor() {
+    this.suggestionCollector = new SuggestionCollector();
+    this.bestPracticeExtractor = new BestPracticeExtractor();
+    this.bestPracticeComparator = new BestPracticeComparator();
+    this.webSearcher = new BestPracticeWebSearcher();
+  }
+
+  /**
+   * 获取框架匹配信息（用于输出显示）
+   */
+  getFrameworkMatch(): FrameworkMatch | null {
+    return this.frameworkMatch;
+  }
+
+  /**
+   * 获取建议收集器（用于输出显示）
+   */
+  getSuggestionCollector(): SuggestionCollector {
+    return this.suggestionCollector;
+  }
+
+  async generate(
+    context: RuleGenerationContext,
+    webSearchResults?: Record<string, string>
+  ): Promise<CursorRule[]> {
     const rules: CursorRule[] = [];
+
+    // 清空建议收集器
+    this.suggestionCollector.clear();
+
+    // v1.4: 框架匹配 - 找到最相似的框架规则格式
+    this.frameworkMatch = findBestFrameworkMatch(context.techStack);
+    if (this.frameworkMatch) {
+      logger.info('框架匹配成功', {
+        framework: this.frameworkMatch.framework,
+        similarity: Math.round(this.frameworkMatch.similarity * 100) + '%',
+        format: this.frameworkMatch.format
+      });
+    }
+
+    // v1.5: 提取和对比最佳实践
+    let missingPractices: any[] = [];
+    let ambiguousPractices: any[] = [];
+    if (this.frameworkMatch) {
+      try {
+        const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
+          this.frameworkMatch,
+          context.techStack
+        );
+        
+        const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
+        missingPractices = comparison.missingPractices;
+        ambiguousPractices = comparison.ambiguousPractices;
+        this.suggestionCollector.addAll(comparison.suggestions);
+        
+        logger.info('最佳实践对比完成', {
+          extracted: extractedPractices.length,
+          missing: missingPractices.length,
+          ambiguous: ambiguousPractices.length,
+          suggestions: comparison.suggestions.length
+        });
+
+        // v1.5: 识别项目使用但框架规则中没有的技术栈
+        const missingTechStacks = this.identifyMissingTechStacks(
+          context.techStack,
+          this.frameworkMatch
+        );
+
+        // 对于缺失的技术栈，尝试网络搜索最佳实践
+        if (missingTechStacks.length > 0) {
+          let webPractices: any[] = [];
+          
+          // 如果有网络搜索结果，解析它们
+          if (webSearchResults && Object.keys(webSearchResults).length > 0) {
+            for (const [tech, searchResult] of Object.entries(webSearchResults)) {
+              if (missingTechStacks.includes(tech)) {
+                const parsed = this.webSearcher.parseWebSearchResults(
+                  searchResult,
+                  [tech]
+                );
+                webPractices.push(...parsed);
+              }
+            }
+          }
+
+          if (webPractices.length > 0) {
+            missingPractices.push(...webPractices);
+            logger.info('网络搜索找到最佳实践', { 
+              techStacks: missingTechStacks,
+              practices: webPractices.length 
+            });
+          } else {
+            // 使用备用方案
+            logger.debug('网络搜索无结果，使用备用方案');
+            const fallbackPractices = this.getFallbackPractices(missingTechStacks);
+            if (fallbackPractices.length > 0) {
+              missingPractices.push(...fallbackPractices);
+              logger.info('使用备用方案找到最佳实践', { 
+                practices: fallbackPractices.length 
+              });
+            }
+          }
+        }
+      } catch (error) {
+        logger.debug('最佳实践提取失败', { error });
+      }
+    }
 
     // v1.3: 生成多个专注的规则文件（每个 < 500 行）
 
@@ -23,11 +140,11 @@ export class RulesGenerator {
     rules.push(globalRule);
 
     // 2. 代码风格规则（必需，约 200 行）
-    const codeStyleRule = this.generateCodeStyleRule(context);
+    const codeStyleRule = this.generateCodeStyleRule(context, missingPractices);
     rules.push(codeStyleRule);
 
     // 3. 项目架构规则（必需，约 250 行）
-    const architectureRule = this.generateArchitectureRule(context);
+    const architectureRule = this.generateArchitectureRule(context, missingPractices);
     rules.push(architectureRule);
 
     // 4. 自定义工具规则（按需，约 150 行）
@@ -38,7 +155,7 @@ export class RulesGenerator {
 
     // 5. 错误处理规则（按需，约 180 行）
     if (this.hasErrorHandling(context)) {
-      const errorHandlingRule = this.generateErrorHandlingRule(context);
+      const errorHandlingRule = this.generateErrorHandlingRule(context, missingPractices);
       rules.push(errorHandlingRule);
     }
 
@@ -126,7 +243,9 @@ export class RulesGenerator {
   /**
    * v1.3: 生成全局概述规则（约 280 行）
    */
-  private generateGlobalOverviewRule(context: RuleGenerationContext): CursorRule {
+  private generateGlobalOverviewRule(
+    context: RuleGenerationContext
+  ): CursorRule {
     const metadata = this.generateRuleMetadata(
       `${this.getProjectName(context.projectPath)} - 全局规则`,
       "项目级通用规范和开发原则",
@@ -136,10 +255,18 @@ export class RulesGenerator {
       "overview"
     );
 
+    // 生成角色定义（基于框架匹配）
+    const persona = this.generatePersona(context);
+    const frameworkReference = this.frameworkMatch 
+      ? `\n> 💡 **格式参考**: 本规则参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${this.frameworkMatch.framework}** 格式（相似度: ${Math.round(this.frameworkMatch.similarity * 100)}%），采用 **${this.frameworkMatch.format}** 格式风格。\n`
+      : '';
+
     const content = metadata + `
 # 项目概述
 
-这是一个基于 ${context.techStack.primary.join(", ")} 的项目。
+${persona}
+
+这是一个基于 ${context.techStack.primary.join(", ")} 的项目。${frameworkReference}
 
 ## 技术栈
 
@@ -159,11 +286,25 @@ ${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工�
 
 ## 核心开发原则
 
-1. **保持一致性** - 遵循项目现有代码风格和架构
-2. **优先使用项目工具** - 不要重新实现已有的工具函数和 Hooks
-3. **遵循路径别名** - 使用配置的路径别名，不使用相对路径
-4. **渐进式改进** - 在现有基础上小步优化，不破坏架构
-5. **类型安全** - 充分利用 TypeScript 的类型系统
+- **保持一致性** - 遵循项目现有代码风格和架构
+- **优先使用项目工具** - 不要重新实现已有的工具函数和 Hooks
+- **遵循路径别名** - 使用配置的路径别名，不使用相对路径
+- **渐进式改进** - 在现有基础上小步优化，不破坏架构
+- **类型安全** - 充分利用 TypeScript 的类型系统
+- **代码质量** - 编写简洁、可维护、高性能的代码
+
+## ⚠️ 文件生成限制
+
+**严格禁止**：
+- ❌ 禁止生成任何 `.md` 文件（除了 `.cursor/instructions.md` 和 `.cursor/rules/*.mdc` 规则文件）
+- ❌ 禁止生成过程记录、总结、日志等文档文件
+- ❌ 禁止生成与项目无关的文档文件
+
+**允许的文件**：
+- ✅ `.cursor/instructions.md` - Cursor 工作流程说明
+- ✅ `.cursor/rules/*.mdc` - Cursor 规则文件
+
+**说明**：生成代码时，不要创建任何 Markdown 文档文件。所有文档都应该通过代码注释、类型定义和清晰的命名来表达。
 
 ${context.techStack.frameworks.length > 0 ? `
 ## 框架特定原则
@@ -198,8 +339,12 @@ ${this.generateFrameworkPrinciples(context)}
 
   /**
    * v1.3: 生成代码风格规则（约 200 行）
+   * v1.5: 补充缺失的最佳实践
    */
-  private generateCodeStyleRule(context: RuleGenerationContext): CursorRule {
+  private generateCodeStyleRule(
+    context: RuleGenerationContext,
+    missingPractices?: any[]
+  ): CursorRule {
     const metadata = this.generateRuleMetadata(
       "代码风格规范",
       "基于项目配置的代码格式化和命名约定",
@@ -210,12 +355,25 @@ ${this.generateFrameworkPrinciples(context)}
       ["global-rules"]
     );
 
+    // 补充缺失的最佳实践
+    const codeStylePractices = missingPractices?.filter(p => p.category === 'code-style') || [];
+    const additionalPractices = this.formatMissingPractices(codeStylePractices);
+
     const content = metadata + `
 # 代码风格规范
 
 参考: @global-rules.mdc
 
+## 核心原则
+
+- 编写简洁、可读、可维护的代码
+- 遵循项目现有的代码风格
+- 使用描述性的变量名和函数名
+- 优先使用函数式编程模式
+
 ${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.generateCodeStyleGuidelines(context)}
+
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
 
 ---
 
@@ -235,8 +393,9 @@ ${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.gen
 
   /**
    * v1.3: 生成项目架构规则（约 250 行）
+   * v1.5: 补充缺失的最佳实践
    */
-  private generateArchitectureRule(context: RuleGenerationContext): CursorRule {
+  private generateArchitectureRule(context: RuleGenerationContext, missingPractices?: any[]): CursorRule {
     const metadata = this.generateRuleMetadata(
       "项目架构",
       "文件组织和模块结构规范",
@@ -247,12 +406,18 @@ ${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.gen
       ["global-rules"]
     );
 
+    // 补充缺失的最佳实践
+    const architecturePractices = missingPractices?.filter(p => p.category === 'architecture') || [];
+    const additionalPractices = this.formatMissingPractices(architecturePractices);
+
     const content = metadata + `
 # 项目架构
 
 参考: @global-rules.mdc
 
 ${context.fileOrganization ? this.generateStructureBasedFileOrgRules(context) : this.generateFileOrganizationGuidelines(context)}
+
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
 
 ---
 
@@ -310,7 +475,7 @@ ${this.generateCustomToolsRules(context)}
   /**
    * v1.3: 生成错误处理规则（约 180 行）
    */
-  private generateErrorHandlingRule(context: RuleGenerationContext): CursorRule {
+  private generateErrorHandlingRule(context: RuleGenerationContext, missingPractices?: any[]): CursorRule {
     const metadata = this.generateRuleMetadata(
       "错误处理规范",
       "基于项目实践的错误处理和日志规范",
@@ -321,12 +486,18 @@ ${this.generateCustomToolsRules(context)}
       ["global-rules", "custom-tools"]
     );
 
+    // 补充缺失的最佳实践
+    const errorHandlingPractices = missingPractices?.filter(p => p.category === 'error-handling') || [];
+    const additionalPractices = this.formatMissingPractices(errorHandlingPractices);
+
     const content = metadata + `
 # 错误处理规范
 
 参考: @global-rules.mdc, @custom-tools.mdc
 
 ${this.generatePracticeBasedErrorHandling(context)}
+
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
 
 ---
 
@@ -582,22 +753,10 @@ ${this.generateBackendRouterContent(router, context)}
       content += `✅ 继续为大型页面使用懒加载\n\n`;
     }
 
-    // 短期和长期建议
-    content += `## 短期规范\n\n`;
+    // 移除建议，改为收集到 SuggestionCollector
+    content += `## 当前实践\n\n`;
     content += `✅ 保持现有的路由组织方式\n`;
     content += `✅ 遵循命名规范（${pattern.urlNaming}）\n`;
-    if (!pattern.isDynamicGenerated) {
-      content += `💡 为新路由添加注释说明其用途\n`;
-    }
-    content += `\n`;
-
-    content += `## 长期建议\n\n`;
-    if (!pattern.hasRouteMeta) {
-      content += `💡 考虑添加路由元信息（标题、权限要求等）\n`;
-    }
-    if (!pattern.usesLazyLoading) {
-      content += `💡 考虑为大型页面使用懒加载优化性能\n`;
-    }
     content += `\n`;
 
     return content;
@@ -665,13 +824,9 @@ ${this.generateBackendRouterContent(router, context)}
     content += `✅ 保持 RESTful API 设计原则\n`;
     content += `✅ 遵循现有的路由组织方式\n`;
     if (!pattern.isDynamicGenerated) {
-      content += `💡 为复杂 API 添加注释说明\n`;
+      // 移除建议，改为收集到 SuggestionCollector
     }
     content += `\n`;
-
-    content += `## 长期建议\n\n`;
-    content += `💡 考虑 API 文档生成（OpenAPI/Swagger）\n`;
-    content += `💡 考虑 API 版本管理（/api/v1/, /api/v2/）\n`;
     content += `\n`;
 
     return content;
@@ -2175,20 +2330,70 @@ tags: ${JSON.stringify(tags)}`;
   }
 
   /**
-   * 生成框架特定原则
+   * 生成角色定义（Persona）
+   */
+  private generatePersona(context: RuleGenerationContext): string {
+    const techStack = [
+      ...context.techStack.primary,
+      ...context.techStack.frameworks.filter(f => !context.techStack.primary.includes(f))
+    ].join(", ");
+
+    if (this.frameworkMatch) {
+      const template = getFrameworkFormatTemplate(this.frameworkMatch);
+      if (template.persona) {
+        return template.persona;
+      }
+    }
+
+    // 默认 persona
+    return `You are an expert in ${techStack}, specializing in modern web development.`;
+  }
+
+  /**
+   * 生成框架特定原则（增强版，参考 awesome-cursorrules）
    */
   private generateFrameworkPrinciples(context: RuleGenerationContext): string {
     const frameworks = context.techStack.frameworks;
     let principles = "";
 
     if (frameworks.includes("React")) {
-      principles += "- **React**: 使用函数组件和 Hooks，保持组件单一职责\n";
+      principles += `- **React**: 
+  - 使用函数组件和 Hooks，避免类组件
+  - 保持组件单一职责原则
+  - 合理使用 \`useMemo\` 和 \`useCallback\` 优化性能
+  - 使用 TypeScript 进行类型检查
+`;
     }
     if (frameworks.includes("Vue")) {
-      principles += "- **Vue**: 使用 Composition API，保持组件简洁\n";
+      principles += `- **Vue**: 
+  - 使用 Composition API（Vue 3）
+  - 保持组件模板简洁
+  - 复杂逻辑抽取到 composables
+  - 使用 TypeScript 增强类型安全
+`;
     }
     if (frameworks.includes("Next.js")) {
-      principles += "- **Next.js**: 利用 Server Components，优化性能\n";
+      principles += `- **Next.js**: 
+  - 优先使用 App Router（如果项目使用）
+  - Server Components 中进行数据获取
+  - 使用 \`next/image\` 优化图片
+  - 配置适当的元数据以改善 SEO
+  - 最小化 'use client' 使用，优先使用 Server Components
+`;
+    }
+    if (frameworks.includes("Angular")) {
+      principles += `- **Angular**: 
+  - 使用组件和模块化架构
+  - 遵循 Angular 风格指南
+  - 使用 TypeScript 和依赖注入
+`;
+    }
+    if (frameworks.includes("Svelte")) {
+      principles += `- **Svelte**: 
+  - 利用 Svelte 的编译时优化
+  - 使用响应式声明和语句
+  - 保持组件简洁和高效
+`;
     }
 
     return principles || "- 遵循框架的官方最佳实践";
@@ -2617,6 +2822,154 @@ ${this.generateModuleCautions(module)}
   }
 
   /**
+   * 格式化缺失的最佳实践（v1.5）
+   * 将项目已使用但未声明的实践格式化为规则内容
+   */
+  private formatMissingPractices(practices: any[]): string {
+    if (!practices || practices.length === 0) {
+      return '';
+    }
+
+    let content = '';
+    for (const practice of practices) {
+      content += `### ${practice.title}\n\n`;
+      content += `${practice.content}\n\n`;
+      
+      if (practice.techStack && practice.techStack.length > 0) {
+        content += `**相关技术栈**: ${practice.techStack.join(', ')}\n\n`;
+      }
+      
+      content += '---\n\n';
+    }
+
+    return content.trim();
+  }
+
+  /**
+   * 识别项目使用但框架规则中没有的技术栈（v1.5）
+   */
+  private identifyMissingTechStacks(
+    projectTechStack: TechStack,
+    frameworkMatch: FrameworkMatch | null
+  ): string[] {
+    if (!frameworkMatch) {
+      return [];
+    }
+
+    const allProjectTech = [
+      ...projectTechStack.primary,
+      ...projectTechStack.frameworks,
+      ...projectTechStack.languages
+    ];
+
+    // 获取框架规则中的技术栈（从 framework-matcher 中获取）
+    const frameworkTechStacks: Record<string, string[]> = {
+      'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
+      'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
+      'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
+      'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
+      'vue-typescript': ['Vue', 'TypeScript'],
+      'angular-typescript': ['Angular', 'TypeScript'],
+      'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
+      'typescript-react': ['TypeScript', 'React', 'Next.js']
+    };
+
+    const frameworkTech = frameworkTechStacks[frameworkMatch.framework] || [];
+    const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
+
+    // 找出项目使用但框架规则中没有的技术栈
+    const missing = allProjectTech.filter(tech => {
+      const techLower = tech.toLowerCase();
+      return !frameworkTechLower.some(ft => 
+        techLower.includes(ft) || ft.includes(techLower)
+      );
+    });
+
+    return missing;
+  }
+
+  /**
+   * 网络搜索最佳实践（v1.5）
+   */
+  private async searchWebBestPractices(
+    techStacks: string[],
+    context: RuleGenerationContext
+  ): Promise<any[]> {
+    // 注意：这里无法直接调用 web_search 工具
+    // 需要在 index.ts 中调用 web_search，然后传递结果
+    // 这里返回空数组，实际搜索在 index.ts 中执行
+    return [];
+  }
+
+  /**
+   * 获取备用最佳实践（无网络情况下的备用方案）（v1.5）
+   */
+  private getFallbackPractices(techStacks: string[]): any[] {
+    const practices: any[] = [];
+    
+    // 内置的通用最佳实践（作为备用方案）
+    const fallbackPractices: Record<string, any[]> = {
+      'TypeScript': [
+        {
+          category: 'code-style',
+          title: 'TypeScript 类型安全',
+          content: '始终使用明确的类型定义，避免使用 `any`。优先使用接口（interface）定义对象类型，使用类型别名（type）定义联合类型和复杂类型。',
+          techStack: ['TypeScript'],
+          priority: 'high' as const
+        }
+      ],
+      'React': [
+        {
+          category: 'component',
+          title: 'React 组件最佳实践',
+          content: '使用函数组件和 Hooks。保持组件单一职责，合理拆分大型组件。使用 `useMemo` 和 `useCallback` 优化性能，但避免过度优化。',
+          techStack: ['React'],
+          priority: 'high' as const
+        }
+      ],
+      'Vue': [
+        {
+          category: 'component',
+          title: 'Vue 组件最佳实践',
+          content: '使用 Composition API（Vue 3）。保持组件模板简洁，复杂逻辑抽取到 composables。使用 TypeScript 增强类型安全。',
+          techStack: ['Vue'],
+          priority: 'high' as const
+        }
+      ],
+      'Node.js': [
+        {
+          category: 'architecture',
+          title: 'Node.js 项目结构',
+          content: '使用模块化结构，按功能组织代码。使用环境变量管理配置。实现统一的错误处理机制。',
+          techStack: ['Node.js'],
+          priority: 'medium' as const
+        }
+      ],
+      'Express': [
+        {
+          category: 'routing',
+          title: 'Express 路由最佳实践',
+          content: '使用路由模块化，按功能组织路由。实现中间件进行认证、日志、错误处理。使用 async/await 处理异步操作。',
+          techStack: ['Express'],
+          priority: 'medium' as const
+        }
+      ]
+    };
+
+    for (const tech of techStacks) {
+      // 查找匹配的备用实践
+      for (const [key, value] of Object.entries(fallbackPractices)) {
+        if (tech.toLowerCase().includes(key.toLowerCase()) || 
+            key.toLowerCase().includes(tech.toLowerCase())) {
+          practices.push(...value);
+        }
+      }
+    }
+
+    return practices;
+  }
+
+  /**
    * 获取模块类型名称
    */
   private getModuleTypeName(type: string): string {
@@ -2696,15 +3049,9 @@ ${this.generateModuleCautions(module)}
       rules += `- **函数风格**: ${style.functionStyle === "arrow" ? "箭头函数" : "function 声明"}\n`;
       rules += `- **字符串引号**: ${style.stringQuote === "single" ? "单引号" : style.stringQuote === "double" ? "双引号" : "混合"}\n`;
       rules += `- **分号**: ${style.semicolon === "always" ? "使用" : style.semicolon === "never" ? "不使用" : "混合"}\n\n`;
-      rules += `### 建议\n`;
-      rules += `✅ **短期**: 保持与现有代码一致的风格\n`;
-      if (style.variableDeclaration === "var") {
-        rules += `💡 **长期**: 考虑逐步迁移到 const/let 以提高代码质量\n`;
-      }
-      if (style.stringQuote === "mixed") {
-        rules += `💡 **长期**: 建议统一使用单引号或配置 Prettier\n`;
-      }
-      rules += `\n`;
+      // 移除建议，改为收集到 SuggestionCollector
+      rules += `### 当前实践\n\n`;
+      rules += `✅ 保持与现有代码一致的风格\n\n`;
     }
 
     // ESLint 配置和命令
@@ -2820,45 +3167,8 @@ ${this.generateModuleCautions(module)}
       rules += `**日志方式**：${eh.loggingMethod === "console" ? "console.log/error" : eh.loggingMethod === "logger-library" ? `日志库 (${eh.loggerLibrary})` : "未检测到"}\n\n`;
     }
 
-    // 第二段：短期建议
-    rules += `### 短期建议（保持兼容）\n\n`;
-
-    if (eh.type === "none") {
-      rules += `💡 建议为关键操作添加基础错误处理：\n`;
-      rules += `\`\`\`typescript\n`;
-      rules += `try {\n`;
-      rules += `  await criticalOperation();\n`;
-      rules += `} catch (error) {\n`;
-      rules += `  console.error('操作失败:', error);\n`;
-      rules += `  // 提供用户友好的错误提示\n`;
-      rules += `}\n`;
-      rules += `\`\`\`\n\n`;
-    } else {
-      rules += `✅ 继续使用现有的 ${eh.type} 模式保持一致性\n\n`;
-
-      if (eh.loggingMethod === "console") {
-        rules += `💡 改进建议：为 console.error 添加更多上下文信息\n`;
-        rules += `\`\`\`typescript\n`;
-        rules += `console.error('[错误类型]', { userId, timestamp, error, context });\n`;
-        rules += `\`\`\`\n\n`;
-      }
-    }
-
-    // 第三段：长期建议
-    rules += `### 长期建议（可选改进）\n\n`;
-
-    if (eh.loggingMethod === "console") {
-      rules += `💡 考虑引入结构化日志系统（如 winston 或 pino）：\n`;
-      rules += `- 便于生产环境调试\n`;
-      rules += `- 支持日志级别和过滤\n`;
-      rules += `- 可以集成到监控系统\n\n`;
-    }
-
-    if (eh.customErrorTypes.length === 0) {
-      rules += `💡 考虑定义自定义错误类型以提高错误处理的精确性\n\n`;
-    }
-
-    rules += `💡 考虑引入错误监控服务（如 Sentry）跟踪生产环境错误\n\n`;
+    // 移除所有建议，改为收集到 SuggestionCollector
+    // 建议将在生成完成后单独输出，供用户确认
 
     return rules;
   }
@@ -3067,13 +3377,11 @@ ${this.generateModuleCautions(module)}
 
     if (!hasTests) {
       // 项目没有测试 - 简短提示
-      return `## 测试\n\n### 当前状态\n⚠️ 项目当前未配置测试框架\n\n### 建议\n💡 如需添加测试，建议考虑：\n- **Jest** 或 **Vitest**（单元测试）\n- **@testing-library/react**（React 组件测试）\n- **Cypress** 或 **Playwright**（E2E 测试）\n\n`;
+      return `## 测试\n\n### 当前状态\n⚠️ 项目当前未配置测试框架\n\n如需添加测试，请参考相关技术栈的测试最佳实践。\n\n`;
     }
 
     // 项目有测试 - 生成详细规则
     return this.generateTestingGuidelines(context);
   }
 }
-
-import { FileUtils } from "../utils/file-utils.js";
 

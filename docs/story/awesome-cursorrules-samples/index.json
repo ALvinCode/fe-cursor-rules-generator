@@ -1,0 +1,156 @@
+{
+  "extractedAt": "2025-11-11T05:43:46.365Z",
+  "totalRules": 30,
+  "rules": [
+    {
+      "name": "angular-novo-elements-cursorrules-prompt-file",
+      "path": "rules/angular-novo-elements-cursorrules-prompt-file/.cursorrules",
+      "size": 6159
+    },
+    {
+      "name": "angular-typescript-cursorrules-prompt-file",
+      "path": "rules/angular-typescript-cursorrules-prompt-file/.cursorrules",
+      "size": 1346
+    },
+    {
+      "name": "astro-typescript-cursorrules-prompt-file",
+      "path": "rules/astro-typescript-cursorrules-prompt-file/.cursorrules",
+      "size": 2477
+    },
+    {
+      "name": "chrome-extension-dev-js-typescript-cursorrules-pro",
+      "path": "rules/chrome-extension-dev-js-typescript-cursorrules-pro/.cursorrules",
+      "size": 3847
+    },
+    {
+      "name": "cursor-ai-react-typescript-shadcn-ui-cursorrules-p",
+      "path": "rules/cursor-ai-react-typescript-shadcn-ui-cursorrules-p/.cursorrules",
+      "size": 637
+    },
+    {
+      "name": "cursorrules-cursor-ai-nextjs-14-tailwind-seo-setup",
+      "path": "rules/cursorrules-cursor-ai-nextjs-14-tailwind-seo-setup/.cursorrules",
+      "size": 5583
+    },
+    {
+      "name": "es-module-nodejs-guidelines-cursorrules-prompt-fil",
+      "path": "rules/es-module-nodejs-guidelines-cursorrules-prompt-fil/.cursorrules",
+      "size": 912
+    },
+    {
+      "name": "html-tailwind-css-javascript-cursorrules-prompt-fi",
+      "path": "rules/html-tailwind-css-javascript-cursorrules-prompt-fi/.cursorrules",
+      "size": 1247
+    },
+    {
+      "name": "javascript-astro-tailwind-css-cursorrules-prompt-f",
+      "path": "rules/javascript-astro-tailwind-css-cursorrules-prompt-f/.cursorrules",
+      "size": 4620
+    },
+    {
+      "name": "javascript-chrome-apis-cursorrules-prompt-file",
+      "path": "rules/javascript-chrome-apis-cursorrules-prompt-file/.cursorrules",
+      "size": 569
+    },
+    {
+      "name": "javascript-typescript-code-quality-cursorrules-pro",
+      "path": "rules/javascript-typescript-code-quality-cursorrules-pro/.cursorrules",
+      "size": 3030
+    },
+    {
+      "name": "nextjs-app-router-cursorrules-prompt-file",
+      "path": "rules/nextjs-app-router-cursorrules-prompt-file/.cursorrules",
+      "size": 913
+    },
+    {
+      "name": "nextjs-material-ui-tailwind-css-cursorrules-prompt",
+      "path": "rules/nextjs-material-ui-tailwind-css-cursorrules-prompt/.cursorrules",
+      "size": 1343
+    },
+    {
+      "name": "nextjs-react-tailwind-cursorrules-prompt-file",
+      "path": "rules/nextjs-react-tailwind-cursorrules-prompt-file/.cursorrules",
+      "size": 3985
+    },
+    {
+      "name": "nextjs-react-typescript-cursorrules-prompt-file",
+      "path": "rules/nextjs-react-typescript-cursorrules-prompt-file/.cursorrules",
+      "size": 3867
+    },
+    {
+      "name": "nextjs-seo-dev-cursorrules-prompt-file",
+      "path": "rules/nextjs-seo-dev-cursorrules-prompt-file/.cursorrules",
+      "size": 2083
+    },
+    {
+      "name": "nextjs-supabase-shadcn-pwa-cursorrules-prompt-file",
+      "path": "rules/nextjs-supabase-shadcn-pwa-cursorrules-prompt-file/.cursorrules",
+      "size": 6476
+    },
+    {
+      "name": "nextjs-supabase-todo-app-cursorrules-prompt-file",
+      "path": "rules/nextjs-supabase-todo-app-cursorrules-prompt-file/.cursorrules",
+      "size": 148
+    },
+    {
+      "name": "nextjs-tailwind-typescript-apps-cursorrules-prompt",
+      "path": "rules/nextjs-tailwind-typescript-apps-cursorrules-prompt/.cursorrules",
+      "size": 1313
+    },
+    {
+      "name": "nextjs-typescript-app-cursorrules-prompt-file",
+      "path": "rules/nextjs-typescript-app-cursorrules-prompt-file/.cursorrules",
+      "size": 198
+    },
+    {
+      "name": "nextjs-typescript-cursorrules-prompt-file",
+      "path": "rules/nextjs-typescript-cursorrules-prompt-file/.cursorrules",
+      "size": 2593
+    },
+    {
+      "name": "nextjs-typescript-tailwind-cursorrules-prompt-file",
+      "path": "rules/nextjs-typescript-tailwind-cursorrules-prompt-file/.cursorrules",
+      "size": 2543
+    },
+    {
+      "name": "nextjs-vercel-supabase-cursorrules-prompt-file",
+      "path": "rules/nextjs-vercel-supabase-cursorrules-prompt-file/.cursorrules",
+      "size": 7664
+    },
+    {
+      "name": "nextjs-vercel-typescript-cursorrules-prompt-file",
+      "path": "rules/nextjs-vercel-typescript-cursorrules-prompt-file/.cursorrules",
+      "size": 5442
+    },
+    {
+      "name": "nextjs15-react19-vercelai-tailwind-cursorrules-prompt-file",
+      "path": "rules/nextjs15-react19-vercelai-tailwind-cursorrules-prompt-file/.cursorrules",
+      "size": 2733
+    },
+    {
+      "name": "nodejs-mongodb-cursorrules-prompt-file-tutorial",
+      "path": "rules/nodejs-mongodb-cursorrules-prompt-file-tutorial/.cursorrules",
+      "size": 1995
+    },
+    {
+      "name": "nodejs-mongodb-jwt-express-react-cursorrules-promp",
+      "path": "rules/nodejs-mongodb-jwt-express-react-cursorrules-promp/.cursorrules",
+      "size": 2041
+    },
+    {
+      "name": "python--typescript-guide-cursorrules-prompt-file",
+      "path": "rules/python--typescript-guide-cursorrules-prompt-file/.cursorrules",
+      "size": 1022
+    },
+    {
+      "name": "react-chakra-ui-cursorrules-prompt-file",
+      "path": "rules/react-chakra-ui-cursorrules-prompt-file/.cursorrules",
+      "size": 1080
+    },
+    {
+      "name": "react-components-creation-cursorrules-prompt-file",
+      "path": "rules/react-components-creation-cursorrules-prompt-file/.cursorrules",
+      "size": 1559
+    }
+  ]
+}

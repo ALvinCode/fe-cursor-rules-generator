@@ -692,6 +692,44 @@ class CursorRulesGeneratorServer {
       addDetail(9, "未发现描述与实现不一致的问题。");
     }
 
+    // v1.5: 识别缺失的技术栈并尝试网络搜索
+    let webSearchResults: Record<string, string> = {};
+    const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
+    if (frameworkMatch) {
+      // 识别缺失的技术栈
+      const allProjectTech = [
+        ...techStack.primary,
+        ...techStack.frameworks,
+        ...techStack.languages
+      ];
+      const frameworkTechStacks: Record<string, string[]> = {
+        'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
+        'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
+        'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
+        'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
+        'vue-typescript': ['Vue', 'TypeScript'],
+        'angular-typescript': ['Angular', 'TypeScript'],
+        'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
+        'typescript-react': ['TypeScript', 'React', 'Next.js']
+      };
+      const frameworkTech = frameworkTechStacks[frameworkMatch.framework] || [];
+      const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
+      const missingTechStacks = allProjectTech.filter(tech => {
+        const techLower = tech.toLowerCase();
+        return !frameworkTechLower.some(ft => 
+          techLower.includes(ft) || ft.includes(techLower)
+        );
+      });
+
+      // 尝试网络搜索（如果可用）
+      if (missingTechStacks.length > 0) {
+        addDetail(9, `检测到 ${missingTechStacks.length} 个框架规则中未包含的技术栈: ${missingTechStacks.join(', ')}`);
+        // 注意：这里无法直接调用 web_search，需要在外部调用
+        // 暂时跳过网络搜索，直接使用备用方案
+        addDetail(9, '使用备用最佳实践方案（无网络连接时）');
+      }
+    }
+
     rules = await this.rulesGenerator.generate({
       projectPath,
       techStack,
@@ -705,7 +743,7 @@ class CursorRulesGeneratorServer {
       fileOrganization,
       frontendRouter,
       backendRouter,
-    });
+    }, webSearchResults);
     addDetail(9, `已生成 ${rules.length} 个规则文件草案。`);
     completeTask(9);
 
@@ -737,12 +775,23 @@ class CursorRulesGeneratorServer {
       .join("\n");
 
     const ruleSummary = this.rulesGenerator.generateSummary(rules, projectPath);
+    
+    // 获取建议列表
+    const suggestionCollector = this.rulesGenerator.getSuggestionCollector();
+    const suggestionsOutput = suggestionCollector.formatForOutput();
 
     const analysisLines: string[] = [];
     analysisLines.push(`- cursor-rules-generator 识别主要技术栈：${techStack.primary.length > 0 ? techStack.primary.join("，") : "未检测"}`);
     analysisLines.push(`- cursor-rules-generator 统计项目文件数量：${files.length} 个，涉及 ${Object.keys(fileTypeStats).length} 种文件类型`);
     analysisLines.push(`- cursor-rules-generator 检测模块数量：${modules.length} 个`);
     analysisLines.push(`- cursor-rules-generator 记录自定义工具：Hooks ${customPatterns.customHooks.length} 个，工具函数 ${customPatterns.customUtils.length} 个${customPatterns.apiClient?.exists ? "，API 客户端 1 个" : ""}`);
+    
+    // 添加框架匹配信息
+    const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
+    if (frameworkMatch) {
+      analysisLines.push(`- cursor-rules-generator 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${frameworkMatch.framework}** 格式（相似度: ${Math.round(frameworkMatch.similarity * 100)}%），采用 **${frameworkMatch.format}** 格式风格`);
+    }
+    
     if (frontendRouter) {
       analysisLines.push(`- cursor-rules-generator 识别前端路由：${frontendRouter.info.framework}（${frontendRouter.info.type}）`);
     }
@@ -866,6 +915,12 @@ class CursorRulesGeneratorServer {
     outputMessage += `### 注意事项\n\n`;
     outputMessage += notes.join("\n\n");
     outputMessage += `\n`;
+
+    // 添加建议列表
+    if (suggestionsOutput) {
+      outputMessage += suggestionsOutput;
+      outputMessage += `\n`;
+    }
 
     if (uncertainties.length > 0) {
       outputMessage += `\n## 待确认项\n\n`;

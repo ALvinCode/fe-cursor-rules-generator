@@ -1,0 +1,1160 @@
+{
+  "analyses": [
+    {
+      "fileName": "angular-novo-elements-cursorrules-prompt-file.cursorrules",
+      "size": 6159,
+      "lines": 144,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": ".cursor"
+          },
+          {
+            "level": 1,
+            "title": "General rules"
+          },
+          {
+            "level": 1,
+            "title": "File-by-file changes"
+          },
+          {
+            "level": 1,
+            "title": "Code style and formatting"
+          },
+          {
+            "level": 1,
+            "title": "Debugging and testing"
+          },
+          {
+            "level": 1,
+            "title": "Project structure"
+          },
+          {
+            "level": 1,
+            "title": "Clean Code"
+          },
+          {
+            "level": 1,
+            "title": "Project specific rules"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 26,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "Angular"
+      ],
+      "format": "title-first"
+    },
+    {
+      "fileName": "angular-typescript-cursorrules-prompt-file.cursorrules",
+      "size": 1346,
+      "lines": 37,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": true
+      },
+      "techStack": [
+        "Angular",
+        "TypeScript"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "astro-typescript-cursorrules-prompt-file.cursorrules",
+      "size": 2477,
+      "lines": 88,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": true
+      },
+      "techStack": [
+        "TypeScript",
+        "Tailwind"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "chrome-extension-dev-js-typescript-cursorrules-pro.cursorrules",
+      "size": 3847,
+      "lines": 89,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 45,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "TypeScript",
+        "JavaScript",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "cursor-ai-react-typescript-shadcn-ui-cursorrules-p.cursorrules",
+      "size": 637,
+      "lines": 20,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "JavaScript",
+        "Node.js",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "cursorrules-cursor-ai-nextjs-14-tailwind-seo-setup.cursorrules",
+      "size": 5583,
+      "lines": 127,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": "System Prompt: Next.js 14 and Tailwind CSS Code Generation with TypeScript"
+          },
+          {
+            "level": 2,
+            "title": "Key Requirements:"
+          },
+          {
+            "level": 2,
+            "title": "Capabilities:"
+          },
+          {
+            "level": 2,
+            "title": "Guidelines:"
+          },
+          {
+            "level": 2,
+            "title": "Code Generation Rules:"
+          }
+        ],
+        "codeBlocks": 8,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": true,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind"
+      ],
+      "format": "title-first"
+    },
+    {
+      "fileName": "es-module-nodejs-guidelines-cursorrules-prompt-fil.cursorrules",
+      "size": 906,
+      "lines": 28,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [
+          {
+            "level": 2,
+            "title": "General"
+          },
+          {
+            "level": 2,
+            "title": "Code"
+          },
+          {
+            "level": 2,
+            "title": "Comments"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 13,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "Nodejs"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "html-tailwind-css-javascript-cursorrules-prompt-fi.cursorrules",
+      "size": 1243,
+      "lines": 20,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 12,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": true
+      },
+      "techStack": [
+        "JavaScript",
+        "Tailwind"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "javascript-astro-tailwind-css-cursorrules-prompt-f.cursorrules",
+      "size": 4620,
+      "lines": 126,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 55,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Vue",
+        "Svelte",
+        "TypeScript",
+        "JavaScript",
+        "Tailwind",
+        "Vercel"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "javascript-chrome-apis-cursorrules-prompt-file.cursorrules",
+      "size": 569,
+      "lines": 26,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "JavaScript"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "javascript-typescript-code-quality-cursorrules-pro.cursorrules",
+      "size": 3026,
+      "lines": 56,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": "Persona"
+          },
+          {
+            "level": 1,
+            "title": "Coding Guidelines"
+          },
+          {
+            "level": 1,
+            "title": "Key Mindsets"
+          },
+          {
+            "level": 1,
+            "title": "Important: Minimal Code Changes"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 4,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "TypeScript",
+        "JavaScript"
+      ],
+      "format": "title-first"
+    },
+    {
+      "fileName": "nextjs-app-router-cursorrules-prompt-file.cursorrules",
+      "size": 913,
+      "lines": 39,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "Next.js",
+        "Nextjs",
+        "TypeScript",
+        "Tailwind"
+      ],
+      "format": "code-comment"
+    },
+    {
+      "fileName": "nextjs-material-ui-tailwind-css-cursorrules-prompt.cursorrules",
+      "size": 1341,
+      "lines": 57,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-react-tailwind-cursorrules-prompt-file.cursorrules",
+      "size": 3915,
+      "lines": 88,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [
+          {
+            "level": 2,
+            "title": "Components Organization"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 11,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Node.js",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-react-typescript-cursorrules-prompt-file.cursorrules",
+      "size": 3867,
+      "lines": 72,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 32,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "Nextjs",
+        "TypeScript",
+        "JavaScript",
+        "Node.js",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "nextjs-seo-dev-cursorrules-prompt-file.cursorrules",
+      "size": 2083,
+      "lines": 68,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Nextjs",
+        "TypeScript",
+        "Tailwind",
+        "Vercel"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-supabase-shadcn-pwa-cursorrules-prompt-file.cursorrules",
+      "size": 6472,
+      "lines": 118,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [
+          {
+            "level": 2,
+            "title": "Key Principles"
+          },
+          {
+            "level": 3,
+            "title": "Rules for Build Notes Files"
+          },
+          {
+            "level": 3,
+            "title": "Rules for Context Files"
+          },
+          {
+            "level": 2,
+            "title": "Project Structure"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 5,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Shadcn",
+        "Supabase"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-supabase-todo-app-cursorrules-prompt-file.cursorrules",
+      "size": 148,
+      "lines": 7,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-tailwind-typescript-apps-cursorrules-prompt.cursorrules",
+      "size": 1313,
+      "lines": 24,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 10,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "Next.js",
+        "TypeScript",
+        "Tailwind",
+        "Supabase"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "nextjs-typescript-app-cursorrules-prompt-file.cursorrules",
+      "size": 198,
+      "lines": 5,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "Next.js",
+        "TypeScript"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs-typescript-cursorrules-prompt-file.cursorrules",
+      "size": 2561,
+      "lines": 77,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 10,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "nextjs-typescript-tailwind-cursorrules-prompt-file.cursorrules",
+      "size": 2543,
+      "lines": 56,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": "Project Overview"
+          },
+          {
+            "level": 1,
+            "title": "Key URLs"
+          },
+          {
+            "level": 1,
+            "title": "Project Structure"
+          },
+          {
+            "level": 1,
+            "title": "Development Guidelines"
+          },
+          {
+            "level": 1,
+            "title": "Important Scripts"
+          },
+          {
+            "level": 1,
+            "title": "AI Interaction Guidelines"
+          },
+          {
+            "level": 1,
+            "title": "Lexicon of Terms and Concepts"
+          },
+          {
+            "level": 1,
+            "title": "Additional Resources"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 30,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "Nextjs",
+        "TypeScript",
+        "Tailwind"
+      ],
+      "format": "title-first"
+    },
+    {
+      "fileName": "nextjs-vercel-supabase-cursorrules-prompt-file.cursorrules",
+      "size": 7664,
+      "lines": 138,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": "Cursorrules"
+          },
+          {
+            "level": 2,
+            "title": "Intro"
+          },
+          {
+            "level": 2,
+            "title": "BA Copilot MVP"
+          },
+          {
+            "level": 3,
+            "title": "Overview"
+          },
+          {
+            "level": 3,
+            "title": "UI Description"
+          },
+          {
+            "level": 2,
+            "title": "BA Copilot Vision"
+          },
+          {
+            "level": 3,
+            "title": "Overview"
+          },
+          {
+            "level": 3,
+            "title": "UI Description"
+          },
+          {
+            "level": 2,
+            "title": "Technical"
+          },
+          {
+            "level": 3,
+            "title": "Overview"
+          },
+          {
+            "level": 3,
+            "title": "Devias Template"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 12,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "Nextjs",
+        "TypeScript",
+        "Supabase",
+        "Vercel"
+      ],
+      "format": "title-first"
+    },
+    {
+      "fileName": "nextjs-vercel-typescript-cursorrules-prompt-file.cursorrules",
+      "size": 5442,
+      "lines": 130,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [
+          {
+            "level": 3,
+            "title": "Extended Rules for AI SDK RSC Integration with Vercel Middleware and KV Database"
+          }
+        ],
+        "codeBlocks": 2,
+        "lists": 31,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": true,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Node.js",
+        "Tailwind",
+        "Shadcn",
+        "Vercel"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nextjs15-react19-vercelai-tailwind-cursorrules-prompt-file.cursorrules",
+      "size": 2733,
+      "lines": 82,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [
+          {
+            "level": 2,
+            "title": "Analysis Process"
+          },
+          {
+            "level": 2,
+            "title": "Code Style and Structure"
+          },
+          {
+            "level": 3,
+            "title": "General Principles"
+          },
+          {
+            "level": 3,
+            "title": "Naming Conventions"
+          },
+          {
+            "level": 3,
+            "title": "TypeScript Usage"
+          },
+          {
+            "level": 2,
+            "title": "React 19 and Next.js 15 Best Practices"
+          },
+          {
+            "level": 3,
+            "title": "Component Architecture"
+          },
+          {
+            "level": 3,
+            "title": "State Management"
+          },
+          {
+            "level": 3,
+            "title": "Async Request APIs"
+          }
+        ],
+        "codeBlocks": 0.5,
+        "lists": 23,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": true,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": true
+      },
+      "techStack": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind",
+        "Shadcn",
+        "Vercel"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "nodejs-mongodb-cursorrules-prompt-file-tutorial.cursorrules",
+      "size": 1995,
+      "lines": 93,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Node.js",
+        "Express",
+        "MongoDB"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "nodejs-mongodb-jwt-express-react-cursorrules-promp.cursorrules",
+      "size": 2041,
+      "lines": 69,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "Node.js",
+        "Express",
+        "MongoDB"
+      ],
+      "format": "mixed"
+    },
+    {
+      "fileName": "python--typescript-guide-cursorrules-prompt-file.cursorrules",
+      "size": 1022,
+      "lines": 18,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 8,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": true,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": false,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "TypeScript",
+        "Tailwind"
+      ],
+      "format": "persona-first"
+    },
+    {
+      "fileName": "react-chakra-ui-cursorrules-prompt-file.cursorrules",
+      "size": 1080,
+      "lines": 43,
+      "hasFrontmatter": false,
+      "hasTitle": false,
+      "structure": {
+        "sections": [],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": true,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "TypeScript",
+        "Chakra"
+      ],
+      "format": "code-comment"
+    },
+    {
+      "fileName": "react-components-creation-cursorrules-prompt-file.cursorrules",
+      "size": 1559,
+      "lines": 37,
+      "hasFrontmatter": false,
+      "hasTitle": true,
+      "structure": {
+        "sections": [
+          {
+            "level": 1,
+            "title": "Cursor Rules"
+          },
+          {
+            "level": 2,
+            "title": "Whenever you need a React component"
+          }
+        ],
+        "codeBlocks": 0,
+        "lists": 0,
+        "examples": 0
+      },
+      "patterns": {
+        "startsWithPersona": false,
+        "hasKeyPrinciples": false,
+        "hasGuidelines": false,
+        "hasCodeExamples": false,
+        "hasStructure": true,
+        "hasNaming": false
+      },
+      "techStack": [
+        "React",
+        "TypeScript",
+        "Tailwind",
+        "Shadcn"
+      ],
+      "format": "title-first"
+    }
+  ],
+  "report": {
+    "total": 30,
+    "formats": {
+      "title-first": 6,
+      "persona-first": 11,
+      "mixed": 11,
+      "code-comment": 2
+    },
+    "commonSections": {
+      ".cursor": 1,
+      "general rules": 1,
+      "file-by-file changes": 1,
+      "code style and formatting": 1,
+      "debugging and testing": 1,
+      "project structure": 3,
+      "clean code": 1,
+      "project specific rules": 1,
+      "system prompt: next.js 14 and tailwind css code generation with typescript": 1,
+      "key requirements:": 1,
+      "capabilities:": 1,
+      "guidelines:": 1,
+      "code generation rules:": 1,
+      "general": 1,
+      "code": 1,
+      "comments": 1,
+      "persona": 1,
+      "coding guidelines": 1,
+      "key mindsets": 1,
+      "important: minimal code changes": 1,
+      "components organization": 1,
+      "key principles": 1,
+      "rules for build notes files": 1,
+      "rules for context files": 1,
+      "project overview": 1,
+      "key urls": 1,
+      "development guidelines": 1,
+      "important scripts": 1,
+      "ai interaction guidelines": 1,
+      "lexicon of terms and concepts": 1,
+      "additional resources": 1,
+      "cursorrules": 1,
+      "intro": 1,
+      "ba copilot mvp": 1,
+      "overview": 3,
+      "ui description": 2,
+      "ba copilot vision": 1,
+      "technical": 1,
+      "devias template": 1,
+      "extended rules for ai sdk rsc integration with vercel middleware and kv database": 1,
+      "analysis process": 1,
+      "code style and structure": 1,
+      "general principles": 1,
+      "naming conventions": 1,
+      "typescript usage": 1,
+      "react 19 and next.js 15 best practices": 1,
+      "component architecture": 1,
+      "state management": 1,
+      "async request apis": 1,
+      "cursor rules": 1,
+      "whenever you need a react component": 1
+    },
+    "techStacks": {
+      "Angular": 2,
+      "TypeScript": 23,
+      "Tailwind": 18,
+      "JavaScript": 7,
+      "Shadcn": 10,
+      "React": 18,
+      "Next.js": 14,
+      "Node.js": 6,
+      "Nodejs": 1,
+      "Vue": 1,
+      "Svelte": 1,
+      "Vercel": 5,
+      "Nextjs": 5,
+      "Supabase": 3,
+      "Express": 2,
+      "MongoDB": 2,
+      "Chakra": 1
+    },
+    "avgLines": 66,
+    "avgSize": 2643
+  }
+}
