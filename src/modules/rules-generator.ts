@@ -5,6 +5,7 @@ import {
   Module,
   CodeFeature,
   InstructionsFile,
+  TechStack,
 } from "../types.js";
 import * as path from "path";
 import { findBestFrameworkMatch, getFrameworkFormatTemplate, FrameworkMatch } from "./framework-matcher.js";
@@ -13,6 +14,7 @@ import { BestPracticeExtractor } from "./best-practice-extractor.js";
 import { BestPracticeComparator } from "./best-practice-comparator.js";
 import { SuggestionCollector } from "./suggestion-collector.js";
 import { BestPracticeWebSearcher } from "./best-practice-web-searcher.js";
+import { FileUtils } from "../utils/file-utils.js";
 
 /**
  * 规则生成引擎
@@ -296,13 +298,13 @@ ${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工�
 ## ⚠️ 文件生成限制
 
 **严格禁止**：
-- ❌ 禁止生成任何 `.md` 文件（除了 `.cursor/instructions.md` 和 `.cursor/rules/*.mdc` 规则文件）
+- ❌ 禁止生成任何 '.md' 文件（除了 '.cursor/instructions.md' 和 '.cursor/rules/*.mdc' 规则文件）
 - ❌ 禁止生成过程记录、总结、日志等文档文件
 - ❌ 禁止生成与项目无关的文档文件
 
 **允许的文件**：
-- ✅ `.cursor/instructions.md` - Cursor 工作流程说明
-- ✅ `.cursor/rules/*.mdc` - Cursor 规则文件
+- ✅ '.cursor/instructions.md' - Cursor 工作流程说明
+- ✅ '.cursor/rules/*.mdc' - Cursor 规则文件
 
 **说明**：生成代码时，不要创建任何 Markdown 文档文件。所有文档都应该通过代码注释、类型定义和清晰的命名来表达。
 

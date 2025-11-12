@@ -694,8 +694,8 @@ class CursorRulesGeneratorServer {
 
     // v1.5: 识别缺失的技术栈并尝试网络搜索
     let webSearchResults: Record<string, string> = {};
-    const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
-    if (frameworkMatch) {
+    const frameworkMatchForSearch = this.rulesGenerator.getFrameworkMatch();
+    if (frameworkMatchForSearch) {
       // 识别缺失的技术栈
       const allProjectTech = [
         ...techStack.primary,
@@ -712,7 +712,7 @@ class CursorRulesGeneratorServer {
         'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
         'typescript-react': ['TypeScript', 'React', 'Next.js']
       };
-      const frameworkTech = frameworkTechStacks[frameworkMatch.framework] || [];
+      const frameworkTech = frameworkTechStacks[frameworkMatchForSearch.framework] || [];
       const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
       const missingTechStacks = allProjectTech.filter(tech => {
         const techLower = tech.toLowerCase();
