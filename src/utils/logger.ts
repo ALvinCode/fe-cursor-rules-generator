@@ -164,11 +164,11 @@ class Logger {
   /**
    * 重置单例实例（主要用于测试）
    */
-  static reset(): void {
+  static async reset(): Promise<void> {
     if (Logger.instance) {
       // 刷新并关闭旧的日志流
       if (Logger.instance.pinoLogger.flush) {
-        Logger.instance.pinoLogger.flush();
+        await Logger.instance.pinoLogger.flush();
       }
       // 关闭文件流
       if (Logger.instance.logStream && !Logger.instance.logStream.destroyed) {
@@ -200,11 +200,29 @@ class Logger {
 
   /**
    * 刷新日志（确保所有日志都写入文件）
+   * 注意：Pino 的 flush 是异步的，返回 Promise
    */
-  flush(): void {
+  async flush(): Promise<void> {
     // Pino 会自动刷新，但我们可以显式调用
     if (this.pinoLogger.flush) {
-      this.pinoLogger.flush();
+      await this.pinoLogger.flush();
+    }
+    // 确保文件流也刷新
+    if (this.logStream && !this.logStream.destroyed) {
+      return new Promise<void>((resolve) => {
+        // 设置超时，避免永远等待
+        const timeout = setTimeout(() => resolve(), 100);
+        const cleanup = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        
+        if (this.logStream.writable) {
+          this.logStream.write('', cleanup);
+        } else {
+          cleanup();
+        }
+      });
     }
   }
 
@@ -306,10 +324,11 @@ export { Logger };
 /**
  * 在进程退出前刷新日志
  */
-process.on('beforeExit', () => {
-  logger.flush();
+process.on('beforeExit', async () => {
+  await logger.flush();
 });
 
 process.on('exit', () => {
-  logger.flush();
+  // exit 事件中不能使用异步操作，使用同步方式
+    Logger.getInstance()['pinoLogger'].flush();
 });
