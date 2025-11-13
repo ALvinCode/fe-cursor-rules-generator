@@ -9,6 +9,7 @@ import {
 } from "../types.js";
 import * as path from "path";
 import { findBestFrameworkMatch, getFrameworkFormatTemplate, FrameworkMatch } from "./framework-matcher.js";
+import { findBestTechStackMatches, MultiCategoryMatch, TechStackMatch } from "./tech-stack-matcher.js";
 import { logger } from "../utils/logger.js";
 import { BestPracticeExtractor } from "./best-practice-extractor.js";
 import { BestPracticeComparator } from "./best-practice-comparator.js";
@@ -22,6 +23,7 @@ import { FileUtils } from "../utils/file-utils.js";
  */
 export class RulesGenerator {
   private frameworkMatch: FrameworkMatch | null = null;
+  private multiCategoryMatch: MultiCategoryMatch | null = null;
   private suggestionCollector: SuggestionCollector;
   private bestPracticeExtractor: BestPracticeExtractor;
   private bestPracticeComparator: BestPracticeComparator;
@@ -39,6 +41,13 @@ export class RulesGenerator {
    */
   getFrameworkMatch(): FrameworkMatch | null {
     return this.frameworkMatch;
+  }
+
+  /**
+   * 获取多类别技术栈匹配信息（用于输出显示）
+   */
+  getMultiCategoryMatch(): MultiCategoryMatch | null {
+    return this.multiCategoryMatch;
   }
 
   /**
@@ -67,13 +76,28 @@ export class RulesGenerator {
       });
     }
 
+    // v1.6: 多类别技术栈匹配 - 支持所有类别的规则
+    this.multiCategoryMatch = await findBestTechStackMatches(context.techStack);
+    if (this.multiCategoryMatch && this.multiCategoryMatch.matches.length > 0) {
+      logger.info('多类别技术栈匹配成功', {
+        totalMatches: this.multiCategoryMatch.matches.length,
+        categories: this.multiCategoryMatch.categories,
+        primaryMatch: this.multiCategoryMatch.primaryMatch?.ruleName,
+        primarySimilarity: this.multiCategoryMatch.primaryMatch 
+          ? Math.round(this.multiCategoryMatch.primaryMatch.similarity * 100) + '%' 
+          : 'N/A'
+      });
+    }
+
     // v1.5: 提取和对比最佳实践
     let missingPractices: any[] = [];
     let ambiguousPractices: any[] = [];
-    if (this.frameworkMatch) {
+    
+    // 优先使用多类别匹配（如果可用）
+    if (this.multiCategoryMatch && this.multiCategoryMatch.matches.length > 0) {
       try {
-        const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
-          this.frameworkMatch,
+        const extractedPractices = await this.bestPracticeExtractor.extractFromMultiCategoryMatch(
+          this.multiCategoryMatch,
           context.techStack
         );
         
@@ -82,17 +106,17 @@ export class RulesGenerator {
         ambiguousPractices = comparison.ambiguousPractices;
         this.suggestionCollector.addAll(comparison.suggestions);
         
-        logger.info('最佳实践对比完成', {
+        logger.info('最佳实践对比完成（多类别）', {
           extracted: extractedPractices.length,
           missing: missingPractices.length,
           ambiguous: ambiguousPractices.length,
           suggestions: comparison.suggestions.length
         });
 
-        // v1.5: 识别项目使用但框架规则中没有的技术栈
+        // v1.5: 识别项目使用但规则中没有的技术栈
         const missingTechStacks = this.identifyMissingTechStacks(
           context.techStack,
-          this.frameworkMatch
+          this.multiCategoryMatch.primaryMatch
         );
 
         // 对于缺失的技术栈，尝试网络搜索最佳实践
@@ -130,6 +154,51 @@ export class RulesGenerator {
             }
           }
         }
+      } catch (error) {
+        logger.debug('多类别最佳实践提取失败，回退到框架匹配', { error });
+        // 回退到旧的框架匹配方式
+        if (this.frameworkMatch) {
+          try {
+            const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
+              this.frameworkMatch,
+              context.techStack
+            );
+            
+            const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
+            missingPractices = comparison.missingPractices;
+            ambiguousPractices = comparison.ambiguousPractices;
+            this.suggestionCollector.addAll(comparison.suggestions);
+            
+            logger.info('最佳实践对比完成（框架匹配）', {
+              extracted: extractedPractices.length,
+              missing: missingPractices.length,
+              ambiguous: ambiguousPractices.length,
+              suggestions: comparison.suggestions.length
+            });
+          } catch (error2) {
+            logger.debug('框架匹配最佳实践提取失败', { error: error2 });
+          }
+        }
+      }
+    } else if (this.frameworkMatch) {
+      // 回退到旧的框架匹配方式
+      try {
+        const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
+          this.frameworkMatch,
+          context.techStack
+        );
+        
+        const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
+        missingPractices = comparison.missingPractices;
+        ambiguousPractices = comparison.ambiguousPractices;
+        this.suggestionCollector.addAll(comparison.suggestions);
+        
+        logger.info('最佳实践对比完成（框架匹配）', {
+          extracted: extractedPractices.length,
+          missing: missingPractices.length,
+          ambiguous: ambiguousPractices.length,
+          suggestions: comparison.suggestions.length
+        });
       } catch (error) {
         logger.debug('最佳实践提取失败', { error });
       }
@@ -2848,13 +2917,13 @@ ${this.generateModuleCautions(module)}
   }
 
   /**
-   * 识别项目使用但框架规则中没有的技术栈（v1.5）
+   * 识别项目使用但规则中没有的技术栈（v1.5）
    */
   private identifyMissingTechStacks(
     projectTechStack: TechStack,
-    frameworkMatch: FrameworkMatch | null
+    match: FrameworkMatch | TechStackMatch | null
   ): string[] {
-    if (!frameworkMatch) {
+    if (!match) {
       return [];
     }
 
@@ -2864,19 +2933,28 @@ ${this.generateModuleCautions(module)}
       ...projectTechStack.languages
     ];
 
-    // 获取框架规则中的技术栈（从 framework-matcher 中获取）
-    const frameworkTechStacks: Record<string, string[]> = {
-      'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
-      'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
-      'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
-      'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
-      'vue-typescript': ['Vue', 'TypeScript'],
-      'angular-typescript': ['Angular', 'TypeScript'],
-      'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
-      'typescript-react': ['TypeScript', 'React', 'Next.js']
-    };
+    // 获取匹配规则中的技术栈
+    let matchedTech: string[] = [];
+    
+    if ('techStack' in match && match.techStack) {
+      // 多类别匹配
+      matchedTech = match.techStack;
+    } else if ('framework' in match) {
+      // 框架匹配（向后兼容）
+      const frameworkTechStacks: Record<string, string[]> = {
+        'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
+        'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
+        'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
+        'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
+        'vue-typescript': ['Vue', 'TypeScript'],
+        'angular-typescript': ['Angular', 'TypeScript'],
+        'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
+        'typescript-react': ['TypeScript', 'React', 'Next.js']
+      };
+      matchedTech = frameworkTechStacks[match.framework] || [];
+    }
 
-    const frameworkTech = frameworkTechStacks[frameworkMatch.framework] || [];
+    const frameworkTech = matchedTech;
     const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
 
     // 找出项目使用但框架规则中没有的技术栈

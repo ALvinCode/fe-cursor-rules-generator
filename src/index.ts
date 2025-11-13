@@ -786,10 +786,38 @@ class CursorRulesGeneratorServer {
     analysisLines.push(`- cursor-rules-generator 检测模块数量：${modules.length} 个`);
     analysisLines.push(`- cursor-rules-generator 记录自定义工具：Hooks ${customPatterns.customHooks.length} 个，工具函数 ${customPatterns.customUtils.length} 个${customPatterns.apiClient?.exists ? "，API 客户端 1 个" : ""}`);
     
-    // 添加框架匹配信息
+    // 添加框架匹配信息（向后兼容）
     const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
     if (frameworkMatch) {
       analysisLines.push(`- cursor-rules-generator 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${frameworkMatch.framework}** 格式（相似度: ${Math.round(frameworkMatch.similarity * 100)}%），采用 **${frameworkMatch.format}** 格式风格`);
+    }
+
+    // 添加多类别技术栈匹配信息
+    const multiCategoryMatch = this.rulesGenerator.getMultiCategoryMatch();
+    if (multiCategoryMatch && multiCategoryMatch.matches.length > 0) {
+      const categoryNames: Record<string, string> = {
+        frontend: '前端框架',
+        backend: '后端框架',
+        mobile: '移动开发',
+        styling: 'CSS 和样式',
+        state: '状态管理',
+        database: '数据库和 API',
+        testing: '测试',
+        hosting: '部署和托管',
+        build: '构建工具',
+        language: '语言特定',
+        other: '其他'
+      };
+      
+      const categoryList = multiCategoryMatch.categories
+        .map((cat: string) => categoryNames[cat] || cat)
+        .join('、');
+      
+      analysisLines.push(`- cursor-rules-generator 多类别技术栈匹配：找到 ${multiCategoryMatch.matches.length} 个匹配规则，涵盖 ${categoryList} 等 ${multiCategoryMatch.categories.length} 个类别`);
+      
+      if (multiCategoryMatch.primaryMatch) {
+        analysisLines.push(`  - 主要匹配：${multiCategoryMatch.primaryMatch.ruleName}（相似度: ${Math.round(multiCategoryMatch.primaryMatch.similarity * 100)}%，类别: ${categoryNames[multiCategoryMatch.primaryMatch.category] || multiCategoryMatch.primaryMatch.category}）`);
+      }
     }
     
     if (frontendRouter) {

@@ -7,6 +7,7 @@ import { FileUtils } from "../utils/file-utils.js";
 import { logger } from "../utils/logger.js";
 import * as path from "path";
 import { FrameworkMatch } from "./framework-matcher.js";
+import { TechStackMatch, MultiCategoryMatch } from "./tech-stack-matcher.js";
 import { TechStack } from "../types.js";
 
 export interface ExtractedBestPractice {
@@ -42,7 +43,7 @@ export class BestPracticeExtractor {
   }
 
   /**
-   * 从匹配的框架规则文件中提取最佳实践
+   * 从匹配的框架规则文件中提取最佳实践（兼容旧接口）
    */
   async extractFromFrameworkMatch(
     frameworkMatch: FrameworkMatch | null,
@@ -89,7 +90,8 @@ export class BestPracticeExtractor {
    */
   private parseBestPractices(
     content: string,
-    projectTechStack: TechStack
+    projectTechStack: TechStack,
+    defaultCategory?: string
   ): ExtractedBestPractice[] {
     const practices: ExtractedBestPractice[] = [];
 
@@ -97,7 +99,7 @@ export class BestPracticeExtractor {
     const sections = this.extractSections(content);
 
     for (const section of sections) {
-      const category = this.categorizeSection(section.title);
+      const category = this.categorizeSection(section.title, defaultCategory);
       const techStack = this.extractTechStack(section.content, projectTechStack);
       
       // 提取该章节中的最佳实践点
@@ -203,7 +205,12 @@ export class BestPracticeExtractor {
   /**
    * 对章节进行分类
    */
-  private categorizeSection(title: string): string {
+  private categorizeSection(title: string, defaultCategory?: string): string {
+    // 如果提供了默认类别，优先使用
+    if (defaultCategory) {
+      return defaultCategory;
+    }
+    
     const titleLower = title.toLowerCase();
     
     if (titleLower.includes('style') || titleLower.includes('format') || titleLower.includes('convention')) {
@@ -363,6 +370,83 @@ export class BestPracticeExtractor {
     }
 
     return Array.from(seen.values());
+  }
+
+  /**
+   * 从多类别技术栈匹配中提取最佳实践（新接口）
+   */
+  async extractFromMultiCategoryMatch(
+    multiMatch: MultiCategoryMatch,
+    projectTechStack: TechStack
+  ): Promise<ExtractedBestPractice[]> {
+    if (!multiMatch || multiMatch.matches.length === 0) {
+      logger.debug("未找到匹配的技术栈规则");
+      return [];
+    }
+
+    const practices: ExtractedBestPractice[] = [];
+    const processedFiles = new Set<string>();
+
+    logger.info(`从 ${multiMatch.matches.length} 个匹配规则中提取最佳实践`, {
+      categories: multiMatch.categories,
+      primaryMatch: multiMatch.primaryMatch?.ruleName
+    });
+
+    // 按类别处理匹配
+    for (const match of multiMatch.matches) {
+      // 跳过相似度太低的匹配
+      if (match.similarity < 0.2) {
+        continue;
+      }
+
+      // 构建文件路径（支持按类别组织的目录结构）
+      let filePath: string;
+      if (match.category && match.category !== 'other') {
+        // 尝试从类别目录读取
+        filePath = path.join(this.samplesDir, match.category, match.sampleFile || '');
+      } else {
+        // 从根目录读取（向后兼容）
+        filePath = path.join(this.samplesDir, match.sampleFile || '');
+      }
+
+      // 如果文件不存在，尝试从根目录读取
+      if (!await FileUtils.fileExists(filePath)) {
+        filePath = path.join(this.samplesDir, match.sampleFile || '');
+      }
+
+      // 避免重复处理同一文件
+      if (processedFiles.has(filePath)) {
+        continue;
+      }
+
+      try {
+        if (await FileUtils.fileExists(filePath)) {
+          const content = await FileUtils.readFile(filePath);
+          const extracted = this.parseBestPractices(content, projectTechStack, match.category);
+          practices.push(...extracted);
+          processedFiles.add(filePath);
+          
+          logger.debug(`从规则文件提取最佳实践`, {
+            file: match.sampleFile,
+            category: match.category,
+            practices: extracted.length
+          });
+        }
+      } catch (error) {
+        logger.debug(`无法读取规则文件: ${filePath}`, { error });
+      }
+    }
+
+    // 去重（基于 title 和 category）
+    const uniquePractices = this.deduplicatePractices(practices);
+    
+    logger.info(`提取完成`, {
+      total: practices.length,
+      unique: uniquePractices.length,
+      categories: Array.from(new Set(uniquePractices.map(p => p.category)))
+    });
+
+    return uniquePractices;
   }
 }
 
