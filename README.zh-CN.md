@@ -36,11 +36,72 @@
 
 ### 安装步骤
 
-#### 1. 克隆并构建项目
+#### 方式一：通过 npm 安装（推荐）
+
+```bash
+# 全局安装
+npm install -g cursor-rules-generators
+
+# 或本地安装到项目
+npm install cursor-rules-generators
+```
+
+**配置到 Cursor：**
+
+找到 Cursor 的 MCP 配置文件：
+
+- **macOS/Linux**: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+- **Windows**: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+
+**如果全局安装**，添加以下配置：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "cursor-rules-generator",
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+**如果本地安装**，需要找到 `node_modules` 中的可执行文件路径：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "node",
+      "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+或者使用 `npx`：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "npx",
+      "args": ["-y", "cursor-rules-generators"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+#### 方式二：从源码安装
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/cursor-rules-generator.git
+git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
 cd cursor-rules-generator
 
 # 安装依赖
@@ -50,14 +111,7 @@ npm install
 npm run build
 ```
 
-#### 2. 配置到 Cursor
-
-找到 Cursor 的 MCP 配置文件：
-
-- **macOS/Linux**: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-- **Windows**: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-
-添加配置：
+**配置到 Cursor：**
 
 ```json
 {

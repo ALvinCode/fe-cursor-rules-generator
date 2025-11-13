@@ -15,16 +15,26 @@
 
 ## 📦 安装
 
-### 1. 克隆仓库并构建
+### 方式一：通过 npm 安装（推荐）
 
 ```bash
-git clone <your-repo-url>
+# 全局安装
+npm install -g cursor-rules-generators
+
+# 或本地安装到项目
+npm install cursor-rules-generators
+```
+
+### 方式二：从源码安装
+
+```bash
+git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
 cd cursor-rules-generator
 npm install
 npm run build
 ```
 
-### 2. 配置 Cursor
+### 配置 Cursor
 
 在 Cursor 的 MCP 配置文件中添加此 Server：
 
@@ -32,7 +42,51 @@ npm run build
 
 **Windows:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
 
-添加以下配置：
+**如果通过 npm 全局安装**，添加以下配置：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "cursor-rules-generator",
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+**如果通过 npm 本地安装**，使用以下配置之一：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "node",
+      "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+或使用 `npx`：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "npx",
+      "args": ["-y", "cursor-rules-generators"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+**如果从源码安装**，将 `/path/to/cursor-rules-generator` 替换为实际的项目路径：
 
 ```json
 {
@@ -47,9 +101,7 @@ npm run build
 }
 ```
 
-将 `/path/to/cursor-rules-generator` 替换为实际的项目路径。
-
-### 3. 重启 Cursor
+### 重启 Cursor
 
 重启 Cursor 使配置生效。
 
