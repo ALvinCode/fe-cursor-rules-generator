@@ -93,10 +93,16 @@ function parseLogLevel(level?: string): string {
 
 /**
  * 创建 Pino 日志实例
+ * @returns 返回包含 logger 和 stream 的对象
  */
-function createPinoLogger(): pino.Logger {
+function createPinoLogger(): { logger: pino.Logger; stream: fs.WriteStream } {
   const logLevel = parseLogLevel(process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL);
   const logFilePath = getLogFilePath();
+  
+  // 确保日志文件存在（如果不存在则创建空文件）
+  if (!fs.existsSync(logFilePath)) {
+    fs.writeFileSync(logFilePath, '', { flag: 'a' });
+  }
   
   // 创建文件流
   const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
@@ -115,7 +121,8 @@ function createPinoLogger(): pino.Logger {
   // MCP 最佳实践：所有日志必须写入文件，不使用 stdout/stderr
   // 这避免了干扰 MCP 协议通信（stdio 用于 JSON-RPC）
   // 如果用户需要查看日志，可以通过文件查看或设置 CURSOR_RULES_GENERATOR_LOG_FILE 环境变量
-  return pino(pinoConfig, logStream);
+  const logger = pino(pinoConfig, logStream);
+  return { logger, stream: logStream };
 }
 
 /**
@@ -125,10 +132,13 @@ function createPinoLogger(): pino.Logger {
 class Logger {
   private static instance: Logger;
   private pinoLogger: pino.Logger;
+  private logStream: fs.WriteStream;
   private logLevel: LogLevel;
 
   private constructor() {
-    this.pinoLogger = createPinoLogger();
+    const { logger, stream } = createPinoLogger();
+    this.pinoLogger = logger;
+    this.logStream = stream;
     
     // 从环境变量读取日志级别
     const envLogLevel = process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL?.toUpperCase();
@@ -149,6 +159,23 @@ class Logger {
       Logger.instance = new Logger();
     }
     return Logger.instance;
+  }
+
+  /**
+   * 重置单例实例（主要用于测试）
+   */
+  static reset(): void {
+    if (Logger.instance) {
+      // 刷新并关闭旧的日志流
+      if (Logger.instance.pinoLogger.flush) {
+        Logger.instance.pinoLogger.flush();
+      }
+      // 关闭文件流
+      if (Logger.instance.logStream && !Logger.instance.logStream.destroyed) {
+        Logger.instance.logStream.end();
+      }
+    }
+    Logger.instance = new Logger();
   }
 
   /**
@@ -261,9 +288,20 @@ class Logger {
 }
 
 /**
- * 导出便捷的日志函数
+ * 导出便捷的日志实例（getter，总是返回最新的单例实例）
+ * 注意：这是一个单例，在模块加载时创建
+ * 如果需要在运行时更改配置，请使用 Logger.reset() 重置实例
  */
-export const logger = Logger.getInstance();
+export const logger = new Proxy({} as Logger, {
+  get(_target, prop) {
+    return (Logger.getInstance() as any)[prop];
+  }
+});
+
+/**
+ * 导出 Logger 类以便测试时重置实例
+ */
+export { Logger };
 
 /**
  * 在进程退出前刷新日志

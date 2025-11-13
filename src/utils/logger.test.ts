@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { logger, LogLevel } from './logger.js';
+import { logger, LogLevel, Logger } from './logger.js';
 import { readFileSync, unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import * as os from 'os';
@@ -14,6 +14,8 @@ describe('Logger', () => {
     }
     // 设置测试日志文件
     process.env.CURSOR_RULES_GENERATOR_LOG_FILE = testLogFile;
+    // 重置 Logger 实例以使用新的环境变量
+    Logger.reset();
   });
 
   afterEach(() => {
