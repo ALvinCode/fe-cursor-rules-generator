@@ -187,6 +187,27 @@ npm run build
 - `projectPath` (必需): 项目根目录的绝对路径
 - `descriptionFile` (可选): 要更新的文件，默认 `README.md`
 
+### 5. `validate_rules`
+
+验证 Cursor Rules 文件的格式和内容是否正确。
+
+**参数：**
+- `projectPath` (必需): 项目根目录的绝对路径
+- `validateModules` (可选): 是否验证模块目录中的规则文件，默认 `true`
+
+### 6. `preview_rules_generation`
+
+预览规则生成过程，列出所有任务、分析结果和需要确认的决策点，不实际生成文件。
+
+**参数：**
+- `projectPath` (必需): 项目根目录的绝对路径
+
+### 7. `info`
+
+显示 MCP 工具信息，包括版本号、日志配置状态、环境变量配置和任何检测到的配置问题。
+
+**参数：** 无
+
 ## 📋 工作流程
 
 ```
@@ -435,7 +456,7 @@ export CURSOR_RULES_GENERATOR_DEBUG=true
 3. **覆盖规则**：再次生成会覆盖现有的规则文件
 4. **手动编辑**：建议将自定义规则放在独立文件中，避免被覆盖
 5. **Context7**：Context7 集成是可选的，未配置不影响基本功能
-6. **日志输出**：日志会输出到 stderr，不会干扰 MCP 协议通信
+6. **日志输出**：日志会写入文件，不会干扰 MCP 协议通信（stdio 用于 JSON-RPC）
 
 ## 📄 许可证
 
@@ -461,16 +482,16 @@ git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
 cd cursor-rules-generator
 
 # 安装依赖
-npm install
+pnpm install
 
 # 开发模式（自动编译）
-npm run watch
+pnpm run watch
 
 # 编译
-npm run build
+pnpm run build
 
 # 测试
-npm test
+pnpm test
 ```
 
 ### 代码规范
@@ -489,9 +510,10 @@ cursor-rules-generator/
 ├── src/                          # 源代码
 │   ├── index.ts                  # MCP Server 主入口
 │   ├── types.ts                  # TypeScript 类型定义
-│   ├── modules/                  # 核心功能模块（14 个）
+│   ├── modules/                  # 核心功能模块（20 个）
 │   │   ├── project-analyzer.ts   # 项目文件收集
 │   │   ├── tech-stack-detector.ts # 技术栈检测
+│   │   ├── tech-stack-matcher.ts # 技术栈匹配
 │   │   ├── module-detector.ts    # 模块结构识别
 │   │   ├── code-analyzer.ts      # 代码特征分析
 │   │   ├── practice-analyzer.ts  # 项目实践分析
@@ -503,7 +525,12 @@ cursor-rules-generator/
 │   │   ├── rules-generator.ts    # 规则生成引擎
 │   │   ├── file-writer.ts        # 文件写入器
 │   │   ├── rule-validator.ts    # 规则验证器
-│   │   └── context7-integration.ts # Context7 集成
+│   │   ├── context7-integration.ts # Context7 集成
+│   │   ├── best-practice-extractor.ts # 最佳实践提取
+│   │   ├── best-practice-comparator.ts # 最佳实践比较
+│   │   ├── best-practice-web-searcher.ts # 最佳实践网络搜索
+│   │   ├── framework-matcher.ts  # 框架匹配
+│   │   └── suggestion-collector.ts # 建议收集器
 │   └── utils/                    # 工具类
 │       ├── logger.ts             # 日志工具
 │       ├── errors.ts             # 错误处理
@@ -524,9 +551,10 @@ cursor-rules-generator/
 
 ### 核心模块说明
 
-**分析模块**（9 个）：
+**分析模块**（10 个）：
 - `project-analyzer.ts` - 收集项目文件
 - `tech-stack-detector.ts` - 检测技术栈和依赖
+- `tech-stack-matcher.ts` - 技术栈匹配
 - `module-detector.ts` - 识别多模块结构
 - `code-analyzer.ts` - 分析代码特征
 - `practice-analyzer.ts` - 分析项目实践规范
@@ -540,9 +568,16 @@ cursor-rules-generator/
 - `file-writer.ts` - 写入规则文件
 - `rule-validator.ts` - 验证规则文件
 
-**其他模块**（2 个）：
+**最佳实践模块**（4 个）：
+- `best-practice-extractor.ts` - 提取最佳实践
+- `best-practice-comparator.ts` - 比较最佳实践
+- `best-practice-web-searcher.ts` - 网络搜索最佳实践
+- `framework-matcher.ts` - 框架匹配
+
+**其他模块**（3 个）：
 - `consistency-checker.ts` - 检查文档一致性
 - `context7-integration.ts` - Context7 MCP 集成
+- `suggestion-collector.ts` - 建议收集器
 
 ### 工具类
 
@@ -550,7 +585,10 @@ cursor-rules-generator/
 - `errors.ts` - 统一的错误处理体系
 - `file-utils.ts` - 文件操作工具（递归扫描、读写文件等）
 
-## 📮 反馈
+## 📮 反馈与支持
 
 如有问题或建议，请创建 [Issue](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)。
+
+- **GitHub 仓库**: [fe-cursor-rules-generator](https://github.com/ALvinCode/fe-cursor-rules-generator)
+- **作者**: [Zheng Kuo](https://github.com/ALvinCode)
 

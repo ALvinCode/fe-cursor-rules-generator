@@ -269,6 +269,50 @@ npm run build
 请根据实际代码更新 README
 ```
 
+#### 5. validate_rules - 验证规则
+
+**功能**：验证 Cursor Rules 文件的格式和内容是否正确，检查元数据完整性、Markdown 格式等
+
+**参数**：
+```typescript
+{
+  projectPath: string;       // 必需：项目根目录绝对路径
+  validateModules?: boolean; // 可选：是否验证模块目录中的规则文件（默认 true）
+}
+```
+
+**使用示例**：
+```
+请验证当前项目的 Cursor Rules 文件
+```
+
+#### 6. preview_rules_generation - 预览生成
+
+**功能**：预览规则生成过程，列出所有任务、分析结果和需要确认的决策点，不实际生成文件
+
+**参数**：
+```typescript
+{
+  projectPath: string;  // 必需：项目根目录绝对路径
+}
+```
+
+**使用示例**：
+```
+请预览规则生成过程
+```
+
+#### 7. info - 显示信息
+
+**功能**：显示 MCP 工具信息，包括版本号、日志配置状态、环境变量配置和任何检测到的配置问题
+
+**参数**：无
+
+**使用示例**：
+```
+显示工具信息
+```
+
 ## 🔄 完整工作流程
 
 ```mermaid
@@ -672,7 +716,7 @@ priority: 100
 我们欢迎所有形式的贡献！
 
 ### 报告问题
-- 使用 [Issue 模板](链接到 issue 模板)
+- 使用 [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues) 报告问题
 - 提供详细的复现步骤
 - 附上项目的 package.json（脱敏后）
 
@@ -686,16 +730,17 @@ priority: 100
 ### 开发环境设置
 ```bash
 # 克隆你的 fork
-git clone https://github.com/your-username/cursor-rules-generator.git
+git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
+cd cursor-rules-generator
 
 # 安装依赖
-npm install
+pnpm install
 
 # 开发模式（自动重新编译）
-npm run watch
+pnpm run watch
 
-# 运行测试（如果有）
-npm test
+# 运行测试
+pnpm test
 ```
 
 ## 📄 许可证
@@ -710,9 +755,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ## 📮 联系方式
 
-- **Issues**: [GitHub Issues](链接)
-- **讨论**: [GitHub Discussions](链接)
-- **邮件**: your-email@example.com
+- **Issues**: [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)
+- **仓库**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generator)
 
 ---
 

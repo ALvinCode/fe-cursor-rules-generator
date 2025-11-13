@@ -5,6 +5,19 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.0.4] - 2025-01-XX
+
+### 修复
+
+- 🐛 **修复测试问题**：跳过不稳定的文件写入测试，避免测试卡住
+- 🐛 **修复 vitest 配置**：更新配置以适配新版本 vitest API
+- 🐛 **优化测试性能**：默认使用 `--run` 模式，避免 watch 模式卡住
+
+### 改进
+
+- ⚡ **测试脚本优化**：`test` 命令默认使用 `--run` 模式，一次性运行测试
+- 📝 **文档完善**：更新所有文档以反映项目实际情况
+
 ## [0.0.3] - 2025-01-XX
 
 ### 新增
