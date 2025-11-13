@@ -176,13 +176,22 @@ export class GenerationCoordinator {
     if (fileOrganization.utilsLocation.length > 0) {
       detectedStructure.push(`utils → ${fileOrganization.utilsLocation[0]}`);
     }
-    if (fileOrganization.typesLocation.length > 0) {
+    if (
+      fileOrganization.typesLocation &&
+      fileOrganization.typesLocation.length > 0
+    ) {
       detectedStructure.push(`types → ${fileOrganization.typesLocation[0]}`);
     }
-    if (fileOrganization.hooksLocation.length > 0) {
+    if (
+      fileOrganization.hooksLocation &&
+      fileOrganization.hooksLocation.length > 0
+    ) {
       detectedStructure.push(`hooks → ${fileOrganization.hooksLocation[0]}`);
     }
-    if (fileOrganization.apiLocation.length > 0) {
+    if (
+      fileOrganization.apiLocation &&
+      fileOrganization.apiLocation.length > 0
+    ) {
       detectedStructure.push(`api → ${fileOrganization.apiLocation[0]}`);
     }
 
@@ -196,7 +205,8 @@ export class GenerationCoordinator {
       // 自定义工具规则应该与项目中的工具位置匹配
       if (
         fileOrganization.utilsLocation.length === 0 &&
-        fileOrganization.hooksLocation.length === 0
+        (!fileOrganization.hooksLocation ||
+          fileOrganization.hooksLocation.length === 0)
       ) {
         mismatches.push({
           type: "missing-tools-directory",
@@ -360,7 +370,10 @@ export class GenerationCoordinator {
           `src/utils (或 ${fileOrganization.utilsLocation[0]})`
         );
       }
-      if (fileOrganization.typesLocation.length > 0) {
+      if (
+        fileOrganization.typesLocation &&
+        fileOrganization.typesLocation.length > 0
+      ) {
         detectedStructure.push(
           `src/types (或 ${fileOrganization.typesLocation[0]})`
         );

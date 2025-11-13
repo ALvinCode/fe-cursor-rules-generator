@@ -255,7 +255,8 @@ export class CodeGenerationRequirementsChecker {
             ? "available"
             : "partial",
         details:
-          context.fileOrganization.typesLocation?.[0] ||
+          (context.fileOrganization.typesLocation &&
+            context.fileOrganization.typesLocation[0]) ||
           "可能使用 src/types 或与组件同目录",
       });
     } else {

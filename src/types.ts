@@ -107,6 +107,10 @@ export interface FileOrganizationInfo {
   structure: any[]; // DirectoryPurpose[] from file-structure-learner
   componentLocation: string[];
   utilsLocation: string[];
+  typesLocation?: string[]; // v1.7 新增
+  stylesLocation?: string[]; // v1.7 新增
+  apiLocation?: string[]; // v1.7 新增
+  hooksLocation?: string[]; // v1.7 新增
   namingConvention: any;
 }
 
