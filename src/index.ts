@@ -24,6 +24,27 @@ import { CursorRule, InstructionsFile } from "./types.js";
 import path from "path";
 import { logger } from "./utils/logger.js";
 import { createErrorResponse } from "./utils/errors.js";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import * as os from "os";
+
+/**
+ * 动态读取 package.json 中的版本号
+ */
+function getVersion(): string {
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    // 从 dist 目录向上找到 package.json
+    const packageJsonPath = join(__dirname, "..", "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    return packageJson.version || "unknown";
+  } catch (error) {
+    logger.warn("无法读取 package.json 版本号，使用默认值", error);
+    return "unknown";
+  }
+}
 
 /**
  * Cursor Rules Generator MCP Server
@@ -46,11 +67,14 @@ class CursorRulesGeneratorServer {
   private fileStructureLearner: FileStructureLearner;
   private routerDetector: RouterDetector;
 
+  private version: string;
+
   constructor() {
+    this.version = getVersion();
     this.server = new Server(
       {
         name: "cursor-rules-generator",
-        version: "1.3.6",
+        version: this.version,
       },
       {
         capabilities: {
@@ -195,6 +219,16 @@ class CursorRulesGeneratorServer {
               required: ["projectPath"],
             },
           },
+          {
+            name: "info",
+            description:
+              "显示 MCP 工具信息，包括版本号、日志配置状态、环境变量配置和任何检测到的配置问题。",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              required: [],
+            },
+          },
         ] as Tool[],
       };
     });
@@ -217,6 +251,8 @@ class CursorRulesGeneratorServer {
             return await this.handleValidateRules(args);
           case "preview_rules_generation":
             return await this.handlePreviewGeneration(args);
+          case "info":
+            return await this.handleInfo(args);
           default:
             throw new Error(`未知的工具: ${name}`);
         }
@@ -228,10 +264,27 @@ class CursorRulesGeneratorServer {
   }
 
   /**
+   * 宽松的参数解析：支持参数名称的变体
+   * 例如：如果定义了 projectPath，也接受 path 参数
+   */
+  private parseProjectPath(args: any): string {
+    // 优先使用 projectPath
+    if (args.projectPath) {
+      return args.projectPath as string;
+    }
+    // 也接受 path 作为别名（宽松解析）
+    if (args.path) {
+      return args.path as string;
+    }
+    // 如果都没有，抛出错误
+    throw new Error("缺少必需参数: projectPath 或 path");
+  }
+
+  /**
    * 处理预览规则生成的请求
    */
   private async handlePreviewGeneration(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
     
     let output = `📋 Cursor Rules 生成预览\n\n`;
     output += `项目路径: ${projectPath}\n\n`;
@@ -459,7 +512,7 @@ class CursorRulesGeneratorServer {
    * 处理生成 Cursor Rules 的请求（增强版，显示进度）
    */
   private async handleGenerateRules(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
     const updateDescription = (args.updateDescription as boolean) ?? false;
     const includeModuleRules = (args.includeModuleRules as boolean) ?? true;
 
@@ -974,7 +1027,7 @@ class CursorRulesGeneratorServer {
    * 处理分析项目的请求
    */
   private async handleAnalyzeProject(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
 
     const files = await this.projectAnalyzer.collectFiles(projectPath);
     const techStack = await this.techStackDetector.detect(projectPath, files);
@@ -1015,7 +1068,7 @@ class CursorRulesGeneratorServer {
    * 处理一致性检查请求
    */
   private async handleCheckConsistency(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
 
     const files = await this.projectAnalyzer.collectFiles(projectPath);
     const techStack = await this.techStackDetector.detect(projectPath, files);
@@ -1045,7 +1098,7 @@ class CursorRulesGeneratorServer {
    * 处理更新描述文件的请求
    */
   private async handleUpdateDescription(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
     const descriptionFile = (args.descriptionFile as string) ?? "README.md";
 
     const files = await this.projectAnalyzer.collectFiles(projectPath);
@@ -1089,7 +1142,7 @@ class CursorRulesGeneratorServer {
    * 处理验证规则的请求
    */
   private async handleValidateRules(args: any) {
-    const projectPath = args.projectPath as string;
+    const projectPath = this.parseProjectPath(args);
     const validateModules = (args.validateModules as boolean) ?? true;
     const path = await import("path");
 
@@ -1132,6 +1185,132 @@ class CursorRulesGeneratorServer {
         },
       ],
     };
+  }
+
+  /**
+   * 处理 info 命令请求
+   */
+  private async handleInfo(args: any) {
+    const issues: string[] = [];
+    const info: Record<string, any> = {
+      version: this.version,
+      logLevel: logger.getLogLevel(),
+      logFile: this.getLogFilePath(),
+    };
+
+    // 检查日志文件路径
+    try {
+      const logFilePath = this.getLogFilePath();
+      const fs = await import("fs");
+      const path = await import("path");
+      
+      // 检查日志目录是否可写
+      const logDir = path.dirname(logFilePath);
+      try {
+        fs.accessSync(logDir, fs.constants.W_OK);
+        info.logFileStatus = "可写";
+      } catch (error) {
+        info.logFileStatus = "不可写";
+        issues.push(`日志目录不可写: ${logDir}`);
+      }
+    } catch (error) {
+      issues.push(`无法检查日志文件路径: ${error}`);
+    }
+
+    // 检查环境变量配置
+    const envVars = {
+      CURSOR_RULES_GENERATOR_LOG_FILE: process.env.CURSOR_RULES_GENERATOR_LOG_FILE,
+      CURSOR_RULES_GENERATOR_LOG_LEVEL: process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL,
+      CURSOR_RULES_GENERATOR_DEBUG: process.env.CURSOR_RULES_GENERATOR_DEBUG,
+    };
+    info.environmentVariables = envVars;
+
+    // 检查 Node.js 版本
+    info.nodeVersion = process.version;
+    const nodeVersionMajor = parseInt(process.version.slice(1).split(".")[0]);
+    if (nodeVersionMajor < 18) {
+      issues.push(`Node.js 版本过低: ${process.version}，需要 >= 18.0.0`);
+    }
+
+    // 检查平台
+    info.platform = process.platform;
+    info.arch = process.arch;
+
+    // 检查依赖（基本检查）
+    try {
+      const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+      info.packageName = packageJson.name;
+    } catch (error) {
+      issues.push(`无法读取 package.json: ${error}`);
+    }
+
+    // 构建输出
+    let output = `# Cursor Rules Generator MCP Server 信息\n\n`;
+    output += `## 版本信息\n\n`;
+    output += `- **版本**: ${info.version}\n`;
+    output += `- **包名**: ${info.packageName || "未知"}\n`;
+    output += `- **Node.js 版本**: ${info.nodeVersion}\n`;
+    output += `- **平台**: ${info.platform} (${info.arch})\n\n`;
+
+    output += `## 日志配置\n\n`;
+    output += `- **日志级别**: ${info.logLevel}\n`;
+    output += `- **日志文件路径**: ${info.logFile}\n`;
+    output += `- **日志文件状态**: ${info.logFileStatus || "未知"}\n\n`;
+
+    output += `## 环境变量\n\n`;
+    Object.entries(envVars).forEach(([key, value]) => {
+      output += `- **${key}**: ${value || "(未设置，使用默认值)"}\n`;
+    });
+    output += `\n`;
+
+    if (issues.length > 0) {
+      output += `## ⚠️ 配置问题\n\n`;
+      issues.forEach((issue, index) => {
+        output += `${index + 1}. ${issue}\n`;
+      });
+      output += `\n`;
+    } else {
+      output += `## ✅ 配置状态\n\n`;
+      output += `所有配置检查通过，未发现配置问题。\n\n`;
+    }
+
+    output += `## 使用说明\n\n`;
+    output += `- 日志文件位置可通过 \`CURSOR_RULES_GENERATOR_LOG_FILE\` 环境变量配置\n`;
+    output += `- 日志级别可通过 \`CURSOR_RULES_GENERATOR_LOG_LEVEL\` 环境变量配置（DEBUG, INFO, WARN, ERROR, NONE）\n`;
+    output += `- 调试模式可通过 \`CURSOR_RULES_GENERATOR_DEBUG=true\` 环境变量启用\n`;
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: output,
+        },
+      ],
+    };
+  }
+
+  /**
+   * 获取日志文件路径（内部方法）
+   */
+  private getLogFilePath(): string {
+    // 复用 logger 的逻辑，但需要访问内部方法
+    // 这里简化处理，直接读取环境变量
+    const envLogFile = process.env.CURSOR_RULES_GENERATOR_LOG_FILE;
+    if (envLogFile) {
+      return envLogFile;
+    }
+    
+    // 使用默认路径逻辑
+    const platform = os.platform();
+    
+    if (platform === "darwin") {
+      return join(os.homedir(), "Library", "Logs", "cursor-rules-generator.log");
+    } else if (platform === "win32") {
+      return join(os.homedir(), "AppData", "Local", "cursor-rules-generator.log");
+    } else {
+      return join(os.homedir(), ".local", "log", "cursor-rules-generator.log");
+    }
   }
 
   /**
@@ -1204,7 +1383,7 @@ class CursorRulesGeneratorServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     logger.info("Cursor Rules Generator MCP Server 已启动", {
-      version: "1.3.6",
+      version: this.version,
       logLevel: logger.getLogLevel(),
     });
   }

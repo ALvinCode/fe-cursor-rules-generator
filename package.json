@@ -23,7 +23,13 @@
     "watch": "tsc --watch",
     "dev": "npm run build && node dist/index.js",
     "prepare": "npm run build",
-    "test": "bash scripts/quick-test.sh"
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "prepare-release": "node scripts/prepare-release.js",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "lint": "echo 'No linter configured'",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "mcp",
@@ -51,11 +57,14 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "glob": "^11.0.0",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.2",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
+    "@modelcontextprotocol/inspector": "^1.0.4",
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
-

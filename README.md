@@ -312,7 +312,7 @@ priority: 100
 
 ## ⚙️ 环境变量配置
 
-支持通过环境变量控制日志级别和调试模式：
+支持通过环境变量控制日志级别、调试模式和输出保护：
 
 ### 日志级别
 
@@ -333,6 +333,28 @@ export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
   }
 }
 ```
+
+### 输出保护（防止 AI 修改输出）
+
+**默认启用**，输出会被保护以防止 AI 修改或重新格式化。
+
+禁用输出保护：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "node",
+      "args": ["/path/to/dist/index.js"],
+      "env": {
+        "MCP_PROTECT_OUTPUT": "false"
+      }
+    }
+  }
+}
+```
+
+详细说明请查看 [防止 AI 修改输出的指南](./docs/guides/PREVENT_AI_MODIFICATION.md)。
 
 ### 调试模式
 

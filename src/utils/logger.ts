@@ -1,7 +1,12 @@
 /**
- * 轻量级日志工具类
- * 支持日志级别和环境变量配置
+ * 日志工具类 - 使用 Pino 文件日志
+ * 符合 MCP 最佳实践：不使用 stdout/stderr，所有日志写入文件
  */
+
+import pino from 'pino';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -12,25 +17,127 @@ export enum LogLevel {
 }
 
 /**
- * 日志工具类
- * 用于替代 console.log/error，支持结构化日志和日志级别控制
+ * 获取默认日志文件路径
  */
-export class Logger {
+function getDefaultLogPath(): string {
+  const platform = os.platform();
+  
+  if (platform === 'darwin') {
+    // macOS: ~/Library/Logs/
+    return path.join(os.homedir(), 'Library', 'Logs', 'cursor-rules-generator.log');
+  } else if (platform === 'win32') {
+    // Windows: %APPDATA%\Logs\
+    return path.join(os.homedir(), 'AppData', 'Local', 'cursor-rules-generator.log');
+  } else {
+    // Linux/Unix: ~/.local/log/
+    return path.join(os.homedir(), '.local', 'log', 'cursor-rules-generator.log');
+  }
+}
+
+/**
+ * 确保日志文件目录存在
+ */
+function ensureLogDirectory(logPath: string): void {
+  const dir = path.dirname(logPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+/**
+ * 获取日志文件路径（带回退机制）
+ */
+function getLogFilePath(): string {
+  // 从环境变量读取日志文件路径
+  const envLogFile = process.env.CURSOR_RULES_GENERATOR_LOG_FILE;
+  
+  if (envLogFile) {
+    try {
+      // 尝试使用用户指定的路径
+      ensureLogDirectory(envLogFile);
+      // 测试写入权限
+      fs.accessSync(path.dirname(envLogFile), fs.constants.W_OK);
+      return envLogFile;
+    } catch (error) {
+      // 如果无法写入，回退到临时目录
+      return path.join(os.tmpdir(), 'cursor-rules-generator.log');
+    }
+  }
+  
+  // 使用默认路径
+  const defaultPath = getDefaultLogPath();
+  try {
+    ensureLogDirectory(defaultPath);
+    return defaultPath;
+  } catch (error) {
+    // 如果默认路径也失败，使用临时目录
+    return path.join(os.tmpdir(), 'cursor-rules-generator.log');
+  }
+}
+
+/**
+ * 解析日志级别
+ */
+function parseLogLevel(level?: string): string {
+  if (!level) return 'info';
+  
+  const upperLevel = level.toUpperCase();
+  const validLevels = ['DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE'];
+  
+  if (validLevels.includes(upperLevel)) {
+    return upperLevel.toLowerCase();
+  }
+  
+  return 'info';
+}
+
+/**
+ * 创建 Pino 日志实例
+ */
+function createPinoLogger(): pino.Logger {
+  const logLevel = parseLogLevel(process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL);
+  const logFilePath = getLogFilePath();
+  
+  // 创建文件流
+  const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+  
+  // 配置 Pino
+  const pinoConfig: pino.LoggerOptions = {
+    level: logLevel === 'none' ? 'silent' : logLevel,
+    formatters: {
+      level: (label) => {
+        return { level: label };
+      },
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+  };
+  
+  // MCP 最佳实践：所有日志必须写入文件，不使用 stdout/stderr
+  // 这避免了干扰 MCP 协议通信（stdio 用于 JSON-RPC）
+  // 如果用户需要查看日志，可以通过文件查看或设置 CURSOR_RULES_GENERATOR_LOG_FILE 环境变量
+  return pino(pinoConfig, logStream);
+}
+
+/**
+ * 日志工具类
+ * 符合 MCP 最佳实践：所有日志写入文件，不使用 stdout/stderr
+ */
+class Logger {
   private static instance: Logger;
+  private pinoLogger: pino.Logger;
   private logLevel: LogLevel;
-  private isDebugMode: boolean;
 
   private constructor() {
+    this.pinoLogger = createPinoLogger();
+    
     // 从环境变量读取日志级别
     const envLogLevel = process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL?.toUpperCase();
     this.logLevel = this.parseLogLevel(envLogLevel) ?? LogLevel.INFO;
     
-    // 从环境变量读取调试模式
-    this.isDebugMode = process.env.CURSOR_RULES_GENERATOR_DEBUG === 'true';
-    
     // 如果启用了调试模式，设置日志级别为 DEBUG
-    if (this.isDebugMode) {
+    if (process.env.CURSOR_RULES_GENERATOR_DEBUG === 'true') {
       this.logLevel = LogLevel.DEBUG;
+      this.pinoLogger.level = 'debug';
     }
   }
 
@@ -45,7 +152,7 @@ export class Logger {
   }
 
   /**
-   * 解析日志级别字符串
+   * 解析日志级别
    */
   private parseLogLevel(level?: string): LogLevel | null {
     switch (level) {
@@ -65,44 +172,25 @@ export class Logger {
   }
 
   /**
-   * 检查是否应该记录该级别的日志
+   * 刷新日志（确保所有日志都写入文件）
    */
-  private shouldLog(level: LogLevel): boolean {
-    return level >= this.logLevel;
-  }
-
-  /**
-   * 格式化日志消息
-   */
-  private formatMessage(level: string, message: string, ...args: any[]): string {
-    const timestamp = new Date().toISOString();
-    const prefix = `[${timestamp}] [${level}]`;
-    
-    if (args.length === 0) {
-      return `${prefix} ${message}`;
-    }
-    
-    try {
-      const formattedArgs = args.map(arg => {
-        if (typeof arg === 'object') {
-          return JSON.stringify(arg, null, 2);
-        }
-        return String(arg);
-      }).join(' ');
-      
-      return `${prefix} ${message} ${formattedArgs}`;
-    } catch (error) {
-      return `${prefix} ${message} [无法序列化参数]`;
+  flush(): void {
+    // Pino 会自动刷新，但我们可以显式调用
+    if (this.pinoLogger.flush) {
+      this.pinoLogger.flush();
     }
   }
 
   /**
-   * Debug 日志（仅在调试模式下输出）
+   * Debug 日志
    */
   debug(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
-      // MCP server 应该使用 stderr 输出日志，避免干扰 MCP 协议
-      console.error(this.formatMessage('DEBUG', message, ...args));
+    if (this.logLevel <= LogLevel.DEBUG) {
+      if (args.length > 0) {
+        this.pinoLogger.debug({ args }, message);
+      } else {
+        this.pinoLogger.debug(message);
+      }
     }
   }
 
@@ -110,8 +198,12 @@ export class Logger {
    * Info 日志
    */
   info(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.INFO)) {
-      console.error(this.formatMessage('INFO', message, ...args));
+    if (this.logLevel <= LogLevel.INFO) {
+      if (args.length > 0) {
+        this.pinoLogger.info({ args }, message);
+      } else {
+        this.pinoLogger.info(message);
+      }
     }
   }
 
@@ -119,8 +211,12 @@ export class Logger {
    * Warn 日志
    */
   warn(message: string, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.WARN)) {
-      console.error(this.formatMessage('WARN', message, ...args));
+    if (this.logLevel <= LogLevel.WARN) {
+      if (args.length > 0) {
+        this.pinoLogger.warn({ args }, message);
+      } else {
+        this.pinoLogger.warn(message);
+      }
     }
   }
 
@@ -128,16 +224,16 @@ export class Logger {
    * Error 日志
    */
   error(message: string, error?: Error | unknown, ...args: any[]): void {
-    if (this.shouldLog(LogLevel.ERROR)) {
-      let errorDetails = '';
-      
+    if (this.logLevel <= LogLevel.ERROR) {
       if (error instanceof Error) {
-        errorDetails = `\n${error.message}\n${error.stack}`;
+        this.pinoLogger.error({ err: error, args }, message);
       } else if (error) {
-        errorDetails = `\n${String(error)}`;
+        this.pinoLogger.error({ error: String(error), args }, message);
+      } else if (args.length > 0) {
+        this.pinoLogger.error({ args }, message);
+      } else {
+        this.pinoLogger.error(message);
       }
-      
-      console.error(this.formatMessage('ERROR', message, ...args) + errorDetails);
     }
   }
 
@@ -146,6 +242,14 @@ export class Logger {
    */
   setLogLevel(level: LogLevel): void {
     this.logLevel = level;
+    const levelMap: Record<LogLevel, string> = {
+      [LogLevel.DEBUG]: 'debug',
+      [LogLevel.INFO]: 'info',
+      [LogLevel.WARN]: 'warn',
+      [LogLevel.ERROR]: 'error',
+      [LogLevel.NONE]: 'silent',
+    };
+    this.pinoLogger.level = levelMap[level];
   }
 
   /**
@@ -161,3 +265,13 @@ export class Logger {
  */
 export const logger = Logger.getInstance();
 
+/**
+ * 在进程退出前刷新日志
+ */
+process.on('beforeExit', () => {
+  logger.flush();
+});
+
+process.on('exit', () => {
+  logger.flush();
+});

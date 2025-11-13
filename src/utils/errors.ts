@@ -10,18 +10,21 @@ export class AppError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
   public readonly isOperational: boolean;
+  public readonly cause?: Error | unknown;
 
   constructor(
     message: string,
     code: string,
     statusCode: number = 500,
-    isOperational: boolean = true
+    isOperational: boolean = true,
+    cause?: Error | unknown
   ) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
     this.statusCode = statusCode;
     this.isOperational = isOperational;
+    this.cause = cause;
 
     // 保持正确的堆栈跟踪
     Error.captureStackTrace(this, this.constructor);
@@ -109,24 +112,66 @@ export function formatErrorForUser(error: unknown): string {
 }
 
 /**
+ * 获取错误恢复建议
+ */
+function getRecoverySuggestion(error: unknown): string {
+  if (error instanceof ValidationError) {
+    return "请检查参数是否正确，确保所有必需参数都已提供。";
+  }
+  
+  if (error instanceof FileOperationError) {
+    return "请检查文件路径是否正确，确保有足够的文件系统权限。";
+  }
+  
+  if (error instanceof ProjectAnalysisError) {
+    return "请确保项目路径有效，且项目结构完整。可以尝试使用 `analyze_project` 工具先检查项目。";
+  }
+  
+  if (error instanceof ConfigParseError) {
+    return "请检查项目配置文件（如 package.json、tsconfig.json）的格式是否正确。";
+  }
+  
+  if (error instanceof Error) {
+    const errorMessage = error.message.toLowerCase();
+    if (errorMessage.includes('enoent') || errorMessage.includes('not found')) {
+      return "文件或目录不存在。请检查路径是否正确。";
+    }
+    if (errorMessage.includes('eacces') || errorMessage.includes('permission')) {
+      return "权限不足。请检查文件系统权限，或尝试使用不同的路径。";
+    }
+    if (errorMessage.includes('缺少必需参数') || errorMessage.includes('missing')) {
+      return "请提供所有必需的参数。可以查看工具描述了解参数要求。";
+    }
+  }
+  
+  return "如果问题持续存在，请检查日志文件获取更多信息，或使用 `info` 工具检查配置。";
+}
+
+/**
  * 将错误转换为 MCP 响应格式
  */
 export function createErrorResponse(error: unknown): {
   content: Array<{ type: string; text: string }>;
 } {
   const message = formatErrorForUser(error);
+  const suggestion = getRecoverySuggestion(error);
   
   // 在调试模式下包含更多信息
-  let detailedMessage = message;
+  let detailedMessage = `## 错误\n\n${message}\n\n## 建议\n\n${suggestion}`;
+  
   if (process.env.CURSOR_RULES_GENERATOR_DEBUG === 'true' && error instanceof Error) {
-    detailedMessage += `\n\n错误详情: ${error.stack}`;
+    detailedMessage += `\n\n## 调试信息\n\n\`\`\`\n${error.stack}\n\`\`\``;
+    
+    if (error instanceof AppError && error.cause) {
+      detailedMessage += `\n\n## 原因\n\n\`\`\`\n${error.cause instanceof Error ? error.cause.stack : String(error.cause)}\n\`\`\``;
+    }
   }
   
   return {
     content: [
       {
         type: 'text',
-        text: `错误: ${detailedMessage}`,
+        text: detailedMessage,
       },
     ],
   };
