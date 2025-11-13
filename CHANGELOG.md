@@ -5,6 +5,29 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 版本遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.0.3] - 2025-01-XX
+
+### 新增
+
+- 📦 **npm 发布支持**：项目已发布到 npm，可通过 `npm install cursor-rules-generators` 安装
+- 📝 **安装文档完善**：添加详细的 npm 安装说明和使用指南
+- 🔧 **npx 支持**：支持通过 npx 直接使用，无需手动安装
+
+### 改进
+
+- 📝 **README 更新**：
+  - 添加 npm 安装方式说明
+  - 说明为什么需要安装依赖
+  - 提供多种安装和配置方案
+  - 优化文档结构，将 npm 安装作为推荐方式
+- 🔧 **包名统一**：统一使用 `cursor-rules-generators` 作为包名
+- 📦 **发布准备**：完善 package.json 配置，确保发布质量
+
+### 修复
+
+- 🐛 **修复文档同步问题**：确保 CHANGELOG.md 与 package.json 版本同步
+- 🐛 **修复发布检查脚本**：改进 pnpm-lock.yaml 版本检查逻辑
+
 ## [1.3.7] - 2025-01-XX
 
 ### 优化

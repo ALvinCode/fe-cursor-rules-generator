@@ -122,13 +122,46 @@ try {
 }
 
 try {
-  execSync('git fetch origin', { stdio: 'ignore' });
-  const localCommit = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
-  const remoteCommit = execSync('git rev-parse origin/main 2>/dev/null || git rev-parse origin/master', { encoding: 'utf-8' }).trim();
-  if (localCommit !== remoteCommit) {
-    warn('本地分支与远程分支不同步');
+  // 获取当前分支名
+  const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+  // 获取远程跟踪分支
+  const remoteBranch = execSync(`git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo ""`, { encoding: 'utf-8' }).trim();
+  
+  if (remoteBranch) {
+    // 有远程跟踪分支，先 fetch
+    try {
+      execSync('git fetch origin', { stdio: 'ignore' });
+    } catch (fetchError) {
+      warn('无法获取远程更新（可能网络问题，继续检查）');
+    }
+    
+    const localCommit = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+    const remoteCommit = execSync(`git rev-parse ${remoteBranch} 2>/dev/null`, { encoding: 'utf-8' }).trim();
+    
+    if (localCommit && remoteCommit && localCommit !== remoteCommit) {
+      warn(`本地分支与远程分支不同步 (本地: ${localCommit.substring(0, 7)}, 远程: ${remoteCommit.substring(0, 7)})`);
+    } else if (localCommit && remoteCommit) {
+      success('本地分支与远程分支同步');
+    } else {
+      warn('无法获取提交信息');
+    }
   } else {
-    success('本地分支与远程分支同步');
+    // 没有远程跟踪分支，检查是否有 origin/main 或 origin/master
+    try {
+      execSync('git fetch origin', { stdio: 'ignore' });
+      const localCommit = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+      const remoteCommit = execSync('git rev-parse origin/main 2>/dev/null || git rev-parse origin/master 2>/dev/null', { encoding: 'utf-8' }).trim();
+      
+      if (localCommit && remoteCommit && localCommit !== remoteCommit) {
+        warn(`本地分支与远程分支不同步 (本地: ${localCommit.substring(0, 7)}, 远程: ${remoteCommit.substring(0, 7)})`);
+      } else if (localCommit && remoteCommit) {
+        success('本地分支与远程分支同步');
+      } else {
+        info('当前分支未设置远程跟踪分支');
+      }
+    } catch (e) {
+      warn('无法检查远程分支同步状态（可能未设置远程仓库）');
+    }
   }
 } catch (e) {
   warn('无法检查远程分支同步状态');
@@ -157,14 +190,10 @@ try {
 try {
   let lockFile;
   if (packageManager === 'pnpm' && existsSync(join(projectRoot, 'pnpm-lock.yaml'))) {
-    // pnpm-lock.yaml 是 YAML 格式，需要解析
-    const lockContent = readFileSync(join(projectRoot, 'pnpm-lock.yaml'), 'utf-8');
-    // 简单检查：pnpm-lock.yaml 中应该包含版本号
-    if (!lockContent.includes(`version: ${version}`) && !lockContent.includes(`"version": "${version}"`)) {
-      warn('package.json 版本可能与 pnpm-lock.yaml 不一致（建议运行 pnpm install）');
-    } else {
-      success('package.json 和 pnpm-lock.yaml 版本一致');
-    }
+    // pnpm-lock.yaml 不存储项目自身的版本号，只存储依赖版本
+    // 这里只检查锁文件是否存在，不检查版本一致性
+    // 实际版本一致性应该通过运行 pnpm install 来保证
+    success('pnpm-lock.yaml 存在（pnpm 不存储项目版本信息，依赖版本已锁定）');
   } else if (packageManager === 'npm' && existsSync(join(projectRoot, 'package-lock.json'))) {
     const packageLockJson = JSON.parse(readFileSync(join(projectRoot, 'package-lock.json'), 'utf-8'));
     if (packageLockJson.version !== version) {
