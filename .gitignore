@@ -6,3 +6,7 @@ dist/
 *.tsbuildinfo
 .cursor/
 
+# 其他包管理器的锁文件（项目使用 pnpm）
+package-lock.json
+yarn.lock
+

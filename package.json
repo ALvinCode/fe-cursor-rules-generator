@@ -9,8 +9,9 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "pnpm": ">=7.0.0"
   },
+  "packageManager": "pnpm@7.27.1",
   "files": [
     "dist",
     "README.md",
@@ -23,6 +24,7 @@
     "watch": "tsc --watch",
     "dev": "npm run build && node dist/index.js",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",

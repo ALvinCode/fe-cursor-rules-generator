@@ -44,9 +44,56 @@ function info(message) {
   log(`ℹ️  ${message}`, 'blue');
 }
 
+// 检测包管理器
+function detectPackageManager() {
+  if (existsSync(join(projectRoot, 'pnpm-lock.yaml'))) {
+    return 'pnpm';
+  }
+  if (existsSync(join(projectRoot, 'yarn.lock'))) {
+    return 'yarn';
+  }
+  if (existsSync(join(projectRoot, 'package-lock.json'))) {
+    return 'npm';
+  }
+  // 默认使用 npm
+  return 'npm';
+}
+
+const packageManager = detectPackageManager();
+const pmCommands = {
+  npm: {
+    install: 'npm ci',
+    outdated: 'npm outdated',
+    audit: 'npm audit --audit-level=high',
+    view: 'npm view',
+    publish: 'npm publish',
+    run: 'npm run'
+  },
+  pnpm: {
+    install: 'pnpm install --frozen-lockfile',
+    outdated: 'pnpm outdated',
+    audit: 'pnpm audit --audit-level=high',
+    view: 'pnpm view',
+    publish: 'pnpm publish',
+    run: 'pnpm run'
+  },
+  yarn: {
+    install: 'yarn install --frozen-lockfile',
+    outdated: 'yarn outdated',
+    audit: 'yarn audit --level high',
+    view: 'yarn info',
+    publish: 'yarn publish',
+    run: 'yarn run'
+  }
+};
+
+const pm = pmCommands[packageManager];
+
 // 读取 package.json
 const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf-8'));
 const version = packageJson.version;
+
+info(`检测到包管理器: ${packageManager}`);
 
 log('\n🚀 开始发布前检查...\n', 'blue');
 
@@ -89,7 +136,12 @@ try {
 
 // 检查版本是否已发布
 try {
-  const publishedVersions = execSync(`npm view ${packageJson.name} versions --json`, { encoding: 'utf-8' });
+  // npm view 和 pnpm view 返回格式相同，yarn info 需要特殊处理
+  let command = `${pm.view} ${packageJson.name} versions --json`;
+  if (packageManager === 'yarn') {
+    command = `${pm.view} ${packageJson.name} versions --json 2>/dev/null || echo "[]"`;
+  }
+  const publishedVersions = execSync(command, { encoding: 'utf-8' });
   const versions = JSON.parse(publishedVersions);
   if (versions.includes(version)) {
     error(`版本 ${version} 已发布，请更新版本号`);
@@ -101,16 +153,33 @@ try {
   success(`版本 ${version} 可用（无法检查已发布版本）`);
 }
 
-// 检查 package.json 和 package-lock.json 版本一致性
+// 检查 package.json 和锁文件版本一致性
 try {
-  const packageLockJson = JSON.parse(readFileSync(join(projectRoot, 'package-lock.json'), 'utf-8'));
-  if (packageLockJson.version !== version) {
-    error(`package.json 版本 (${version}) 与 package-lock.json 版本 (${packageLockJson.version}) 不一致`);
+  let lockFile;
+  if (packageManager === 'pnpm' && existsSync(join(projectRoot, 'pnpm-lock.yaml'))) {
+    // pnpm-lock.yaml 是 YAML 格式，需要解析
+    const lockContent = readFileSync(join(projectRoot, 'pnpm-lock.yaml'), 'utf-8');
+    // 简单检查：pnpm-lock.yaml 中应该包含版本号
+    if (!lockContent.includes(`version: ${version}`) && !lockContent.includes(`"version": "${version}"`)) {
+      warn('package.json 版本可能与 pnpm-lock.yaml 不一致（建议运行 pnpm install）');
+    } else {
+      success('package.json 和 pnpm-lock.yaml 版本一致');
+    }
+  } else if (packageManager === 'npm' && existsSync(join(projectRoot, 'package-lock.json'))) {
+    const packageLockJson = JSON.parse(readFileSync(join(projectRoot, 'package-lock.json'), 'utf-8'));
+    if (packageLockJson.version !== version) {
+      error(`package.json 版本 (${version}) 与 package-lock.json 版本 (${packageLockJson.version}) 不一致`);
+    } else {
+      success('package.json 和 package-lock.json 版本一致');
+    }
+  } else if (packageManager === 'yarn' && existsSync(join(projectRoot, 'yarn.lock'))) {
+    // yarn.lock 不包含版本信息，跳过检查
+    success('yarn.lock 存在（yarn 不存储版本信息）');
   } else {
-    success('package.json 和 package-lock.json 版本一致');
+    warn('未找到锁文件');
   }
 } catch (e) {
-  warn('无法检查 package-lock.json');
+  warn('无法检查锁文件版本一致性');
 }
 
 // 检查 CHANGELOG
@@ -131,7 +200,7 @@ log('\n🔍 Code Quality & Security', 'blue');
 // 安装依赖
 info('检查依赖...');
 try {
-  execSync('npm ci', { stdio: 'inherit', cwd: projectRoot });
+  execSync(pm.install, { stdio: 'inherit', cwd: projectRoot });
   success('依赖安装成功');
 } catch (e) {
   error('依赖安装失败');
@@ -139,7 +208,7 @@ try {
 
 // 检查过时的依赖（警告）
 try {
-  execSync('npm outdated', { stdio: 'ignore', cwd: projectRoot });
+  execSync(pm.outdated, { stdio: 'ignore', cwd: projectRoot });
   warn('存在过时的依赖（警告）');
 } catch (e) {
   success('依赖版本检查通过');
@@ -148,7 +217,7 @@ try {
 // 安全审计
 info('执行安全审计...');
 try {
-  execSync('npm audit --audit-level=high', { stdio: 'inherit', cwd: projectRoot });
+  execSync(pm.audit, { stdio: 'inherit', cwd: projectRoot });
   success('安全审计通过');
 } catch (e) {
   error('安全审计失败（存在高危漏洞）');
@@ -157,7 +226,7 @@ try {
 // TypeScript 编译
 info('编译 TypeScript...');
 try {
-  execSync('npm run build', { stdio: 'inherit', cwd: projectRoot });
+  execSync(`${pm.run} build`, { stdio: 'inherit', cwd: projectRoot });
   success('TypeScript 编译成功');
 } catch (e) {
   error('TypeScript 编译失败');
@@ -166,7 +235,7 @@ try {
 // TypeScript 测试
 info('运行 TypeScript 测试...');
 try {
-  execSync('npm test', { stdio: 'inherit', cwd: projectRoot });
+  execSync(`${pm.run} test`, { stdio: 'inherit', cwd: projectRoot });
   success('测试通过');
 } catch (e) {
   warn('测试失败或未配置测试');
@@ -219,12 +288,12 @@ for (const file of criticalFiles) {
 // 4. MCP Server 基础测试
 log('\n🧪 MCP Server 基础测试', 'blue');
 info('MCP Server 基础测试需要手动运行 inspector');
-info('运行: npm run inspector');
+info(`运行: ${pm.run} inspector`);
 
 log('\n✨ 所有检查完成！', 'green');
 log(`\n📦 准备发布版本: ${version}\n`, 'blue');
 log('下一步:', 'blue');
-log('1. 运行 npm run inspector 进行 MCP Server 测试', 'blue');
-log('2. 如果所有检查通过，可以发布: npm publish', 'blue');
-log('3. 建议先发布 beta 版本: npm publish --tag beta\n', 'blue');
+log(`1. 运行 ${pm.run} inspector 进行 MCP Server 测试`, 'blue');
+log(`2. 如果所有检查通过，可以发布: ${pm.publish}`, 'blue');
+log(`3. 建议先发布 beta 版本: ${pm.publish} --access public --tag beta\n`, 'blue');
 
