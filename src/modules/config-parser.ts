@@ -1,6 +1,7 @@
-import * as path from "path";
-import { FileUtils } from "../utils/file-utils.js";
-import { logger } from "../utils/logger.js";
+import * as path from 'path';
+
+import { FileUtils } from '../utils/file-utils.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * 配置文件解析器
@@ -93,9 +94,7 @@ export class ConfigParser {
   /**
    * 检测项目的格式化和 lint 命令
    */
-  private async detectFormattingCommands(
-    projectPath: string
-  ): Promise<{
+  private async detectFormattingCommands(projectPath: string): Promise<{
     format?: string;
     lint?: string;
     lintFix?: string;
@@ -256,7 +255,9 @@ export class ConfigParser {
       const content = await FileUtils.readFile(tsconfigPath);
       try {
         // 移除注释（简单处理）
-        const cleanContent = content.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+        const cleanContent = content
+          .replace(/\/\/.*$/gm, "")
+          .replace(/\/\*[\s\S]*?\*\//g, "");
         return JSON.parse(cleanContent);
       } catch (error) {
         logger.debug("解析 tsconfig.json 失败", error);
@@ -313,16 +314,26 @@ export class ConfigParser {
 
     if (config.prettier) {
       description += `**代码格式化配置** (Prettier):\n`;
-      description += `- 缩进: ${config.prettier.useTabs ? "Tabs" : `${config.prettier.tabWidth || 2} 个空格`}\n`;
-      description += `- 引号: ${config.prettier.singleQuote ? "单引号" : "双引号"}\n`;
+      description += `- 缩进: ${
+        config.prettier.useTabs
+          ? "Tabs"
+          : `${config.prettier.tabWidth || 2} 个空格`
+      }\n`;
+      description += `- 引号: ${
+        config.prettier.singleQuote ? "单引号" : "双引号"
+      }\n`;
       description += `- 分号: ${config.prettier.semi ? "使用" : "不使用"}\n`;
       description += `- 行长度: ${config.prettier.printWidth || 80} 字符\n`;
-      description += `- 尾随逗号: ${config.prettier.trailingComma || "none"}\n\n`;
+      description += `- 尾随逗号: ${
+        config.prettier.trailingComma || "none"
+      }\n\n`;
     }
 
     if (config.typescript?.compilerOptions) {
       description += `**TypeScript 配置**:\n`;
-      description += `- 严格模式: ${config.typescript.compilerOptions.strict ? "启用" : "禁用"}\n`;
+      description += `- 严格模式: ${
+        config.typescript.compilerOptions.strict ? "启用" : "禁用"
+      }\n`;
       if (config.typescript.compilerOptions.target) {
         description += `- 编译目标: ${config.typescript.compilerOptions.target}\n`;
       }
@@ -338,4 +349,3 @@ export class ConfigParser {
     return description;
   }
 }
-

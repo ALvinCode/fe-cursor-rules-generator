@@ -1,40 +1,73 @@
-import * as path from "path";
-import { FileUtils } from "../utils/file-utils.js";
-import { CursorRule, InstructionsFile } from "../types.js";
-import { logger } from "../utils/logger.js";
+import * as path from 'path';
+
+import { CursorRule, FileOrganizationInfo, InstructionsFile } from '../types.js';
+import { FileUtils } from '../utils/file-utils.js';
+import { logger } from '../utils/logger.js';
+import { GenerationCoordinator, LocationConfirmation } from './generation-coordinator.js';
 
 /**
  * 文件写入器
  * 负责将生成的规则写入 .cursor/rules/ 目录
+ * v1.7: 增强位置确认机制
  */
 export class FileWriter {
+  private coordinator: GenerationCoordinator;
+
+  constructor() {
+    this.coordinator = new GenerationCoordinator();
+  }
+
   /**
-   * 写入规则文件
+   * 写入规则文件（增强版，带位置确认）
    */
   async writeRules(
     projectPath: string,
-    rules: CursorRule[]
-  ): Promise<string[]> {
+    rules: CursorRule[],
+    fileOrganization?: FileOrganizationInfo
+  ): Promise<{
+    writtenFiles: string[];
+    confirmations: LocationConfirmation[];
+  }> {
     const writtenFiles: string[] = [];
+    const confirmations: LocationConfirmation[] = [];
 
     // 写入每个规则文件
     for (const rule of rules) {
+      // 确认生成位置
+      const confirmation = await this.coordinator.confirmGenerationLocation(
+        projectPath,
+        rule,
+        fileOrganization
+      );
+      confirmations.push(confirmation);
+
+      // 如果需要确认，记录警告但继续生成（规则文件位置通常是确定的）
+      if (confirmation.needsConfirmation) {
+        logger.warn(`生成位置需要确认: ${confirmation.targetPath}`, {
+          reason: confirmation.reason,
+          alternatives: confirmation.suggestedAlternatives,
+        });
+      }
+
       // 根据规则的 scope 和 modulePath 确定写入位置
       const baseDir = rule.modulePath || projectPath;
       const rulesDir = path.join(baseDir, ".cursor", "rules");
-      
+
       // 写入规则文件（FileUtils.writeFile 会自动创建目录）
       const filePath = path.join(rulesDir, rule.fileName);
       await FileUtils.writeFile(filePath, rule.content);
-      
+
       // 计算相对于项目根目录的路径用于显示
       const relativePath = path.relative(projectPath, filePath);
       writtenFiles.push(relativePath);
-      
-      logger.debug(`已写入规则文件: ${relativePath}`);
+
+      logger.debug(`已写入规则文件: ${relativePath}`, {
+        certainty: confirmation.certainty,
+        needsConfirmation: confirmation.needsConfirmation,
+      });
     }
 
-    return writtenFiles;
+    return { writtenFiles, confirmations };
   }
 
   /**
@@ -49,9 +82,12 @@ export class FileWriter {
    * 清理旧的规则文件
    * 清理项目根目录和所有模块目录的规则
    */
-  async cleanOldRules(projectPath: string, modulePaths?: string[]): Promise<void> {
+  async cleanOldRules(
+    projectPath: string,
+    modulePaths?: string[]
+  ): Promise<void> {
     const pathsToClean = [projectPath];
-    
+
     // 添加所有模块路径
     if (modulePaths && modulePaths.length > 0) {
       pathsToClean.push(...modulePaths);
@@ -68,7 +104,9 @@ export class FileWriter {
           if (file.endsWith(".mdc") || file.endsWith(".md")) {
             const filePath = path.join(rulesDir, file);
             await fs.unlink(filePath);
-            logger.debug(`已删除旧规则文件: ${path.relative(projectPath, filePath)}`);
+            logger.debug(
+              `已删除旧规则文件: ${path.relative(projectPath, filePath)}`
+            );
           }
         }
       } catch (error) {
@@ -77,4 +115,3 @@ export class FileWriter {
     }
   }
 }
-

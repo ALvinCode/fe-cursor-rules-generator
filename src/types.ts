@@ -158,7 +158,52 @@ export interface RuleGenerationContext {
   customPatterns?: CustomPatterns;
   fileOrganization?: FileOrganizationInfo;
   // v1.3.x 新增字段
-  frontendRouter?: { info: RouterInfo; pattern: RoutingPattern; examples: RouteExample[]; dynamicAnalysis?: any };
-  backendRouter?: { info: RouterInfo; pattern: RoutingPattern; examples: RouteExample[] };
+  frontendRouter?: {
+    info: RouterInfo;
+    pattern: RoutingPattern;
+    examples: RouteExample[];
+    dynamicAnalysis?: any;
+  };
+  backendRouter?: {
+    info: RouterInfo;
+    pattern: RoutingPattern;
+    examples: RouteExample[];
+  };
 }
 
+/**
+ * 生成摘要相关类型（v1.7 新增）
+ */
+export interface GenerationSummary {
+  status: "success" | "needs-confirmation" | "error";
+  filesGenerated: Array<{
+    path: string;
+    type: string;
+    sourceRule: string;
+    explanation?: {
+      filePath: string;
+      type: string;
+      sourceRule: string;
+      triggerCondition: string;
+      usageGuidance: string;
+    };
+  }>;
+  contextEvaluation: {
+    detectedStructure: string[];
+    appliedStructureRule: string;
+    mismatches?: Array<{
+      type: string;
+      detected: string | null;
+      expected: string;
+      severity: "high" | "medium" | "low";
+    }>;
+  };
+  userGuidance: string[];
+  notes: string[];
+  confirmationsNeeded?: Array<{
+    topic: string;
+    currentPath: string;
+    reason: string;
+    alternatives?: string[];
+  }>;
+}

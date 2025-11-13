@@ -1,33 +1,33 @@
 #!/usr/bin/env node
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { readFileSync } from 'fs';
+import * as os from 'os';
+import path, { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
-} from "@modelcontextprotocol/sdk/types.js";
-import { ProjectAnalyzer } from "./modules/project-analyzer.js";
-import { TechStackDetector } from "./modules/tech-stack-detector.js";
-import { ModuleDetector } from "./modules/module-detector.js";
-import { Context7Integration } from "./modules/context7-integration.js";
-import { CodeAnalyzer } from "./modules/code-analyzer.js";
-import { ConsistencyChecker } from "./modules/consistency-checker.js";
-import { RulesGenerator } from "./modules/rules-generator.js";
-import { FileWriter } from "./modules/file-writer.js";
-import { RuleValidator } from "./modules/rule-validator.js";
-import { PracticeAnalyzer } from "./modules/practice-analyzer.js";
-import { ConfigParser } from "./modules/config-parser.js";
-import { CustomPatternDetector } from "./modules/custom-pattern-detector.js";
-import { FileStructureLearner } from "./modules/file-structure-learner.js";
-import { RouterDetector } from "./modules/router-detector.js";
-import { CursorRule, InstructionsFile } from "./types.js";
-import path from "path";
-import { logger } from "./utils/logger.js";
-import { createErrorResponse } from "./utils/errors.js";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import * as os from "os";
+    CallToolRequestSchema, ListToolsRequestSchema, Tool
+} from '@modelcontextprotocol/sdk/types.js';
+
+import { CodeAnalyzer } from './modules/code-analyzer.js';
+import { ConfigParser } from './modules/config-parser.js';
+import { ConsistencyChecker } from './modules/consistency-checker.js';
+import { Context7Integration } from './modules/context7-integration.js';
+import { CustomPatternDetector } from './modules/custom-pattern-detector.js';
+import { FileStructureLearner } from './modules/file-structure-learner.js';
+import { FileWriter } from './modules/file-writer.js';
+import { GenerationCoordinator } from './modules/generation-coordinator.js';
+import { ModuleDetector } from './modules/module-detector.js';
+import { PracticeAnalyzer } from './modules/practice-analyzer.js';
+import { ProjectAnalyzer } from './modules/project-analyzer.js';
+import { RouterDetector } from './modules/router-detector.js';
+import { RuleValidator } from './modules/rule-validator.js';
+import { RulesGenerator } from './modules/rules-generator.js';
+import { TechStackDetector } from './modules/tech-stack-detector.js';
+import { CursorRule, GenerationSummary, InstructionsFile } from './types.js';
+import { createErrorResponse } from './utils/errors.js';
+import { logger } from './utils/logger.js';
 
 /**
  * 动态读取 package.json 中的版本号
@@ -101,6 +101,9 @@ class CursorRulesGeneratorServer {
 
     this.setupToolHandlers();
   }
+
+  private generationCoordinator: GenerationCoordinator =
+    new GenerationCoordinator();
 
   private setupToolHandlers() {
     // 注册工具列表
@@ -285,71 +288,98 @@ class CursorRulesGeneratorServer {
    */
   private async handlePreviewGeneration(args: any) {
     const projectPath = this.parseProjectPath(args);
-    
+
     let output = `📋 Cursor Rules 生成预览\n\n`;
     output += `项目路径: ${projectPath}\n\n`;
     output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    
+
     // 执行所有分析任务，收集信息
     const uncertainties: Array<{
       taskNumber?: number;
       topic: string;
       analysis?: any;
     }> = [];
-    
+
     output += `## 📊 分析任务清单\n\n`;
-    
+
     // 任务 1
     output += `🔄 [1/11] 收集项目文件...\n`;
     const files = await this.projectAnalyzer.collectFiles(projectPath);
     output += `✅ [1/11] 完成 - 发现 ${files.length} 个有用文件\n\n`;
-    
+
     // 任务 2
     output += `🔄 [2/11] 检测技术栈...\n`;
     const techStack = await this.techStackDetector.detect(projectPath, files);
     output += `✅ [2/11] 完成 - ${techStack.primary.join(", ")}\n\n`;
-    
+
     // 任务 3
     output += `🔄 [3/11] 解析配置文件...\n`;
-    const projectConfig = await this.configParser.parseProjectConfig(projectPath);
+    const projectConfig = await this.configParser.parseProjectConfig(
+      projectPath
+    );
     let configSummary = "";
     if (projectConfig.prettier) configSummary += "Prettier, ";
     if (projectConfig.eslint) configSummary += "ESLint, ";
     if (projectConfig.typescript) configSummary += "TypeScript, ";
     if (projectConfig.commands?.format) configSummary += "格式化命令";
     output += `✅ [3/11] 完成 - ${configSummary || "无配置"}\n\n`;
-    
+
     // 任务 4
     output += `🔄 [4/11] 分析项目实践...\n`;
-    const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(projectPath, files);
+    const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(
+      projectPath,
+      files
+    );
     output += `✅ [4/11] 完成 - 错误处理: ${errorHandling.type}, ${errorHandling.frequency} 处\n\n`;
-    
+
     // 任务 5
     output += `🔄 [5/11] 检测自定义工具...\n`;
-    const customHooks = await this.customPatternDetector.detectCustomHooks(projectPath, files);
-    const customUtils = await this.customPatternDetector.detectCustomUtils(projectPath, files);
+    const customHooks = await this.customPatternDetector.detectCustomHooks(
+      projectPath,
+      files
+    );
+    const customUtils = await this.customPatternDetector.detectCustomUtils(
+      projectPath,
+      files
+    );
     output += `✅ [5/11] 完成 - Hooks: ${customHooks.length} 个, 工具函数: ${customUtils.length} 个\n\n`;
-    
+
     // 任务 6
     output += `🔄 [6/11] 学习文件组织...\n`;
-    const fileOrganization = await this.fileStructureLearner.learnStructure(projectPath, files);
+    const fileOrganization = await this.fileStructureLearner.learnStructure(
+      projectPath,
+      files
+    );
     output += `✅ [6/11] 完成 - 识别 ${fileOrganization.structure.length} 个目录\n\n`;
-    
+
     // 任务 7
     output += `🔄 [7/11] 检测路由系统...\n`;
-    const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(projectPath, files);
-    const backendRouterInfo = await this.routerDetector.detectBackendRouter(projectPath, files);
-    const routerSummary = [
-      frontendRouterInfo ? `前端: ${frontendRouterInfo.framework}` : null,
-      backendRouterInfo ? `后端: ${backendRouterInfo.framework}` : null,
-    ].filter(Boolean).join(", ") || "未检测到路由";
+    const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(
+      projectPath,
+      files
+    );
+    const backendRouterInfo = await this.routerDetector.detectBackendRouter(
+      projectPath,
+      files
+    );
+    const routerSummary =
+      [
+        frontendRouterInfo ? `前端: ${frontendRouterInfo.framework}` : null,
+        backendRouterInfo ? `后端: ${backendRouterInfo.framework}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ") || "未检测到路由";
     output += `✅ [7/11] 完成 - ${routerSummary}\n\n`;
-    
+
     // 任务 8 - 可能需要确认
     output += `🔄 [8/11] 分析路由生成方式...\n`;
     if (frontendRouterInfo) {
-      const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(projectPath, files, frontendRouterInfo);
-      
+      const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(
+        projectPath,
+        files,
+        frontendRouterInfo
+      );
+
       if (dynamicAnalysis.needsConfirmation) {
         output += `⚠️ [8/11] 需要确认 - 检测到多个可能的路由生成方式\n\n`;
         uncertainties.push({
@@ -358,67 +388,98 @@ class CursorRulesGeneratorServer {
           analysis: dynamicAnalysis,
         });
       } else {
-        output += `✅ [8/11] 完成 - ${dynamicAnalysis.recommendation.certainty === 'certain' ? '确定' : '可能'}: ${dynamicAnalysis.recommendation.method}\n\n`;
+        output += `✅ [8/11] 完成 - ${
+          dynamicAnalysis.recommendation.certainty === "certain"
+            ? "确定"
+            : "可能"
+        }: ${dynamicAnalysis.recommendation.method}\n\n`;
       }
     } else {
       output += `✅ [8/11] 跳过 - 未检测到路由系统\n\n`;
     }
-    
+
     // 任务 9-11
-    output += `✅ [9/11] 准备生成 - 将生成 ${this.estimateRuleFileCount(techStack, customHooks.length, frontendRouterInfo, backendRouterInfo)} 个规则文件\n`;
+    output += `✅ [9/11] 准备生成 - 将生成 ${this.estimateRuleFileCount(
+      techStack,
+      customHooks.length,
+      frontendRouterInfo,
+      backendRouterInfo
+    )} 个规则文件\n`;
     output += `✅ [10/11] 准备写入 - 将写入 .cursor/ 目录\n`;
     output += `✅ [11/11] 准备完成 - 将生成 instructions.md\n\n`;
-    
+
     output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    
+
     // 显示需要确认的问题
     if (uncertainties.length > 0) {
       output += `## ⚠️ 需要您确认的决策点 (${uncertainties.length} 个)\n\n`;
-      
+
       for (let i = 0; i < uncertainties.length; i++) {
         const item = uncertainties[i];
         output += `### 决策点 ${i + 1}: ${item.topic}\n\n`;
         output += `**当前方案**: ${item.analysis.recommendation.method}\n`;
-        output += `**确定性**: ${item.analysis.recommendation.certainty === 'certain' ? '✅ 确定' : item.analysis.recommendation.certainty === 'likely' ? '⚠️ 可能' : 'ℹ️ 不确定'}\n`;
+        output += `**确定性**: ${
+          item.analysis.recommendation.certainty === "certain"
+            ? "✅ 确定"
+            : item.analysis.recommendation.certainty === "likely"
+            ? "⚠️ 可能"
+            : "ℹ️ 不确定"
+        }\n`;
         output += `**理由**: ${item.analysis.recommendation.explanation}\n\n`;
-        
-        if (item.analysis.scripts.commands.length > 0 || item.analysis.scripts.files.length > 0) {
+
+        if (
+          item.analysis.scripts.commands.length > 0 ||
+          item.analysis.scripts.files.length > 0
+        ) {
           output += `**检测到的所有选项**:\n`;
-          
+
           if (item.analysis.scripts.commands.length > 0) {
             output += `\n命令选项:\n`;
-            item.analysis.scripts.commands.forEach((cmd: string, idx: number) => {
-              const mark = idx === 0 ? "💡 推荐" : "";
-              output += `  ${String.fromCharCode(65 + idx)}. ${cmd} ${mark}\n`;
-            });
+            item.analysis.scripts.commands.forEach(
+              (cmd: string, idx: number) => {
+                const mark = idx === 0 ? "💡 推荐" : "";
+                output += `  ${String.fromCharCode(
+                  65 + idx
+                )}. ${cmd} ${mark}\n`;
+              }
+            );
           }
-          
+
           if (item.analysis.scripts.files.length > 0) {
             output += `\n脚本文件:\n`;
             const offset = item.analysis.scripts.commands.length;
             item.analysis.scripts.files.forEach((file: string, idx: number) => {
-              output += `  ${String.fromCharCode(65 + offset + idx)}. @${file}\n`;
+              output += `  ${String.fromCharCode(
+                65 + offset + idx
+              )}. @${file}\n`;
             });
           }
-          
+
           output += `\n其他:\n`;
-          const lastOption = String.fromCharCode(65 + item.analysis.scripts.commands.length + item.analysis.scripts.files.length);
+          const lastOption = String.fromCharCode(
+            65 +
+              item.analysis.scripts.commands.length +
+              item.analysis.scripts.files.length
+          );
           output += `  ${lastOption}. 不使用脚本，手动创建\n`;
         }
-        
+
         output += `\n❓ **您的决策**:\n`;
         output += `- 如果当前方案正确 → 无需操作\n`;
         output += `- 如果需要更改 → 请告诉我选择哪个选项（如 "选择 B"）\n`;
         output += `- 如果有其他方式 → 请具体说明\n\n`;
-        
-        output += `💡 **影响**: ${item.analysis.confirmationQuestions[0]?.impact || '这将决定规则中的相关指南'}\n\n`;
+
+        output += `💡 **影响**: ${
+          item.analysis.confirmationQuestions[0]?.impact ||
+          "这将决定规则中的相关指南"
+        }\n\n`;
         output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       }
     } else {
       output += `## ✅ 无需确认\n\n`;
       output += `所有分析结果都是确定的，可以直接生成规则。\n\n`;
     }
-    
+
     // 显示将生成的文件
     output += `## 📁 将要生成的文件\n\n`;
     output += `.cursor/\n`;
@@ -430,20 +491,32 @@ class CursorRulesGeneratorServer {
     if (customHooks.length > 0 || customUtils.length > 0) {
       output += `    ├── custom-tools.mdc (~150 行)\n`;
     }
-    if (techStack.frameworks.some(f => ["React", "Vue", "Angular"].includes(f))) {
+    if (
+      techStack.frameworks.some((f) => ["React", "Vue", "Angular"].includes(f))
+    ) {
       output += `    ├── ui-ux.mdc (~250 行)\n`;
     }
     if (frontendRouterInfo) {
       output += `    ├── frontend-routing.mdc (~300 行)\n`;
     }
     output += `    └── ...\n\n`;
-    output += `预计总文件: ${this.estimateRuleFileCount(techStack, customHooks.length, frontendRouterInfo, backendRouterInfo)} 个\n`;
-    output += `预计总行数: ~${this.estimateTotalLines(techStack, customHooks.length, frontendRouterInfo, backendRouterInfo)} 行\n\n`;
-    
+    output += `预计总文件: ${this.estimateRuleFileCount(
+      techStack,
+      customHooks.length,
+      frontendRouterInfo,
+      backendRouterInfo
+    )} 个\n`;
+    output += `预计总行数: ~${this.estimateTotalLines(
+      techStack,
+      customHooks.length,
+      frontendRouterInfo,
+      backendRouterInfo
+    )} 行\n\n`;
+
     output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    
+
     output += `## 🚀 下一步\n\n`;
-    
+
     if (uncertainties.length > 0) {
       output += `**如有需要确认的决策**:\n`;
       output += `1. 查看上述决策点\n`;
@@ -454,9 +527,9 @@ class CursorRulesGeneratorServer {
       output += `**直接生成**:\n`;
       output += `运行: \`generate_cursor_rules\`\n\n`;
     }
-    
+
     output += `💡 **提示**: preview 工具只是预览，不会生成任何文件。\n`;
-    
+
     return {
       content: [{ type: "text", text: output }],
     };
@@ -473,13 +546,22 @@ class CursorRulesGeneratorServer {
   ): number {
     let count = 4; // global, code-style, architecture, instructions
     if (customToolsCount > 0) count++;
-    if (techStack.frameworks.some((f: string) => ["React", "Vue", "Angular"].includes(f))) count++;
-    const frontendExists = frontendRouter && ('exists' in frontendRouter 
-      ? frontendRouter.exists 
-      : 'info' in frontendRouter && frontendRouter.info.exists);
-    const backendExists = backendRouter && ('exists' in backendRouter
-      ? backendRouter.exists
-      : 'info' in backendRouter && backendRouter.info.exists);
+    if (
+      techStack.frameworks.some((f: string) =>
+        ["React", "Vue", "Angular"].includes(f)
+      )
+    )
+      count++;
+    const frontendExists =
+      frontendRouter &&
+      ("exists" in frontendRouter
+        ? frontendRouter.exists
+        : "info" in frontendRouter && frontendRouter.info.exists);
+    const backendExists =
+      backendRouter &&
+      ("exists" in backendRouter
+        ? backendRouter.exists
+        : "info" in backendRouter && backendRouter.info.exists);
     if (frontendExists) count++;
     if (backendExists) count++;
     return count;
@@ -496,13 +578,18 @@ class CursorRulesGeneratorServer {
   ): number {
     let lines = 900; // 基础文件
     if (customToolsCount > 0) lines += 150;
-    if (techStack.frameworks.some((f: string) => ["React", "Vue"].includes(f))) lines += 250;
-    const frontendExists = frontendRouter && ('exists' in frontendRouter
-      ? frontendRouter.exists
-      : 'info' in frontendRouter && frontendRouter.info.exists);
-    const backendExists = backendRouter && ('exists' in backendRouter
-      ? backendRouter.exists
-      : 'info' in backendRouter && backendRouter.info.exists);
+    if (techStack.frameworks.some((f: string) => ["React", "Vue"].includes(f)))
+      lines += 250;
+    const frontendExists =
+      frontendRouter &&
+      ("exists" in frontendRouter
+        ? frontendRouter.exists
+        : "info" in frontendRouter && frontendRouter.info.exists);
+    const backendExists =
+      backendRouter &&
+      ("exists" in backendRouter
+        ? backendRouter.exists
+        : "info" in backendRouter && backendRouter.info.exists);
     if (frontendExists) lines += 300;
     if (backendExists) lines += 300;
     return lines;
@@ -534,10 +621,17 @@ class CursorRulesGeneratorServer {
       { id: 7, title: "识别路由系统", status: "pending", details: [] },
       { id: 8, title: "评估动态路由生成方式", status: "pending", details: [] },
       { id: 9, title: "生成规则与一致性检查", status: "pending", details: [] },
-      { id: 10, title: "写入规则文件与使用说明", status: "pending", details: [] },
+      {
+        id: 10,
+        title: "写入规则文件与使用说明",
+        status: "pending",
+        details: [],
+      },
     ];
 
-    const plannedTodoList = tasks.map((task) => `- [ ] ${task.id}. ${task.title}`).join("\n");
+    const plannedTodoList = tasks
+      .map((task) => `- [ ] ${task.id}. ${task.title}`)
+      .join("\n");
 
     const getTask = (id: number): TaskRecord => {
       const task = tasks.find((item) => item.id === id);
@@ -614,9 +708,25 @@ class CursorRulesGeneratorServer {
     startTask(2, "cursor-rules-generator 正在识别技术栈与模块结构。");
     techStack = await this.techStackDetector.detect(projectPath, files);
     modules = await this.moduleDetector.detectModules(projectPath, files);
-    codeFeatures = await this.codeAnalyzer.analyzeFeatures(projectPath, files, techStack);
-    addDetail(2, `主要技术栈：${techStack.primary.length > 0 ? techStack.primary.join("，") : "未检测到主要技术栈"}`);
-    addDetail(2, `检测到 ${modules.length} 个模块，并提取 ${Object.keys(codeFeatures).length} 项代码特征。`);
+    codeFeatures = await this.codeAnalyzer.analyzeFeatures(
+      projectPath,
+      files,
+      techStack
+    );
+    addDetail(
+      2,
+      `主要技术栈：${
+        techStack.primary.length > 0
+          ? techStack.primary.join("，")
+          : "未检测到主要技术栈"
+      }`
+    );
+    addDetail(
+      2,
+      `检测到 ${modules.length} 个模块，并提取 ${
+        Object.keys(codeFeatures).length
+      } 项代码特征。`
+    );
     completeTask(2);
 
     // 任务 3：检查项目配置
@@ -626,10 +736,19 @@ class CursorRulesGeneratorServer {
     if (projectConfig?.prettier) configSummary.push("Prettier");
     if (projectConfig?.eslint) configSummary.push("ESLint");
     if (projectConfig?.typescript) configSummary.push("TypeScript 配置");
-    if (projectConfig?.commands?.format) configSummary.push(`格式化命令：${projectConfig.commands.format}`);
-    if (projectConfig?.commands?.lintFix) configSummary.push(`Lint 修复命令：${projectConfig.commands.lintFix}`);
-    addDetail(3, `检查到配置项：${configSummary.length > 0 ? configSummary.join("；") : "暂无显式配置"}。`);
-    const aliasCount = projectConfig?.pathAliases ? Object.keys(projectConfig.pathAliases).length : 0;
+    if (projectConfig?.commands?.format)
+      configSummary.push(`格式化命令：${projectConfig.commands.format}`);
+    if (projectConfig?.commands?.lintFix)
+      configSummary.push(`Lint 修复命令：${projectConfig.commands.lintFix}`);
+    addDetail(
+      3,
+      `检查到配置项：${
+        configSummary.length > 0 ? configSummary.join("；") : "暂无显式配置"
+      }。`
+    );
+    const aliasCount = projectConfig?.pathAliases
+      ? Object.keys(projectConfig.pathAliases).length
+      : 0;
     if (aliasCount > 0) {
       addDetail(3, `识别到 ${aliasCount} 个路径别名。`);
     }
@@ -637,22 +756,49 @@ class CursorRulesGeneratorServer {
 
     // 任务 4：分析项目实践规范
     startTask(4, "cursor-rules-generator 正在提取项目实践规范。");
-    const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(projectPath, files);
-    const codeStyle = await this.practiceAnalyzer.analyzeCodeStyle(projectPath, files);
-    const componentPattern = await this.practiceAnalyzer.analyzeComponentPatterns(projectPath, files);
+    const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(
+      projectPath,
+      files
+    );
+    const codeStyle = await this.practiceAnalyzer.analyzeCodeStyle(
+      projectPath,
+      files
+    );
+    const componentPattern =
+      await this.practiceAnalyzer.analyzeComponentPatterns(projectPath, files);
     projectPractice = { errorHandling, codeStyle, componentPattern };
     addDetail(4, `错误处理模式：${errorHandling.type || "未检测"}。`);
-    addDetail(4, `代码风格：变量声明 ${codeStyle.variableDeclaration}，函数风格 ${codeStyle.functionStyle}，字符串引号 ${codeStyle.stringQuote}。`);
-    addDetail(4, `组件组织方式：组件类型 ${componentPattern.type}，导出形式 ${componentPattern.exportStyle}，状态管理 ${componentPattern.stateManagement.join("，") || "未检测"}。`);
+    addDetail(
+      4,
+      `代码风格：变量声明 ${codeStyle.variableDeclaration}，函数风格 ${codeStyle.functionStyle}，字符串引号 ${codeStyle.stringQuote}。`
+    );
+    addDetail(
+      4,
+      `组件组织方式：组件类型 ${componentPattern.type}，导出形式 ${
+        componentPattern.exportStyle
+      }，状态管理 ${componentPattern.stateManagement.join("，") || "未检测"}。`
+    );
     completeTask(4);
 
     // 任务 5：检测自定义工具与模式
     startTask(5, "cursor-rules-generator 正在收集自定义 Hooks 与工具函数。");
-    const customHooks = await this.customPatternDetector.detectCustomHooks(projectPath, files);
-    const customUtils = await this.customPatternDetector.detectCustomUtils(projectPath, files);
-    const apiClient = await this.customPatternDetector.detectAPIClient(projectPath, files);
+    const customHooks = await this.customPatternDetector.detectCustomHooks(
+      projectPath,
+      files
+    );
+    const customUtils = await this.customPatternDetector.detectCustomUtils(
+      projectPath,
+      files
+    );
+    const apiClient = await this.customPatternDetector.detectAPIClient(
+      projectPath,
+      files
+    );
     customPatterns = { customHooks, customUtils, apiClient };
-    addDetail(5, `发现 ${customHooks.length} 个自定义 Hooks、${customUtils.length} 个工具函数。`);
+    addDetail(
+      5,
+      `发现 ${customHooks.length} 个自定义 Hooks、${customUtils.length} 个工具函数。`
+    );
     if (apiClient?.exists) {
       addDetail(5, `检测到 API 客户端：${apiClient.name || "未命名"}。`);
     }
@@ -660,7 +806,10 @@ class CursorRulesGeneratorServer {
 
     // 任务 6：学习文件组织结构
     startTask(6, "cursor-rules-generator 正在分析目录结构与命名约定。");
-    fileOrganization = await this.fileStructureLearner.learnStructure(projectPath, files);
+    fileOrganization = await this.fileStructureLearner.learnStructure(
+      projectPath,
+      files
+    );
     addDetail(6, `识别 ${fileOrganization.structure.length} 个目录节点。`);
     if (fileOrganization.componentLocation?.length > 0) {
       addDetail(6, `组件目录定位为 ${fileOrganization.componentLocation[0]}。`);
@@ -669,29 +818,62 @@ class CursorRulesGeneratorServer {
       addDetail(6, `工具函数目录定位为 ${fileOrganization.utilsLocation[0]}。`);
     }
     if (fileOrganization.namingConvention) {
-      addDetail(6, `命名规范：${JSON.stringify(fileOrganization.namingConvention)}。`);
+      addDetail(
+        6,
+        `命名规范：${JSON.stringify(fileOrganization.namingConvention)}。`
+      );
     }
     completeTask(6);
 
     // 任务 7：识别路由系统
     startTask(7, "cursor-rules-generator 正在识别路由框架。");
-    const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(projectPath, files);
-    const backendRouterInfo = await this.routerDetector.detectBackendRouter(projectPath, files);
+    const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(
+      projectPath,
+      files
+    );
+    const backendRouterInfo = await this.routerDetector.detectBackendRouter(
+      projectPath,
+      files
+    );
 
     if (frontendRouterInfo) {
-      const pattern = await this.routerDetector.analyzeRoutingPattern(projectPath, files, frontendRouterInfo);
-      const examples = await this.routerDetector.extractRouteExamples(projectPath, files, frontendRouterInfo, pattern);
+      const pattern = await this.routerDetector.analyzeRoutingPattern(
+        projectPath,
+        files,
+        frontendRouterInfo
+      );
+      const examples = await this.routerDetector.extractRouteExamples(
+        projectPath,
+        files,
+        frontendRouterInfo,
+        pattern
+      );
       frontendRouter = { info: frontendRouterInfo, pattern, examples };
-      addDetail(7, `前端路由：${frontendRouterInfo.framework}（${frontendRouterInfo.type}）。`);
+      addDetail(
+        7,
+        `前端路由：${frontendRouterInfo.framework}（${frontendRouterInfo.type}）。`
+      );
     } else {
       addDetail(7, "未检测到前端路由系统。");
     }
 
     if (backendRouterInfo) {
-      const pattern = await this.routerDetector.analyzeRoutingPattern(projectPath, files, backendRouterInfo);
-      const examples = await this.routerDetector.extractRouteExamples(projectPath, files, backendRouterInfo, pattern);
+      const pattern = await this.routerDetector.analyzeRoutingPattern(
+        projectPath,
+        files,
+        backendRouterInfo
+      );
+      const examples = await this.routerDetector.extractRouteExamples(
+        projectPath,
+        files,
+        backendRouterInfo,
+        pattern
+      );
       backendRouter = { info: backendRouterInfo, pattern, examples };
-      addDetail(7, `后端路由：${backendRouterInfo.framework}（${backendRouterInfo.type}）。`);
+      addDetail(
+        7,
+        `后端路由：${backendRouterInfo.framework}（${backendRouterInfo.type}）。`
+      );
     }
 
     if (!frontendRouterInfo && !backendRouterInfo) {
@@ -702,13 +884,21 @@ class CursorRulesGeneratorServer {
     // 任务 8：评估动态路由生成方式
     if (frontendRouter) {
       startTask(8, "cursor-rules-generator 正在评估动态路由生成方式。");
-      const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(projectPath, files, frontendRouter.info);
+      const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(
+        projectPath,
+        files,
+        frontendRouter.info
+      );
       frontendRouter.dynamicAnalysis = dynamicAnalysis;
 
       if (dynamicAnalysis.isDynamic) {
         frontendRouter.pattern.isDynamicGenerated = true;
-        frontendRouter.pattern.generationScript = dynamicAnalysis.recommendation.method;
-        addDetail(8, `评估结果：路由由脚本或命令生成（${dynamicAnalysis.recommendation.method}）。`);
+        frontendRouter.pattern.generationScript =
+          dynamicAnalysis.recommendation.method;
+        addDetail(
+          8,
+          `评估结果：路由由脚本或命令生成（${dynamicAnalysis.recommendation.method}）。`
+        );
       } else {
         addDetail(8, "评估结果：路由为手动维护或静态文件。\n");
       }
@@ -730,14 +920,27 @@ class CursorRulesGeneratorServer {
 
     // 任务 9：生成规则与一致性检查
     startTask(9, "cursor-rules-generator 正在汇总最佳实践并检查文档一致性。");
-    bestPractices = await this.context7Integration.getBestPractices(techStack.dependencies);
+    bestPractices = await this.context7Integration.getBestPractices(
+      techStack.dependencies
+    );
     addDetail(9, `获取到 ${bestPractices.length} 条相关最佳实践。`);
 
-    consistencyReport = await this.consistencyChecker.check(projectPath, files, techStack, codeFeatures);
+    consistencyReport = await this.consistencyChecker.check(
+      projectPath,
+      files,
+      techStack,
+      codeFeatures
+    );
     if (consistencyReport.hasInconsistencies) {
-      addDetail(9, `检测到 ${consistencyReport.inconsistencies.length} 处描述与实现不一致。`);
+      addDetail(
+        9,
+        `检测到 ${consistencyReport.inconsistencies.length} 处描述与实现不一致。`
+      );
       if (updateDescription) {
-        await this.consistencyChecker.updateDescriptions(projectPath, consistencyReport);
+        await this.consistencyChecker.updateDescriptions(
+          projectPath,
+          consistencyReport
+        );
         descriptionUpdated = true;
         addDetail(9, "已根据请求自动更新描述文件。");
       }
@@ -753,56 +956,81 @@ class CursorRulesGeneratorServer {
       const allProjectTech = [
         ...techStack.primary,
         ...techStack.frameworks,
-        ...techStack.languages
+        ...techStack.languages,
       ];
       const frameworkTechStacks: Record<string, string[]> = {
-        'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
-        'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
-        'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
-        'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
-        'vue-typescript': ['Vue', 'TypeScript'],
-        'angular-typescript': ['Angular', 'TypeScript'],
-        'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
-        'typescript-react': ['TypeScript', 'React', 'Next.js']
+        "react-typescript": ["React", "TypeScript", "Shadcn", "Tailwind"],
+        "nextjs-typescript": ["Next.js", "TypeScript", "React", "Tailwind"],
+        "nextjs-app-router": ["Next.js", "React", "TypeScript", "Tailwind"],
+        "nextjs-15-react-19": [
+          "Next.js",
+          "React",
+          "TypeScript",
+          "Tailwind",
+          "Vercel",
+        ],
+        "vue-typescript": ["Vue", "TypeScript"],
+        "angular-typescript": ["Angular", "TypeScript"],
+        "sveltekit-typescript": ["Svelte", "TypeScript", "Tailwind"],
+        "typescript-react": ["TypeScript", "React", "Next.js"],
       };
-      const frameworkTech = frameworkTechStacks[frameworkMatchForSearch.framework] || [];
-      const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
-      const missingTechStacks = allProjectTech.filter(tech => {
+      const frameworkTech =
+        frameworkTechStacks[frameworkMatchForSearch.framework] || [];
+      const frameworkTechLower = frameworkTech.map((t) => t.toLowerCase());
+      const missingTechStacks = allProjectTech.filter((tech) => {
         const techLower = tech.toLowerCase();
-        return !frameworkTechLower.some(ft => 
-          techLower.includes(ft) || ft.includes(techLower)
+        return !frameworkTechLower.some(
+          (ft) => techLower.includes(ft) || ft.includes(techLower)
         );
       });
 
       // 尝试网络搜索（如果可用）
       if (missingTechStacks.length > 0) {
-        addDetail(9, `检测到 ${missingTechStacks.length} 个框架规则中未包含的技术栈: ${missingTechStacks.join(', ')}`);
+        addDetail(
+          9,
+          `检测到 ${
+            missingTechStacks.length
+          } 个框架规则中未包含的技术栈: ${missingTechStacks.join(", ")}`
+        );
         // 注意：这里无法直接调用 web_search，需要在外部调用
         // 暂时跳过网络搜索，直接使用备用方案
-        addDetail(9, '使用备用最佳实践方案（无网络连接时）');
+        addDetail(9, "使用备用最佳实践方案（无网络连接时）");
       }
     }
 
-    rules = await this.rulesGenerator.generate({
-      projectPath,
-      techStack,
-      modules,
-      codeFeatures,
-      bestPractices,
-      includeModuleRules,
-      projectPractice,
-      projectConfig,
-      customPatterns,
-      fileOrganization,
-      frontendRouter,
-      backendRouter,
-    }, webSearchResults);
+    rules = await this.rulesGenerator.generate(
+      {
+        projectPath,
+        techStack,
+        modules,
+        codeFeatures,
+        bestPractices,
+        includeModuleRules,
+        projectPractice,
+        projectConfig,
+        customPatterns,
+        fileOrganization,
+        frontendRouter,
+        backendRouter,
+      },
+      webSearchResults
+    );
     addDetail(9, `已生成 ${rules.length} 个规则文件草案。`);
     completeTask(9);
 
     // 任务 10：写入规则文件与说明
-    startTask(10, "cursor-rules-generator 正在写入规则文件与 instructions.md。");
-    writtenFiles = await this.fileWriter.writeRules(projectPath, rules);
+    startTask(
+      10,
+      "cursor-rules-generator 正在写入规则文件与 instructions.md。"
+    );
+    const writeResult = await this.fileWriter.writeRules(
+      projectPath,
+      rules,
+      fileOrganization
+    );
+    writtenFiles = writeResult.writtenFiles;
+    const locationConfirmations = writeResult.confirmations;
+
     instructions = await this.rulesGenerator.generateInstructions({
       projectPath,
       techStack,
@@ -818,95 +1046,188 @@ class CursorRulesGeneratorServer {
     await this.fileWriter.writeInstructions(instructions);
     writtenFiles.push(".cursor/instructions.md");
     addDetail(10, `已写入 ${writtenFiles.length} 个文件。`);
+
+    // 检查是否有需要确认的位置
+    const needsConfirmation = locationConfirmations.some(
+      (c) => c.needsConfirmation
+    );
+    if (needsConfirmation) {
+      addDetail(
+        10,
+        `检测到 ${
+          locationConfirmations.filter((c) => c.needsConfirmation).length
+        } 个位置需要确认。`
+      );
+    }
     completeTask(10);
 
     const completedTodoList = tasks
       .map((task) => {
-        const mark = task.status === "completed" ? "x" : task.status === "skipped" ? "-" : " ";
+        const mark =
+          task.status === "completed"
+            ? "x"
+            : task.status === "skipped"
+            ? "-"
+            : " ";
         return `- [${mark}] ${task.id}. ${task.title}`;
       })
       .join("\n");
 
     const ruleSummary = this.rulesGenerator.generateSummary(rules, projectPath);
-    
+
     // 获取建议列表
     const suggestionCollector = this.rulesGenerator.getSuggestionCollector();
     const suggestionsOutput = suggestionCollector.formatForOutput();
 
     const analysisLines: string[] = [];
-    analysisLines.push(`- cursor-rules-generator 识别主要技术栈：${techStack.primary.length > 0 ? techStack.primary.join("，") : "未检测"}`);
-    analysisLines.push(`- cursor-rules-generator 统计项目文件数量：${files.length} 个，涉及 ${Object.keys(fileTypeStats).length} 种文件类型`);
-    analysisLines.push(`- cursor-rules-generator 检测模块数量：${modules.length} 个`);
-    analysisLines.push(`- cursor-rules-generator 记录自定义工具：Hooks ${customPatterns.customHooks.length} 个，工具函数 ${customPatterns.customUtils.length} 个${customPatterns.apiClient?.exists ? "，API 客户端 1 个" : ""}`);
-    
+    analysisLines.push(
+      `- cursor-rules-generator 识别主要技术栈：${
+        techStack.primary.length > 0 ? techStack.primary.join("，") : "未检测"
+      }`
+    );
+    analysisLines.push(
+      `- cursor-rules-generator 统计项目文件数量：${files.length} 个，涉及 ${
+        Object.keys(fileTypeStats).length
+      } 种文件类型`
+    );
+    analysisLines.push(
+      `- cursor-rules-generator 检测模块数量：${modules.length} 个`
+    );
+    analysisLines.push(
+      `- cursor-rules-generator 记录自定义工具：Hooks ${
+        customPatterns.customHooks.length
+      } 个，工具函数 ${customPatterns.customUtils.length} 个${
+        customPatterns.apiClient?.exists ? "，API 客户端 1 个" : ""
+      }`
+    );
+
     // 添加框架匹配信息（向后兼容）
     const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
     if (frameworkMatch) {
-      analysisLines.push(`- cursor-rules-generator 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${frameworkMatch.framework}** 格式（相似度: ${Math.round(frameworkMatch.similarity * 100)}%），采用 **${frameworkMatch.format}** 格式风格`);
+      analysisLines.push(
+        `- cursor-rules-generator 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${
+          frameworkMatch.framework
+        }** 格式（相似度: ${Math.round(
+          frameworkMatch.similarity * 100
+        )}%），采用 **${frameworkMatch.format}** 格式风格`
+      );
     }
 
     // 添加多类别技术栈匹配信息
     const multiCategoryMatch = this.rulesGenerator.getMultiCategoryMatch();
     if (multiCategoryMatch && multiCategoryMatch.matches.length > 0) {
       const categoryNames: Record<string, string> = {
-        frontend: '前端框架',
-        backend: '后端框架',
-        mobile: '移动开发',
-        styling: 'CSS 和样式',
-        state: '状态管理',
-        database: '数据库和 API',
-        testing: '测试',
-        hosting: '部署和托管',
-        build: '构建工具',
-        language: '语言特定',
-        other: '其他'
+        frontend: "前端框架",
+        backend: "后端框架",
+        mobile: "移动开发",
+        styling: "CSS 和样式",
+        state: "状态管理",
+        database: "数据库和 API",
+        testing: "测试",
+        hosting: "部署和托管",
+        build: "构建工具",
+        language: "语言特定",
+        other: "其他",
       };
-      
+
       const categoryList = multiCategoryMatch.categories
         .map((cat: string) => categoryNames[cat] || cat)
-        .join('、');
-      
-      analysisLines.push(`- cursor-rules-generator 多类别技术栈匹配：找到 ${multiCategoryMatch.matches.length} 个匹配规则，涵盖 ${categoryList} 等 ${multiCategoryMatch.categories.length} 个类别`);
-      
+        .join("、");
+
+      analysisLines.push(
+        `- cursor-rules-generator 多类别技术栈匹配：找到 ${multiCategoryMatch.matches.length} 个匹配规则，涵盖 ${categoryList} 等 ${multiCategoryMatch.categories.length} 个类别`
+      );
+
       if (multiCategoryMatch.primaryMatch) {
-        analysisLines.push(`  - 主要匹配：${multiCategoryMatch.primaryMatch.ruleName}（相似度: ${Math.round(multiCategoryMatch.primaryMatch.similarity * 100)}%，类别: ${categoryNames[multiCategoryMatch.primaryMatch.category] || multiCategoryMatch.primaryMatch.category}）`);
+        analysisLines.push(
+          `  - 主要匹配：${
+            multiCategoryMatch.primaryMatch.ruleName
+          }（相似度: ${Math.round(
+            multiCategoryMatch.primaryMatch.similarity * 100
+          )}%，类别: ${
+            categoryNames[multiCategoryMatch.primaryMatch.category] ||
+            multiCategoryMatch.primaryMatch.category
+          }）`
+        );
       }
     }
-    
+
     if (frontendRouter) {
-      analysisLines.push(`- cursor-rules-generator 识别前端路由：${frontendRouter.info.framework}（${frontendRouter.info.type}）`);
+      analysisLines.push(
+        `- cursor-rules-generator 识别前端路由：${frontendRouter.info.framework}（${frontendRouter.info.type}）`
+      );
     }
     if (backendRouter) {
-      analysisLines.push(`- cursor-rules-generator 识别后端路由：${backendRouter.info.framework}（${backendRouter.info.type}）`);
+      analysisLines.push(
+        `- cursor-rules-generator 识别后端路由：${backendRouter.info.framework}（${backendRouter.info.type}）`
+      );
     }
-    analysisLines.push(`- cursor-rules-generator 识别项目特定规范：错误处理 ${projectPractice?.errorHandling?.type ?? "未检测"}，变量声明 ${projectPractice?.codeStyle?.variableDeclaration ?? "未检测"}`);
-    if (projectConfig?.commands && (projectConfig.commands.format || projectConfig.commands.lintFix)) {
-      analysisLines.push(`- cursor-rules-generator 检测到格式化/校验命令：${[projectConfig.commands.format, projectConfig.commands.lintFix, projectConfig.commands.lint].filter(Boolean).join("，")}`);
+    analysisLines.push(
+      `- cursor-rules-generator 识别项目特定规范：错误处理 ${
+        projectPractice?.errorHandling?.type ?? "未检测"
+      }，变量声明 ${
+        projectPractice?.codeStyle?.variableDeclaration ?? "未检测"
+      }`
+    );
+    if (
+      projectConfig?.commands &&
+      (projectConfig.commands.format || projectConfig.commands.lintFix)
+    ) {
+      analysisLines.push(
+        `- cursor-rules-generator 检测到格式化/校验命令：${[
+          projectConfig.commands.format,
+          projectConfig.commands.lintFix,
+          projectConfig.commands.lint,
+        ]
+          .filter(Boolean)
+          .join("，")}`
+      );
     }
 
     let structureTreeSection = "";
     if (fileOrganization && fileOrganization.structure.length > 0) {
       const structureNotes: string[] = [];
       if (fileOrganization.componentLocation?.length > 0) {
-        structureNotes.push(`cursor-rules-generator 将组件目录定位为 \`${fileOrganization.componentLocation[0]}\``);
+        structureNotes.push(
+          `cursor-rules-generator 将组件目录定位为 \`${fileOrganization.componentLocation[0]}\``
+        );
       }
       if (fileOrganization.utilsLocation?.length > 0) {
-        structureNotes.push(`cursor-rules-generator 将工具函数目录定位为 \`${fileOrganization.utilsLocation[0]}\``);
+        structureNotes.push(
+          `cursor-rules-generator 将工具函数目录定位为 \`${fileOrganization.utilsLocation[0]}\``
+        );
       }
       if (fileOrganization.hooksLocation?.length > 0) {
-        structureNotes.push(`cursor-rules-generator 将 Hooks 目录定位为 \`${fileOrganization.hooksLocation[0]}\``);
+        structureNotes.push(
+          `cursor-rules-generator 将 Hooks 目录定位为 \`${fileOrganization.hooksLocation[0]}\``
+        );
       }
       if (fileOrganization.apiLocation?.length > 0) {
-        structureNotes.push(`cursor-rules-generator 将 API 服务目录定位为 \`${fileOrganization.apiLocation[0]}\``);
+        structureNotes.push(
+          `cursor-rules-generator 将 API 服务目录定位为 \`${fileOrganization.apiLocation[0]}\``
+        );
       }
-      const structureNotesText = structureNotes.length > 0 ? `${structureNotes.join("；")}。` : "cursor-rules-generator 未检测到特定目录角色。";
-      structureTreeSection = `${this.generateProjectStructureTree(fileOrganization, projectPath)}\n${structureNotesText}`;
+      const structureNotesText =
+        structureNotes.length > 0
+          ? `${structureNotes.join("；")}。`
+          : "cursor-rules-generator 未检测到特定目录角色。";
+      structureTreeSection = `${this.generateProjectStructureTree(
+        fileOrganization,
+        projectPath
+      )}\n${structureNotesText}`;
     }
 
     const instructionsTips: string[] = [];
-    instructionsTips.push(`cursor-rules-generator 已写入 \`.cursor/instructions.md\`，请先阅读“执行流程”章节。`);
-    instructionsTips.push(`cursor-rules-generator 建议在任务开始前加载对应规则文件，例如在编写路由时参考 \`.cursor/rules/frontend-routing.mdc\`。`);
-    if (projectConfig?.commands && (projectConfig.commands.format || projectConfig.commands.lintFix)) {
+    instructionsTips.push(
+      `cursor-rules-generator 已写入 \`.cursor/instructions.md\`，请先阅读“执行流程”章节。`
+    );
+    instructionsTips.push(
+      `cursor-rules-generator 建议在任务开始前加载对应规则文件，例如在编写路由时参考 \`.cursor/rules/frontend-routing.mdc\`。`
+    );
+    if (
+      projectConfig?.commands &&
+      (projectConfig.commands.format || projectConfig.commands.lintFix)
+    ) {
       const cmdTips: string[] = [];
       if (projectConfig.commands.format) {
         cmdTips.push(projectConfig.commands.format);
@@ -916,30 +1237,47 @@ class CursorRulesGeneratorServer {
       } else if (projectConfig.commands.lint) {
         cmdTips.push(projectConfig.commands.lint);
       }
-      instructionsTips.push(`cursor-rules-generator 建议在生成代码后执行：${cmdTips.join("，")}`);
+      instructionsTips.push(
+        `cursor-rules-generator 建议在生成代码后执行：${cmdTips.join("，")}`
+      );
     }
 
     const notes: string[] = [];
     if (consistencyReport.hasInconsistencies) {
-      const issueLines = consistencyReport.inconsistencies.map((inc: any, index: number) => {
-        const severity = inc.severity === "high" ? "高" : inc.severity === "medium" ? "中" : "低";
-        let line = `问题 ${index + 1}（严重程度：${severity}） - ${inc.description}`;
-        if (inc.actualValue) {
-          line += `；实际：${inc.actualValue}`;
+      const issueLines = consistencyReport.inconsistencies.map(
+        (inc: any, index: number) => {
+          const severity =
+            inc.severity === "high"
+              ? "高"
+              : inc.severity === "medium"
+              ? "中"
+              : "低";
+          let line = `问题 ${index + 1}（严重程度：${severity}） - ${
+            inc.description
+          }`;
+          if (inc.actualValue) {
+            line += `；实际：${inc.actualValue}`;
+          }
+          if (inc.documentedValue) {
+            line += `；文档：${inc.documentedValue}`;
+          }
+          if (inc.suggestedFix) {
+            line += `；建议处理：${inc.suggestedFix}`;
+          }
+          return line;
         }
-        if (inc.documentedValue) {
-          line += `；文档：${inc.documentedValue}`;
-        }
-        if (inc.suggestedFix) {
-          line += `；建议处理：${inc.suggestedFix}`;
-        }
-        return line;
-      });
-      notes.push(`cursor-rules-generator 检测到 ${consistencyReport.inconsistencies.length} 处描述不一致：\n${issueLines.join("\n")}`);
+      );
+      notes.push(
+        `cursor-rules-generator 检测到 ${
+          consistencyReport.inconsistencies.length
+        } 处描述不一致：\n${issueLines.join("\n")}`
+      );
       if (descriptionUpdated) {
         notes.push("cursor-rules-generator 已根据请求更新描述文件。");
       } else {
-        notes.push("cursor-rules-generator 未自动更新描述文件，可执行 `update_project_description` 进行同步。");
+        notes.push(
+          "cursor-rules-generator 未自动更新描述文件，可执行 `update_project_description` 进行同步。"
+        );
       }
     } else {
       notes.push("cursor-rules-generator 未发现文档与实现不一致的问题。");
@@ -947,9 +1285,15 @@ class CursorRulesGeneratorServer {
 
     if (uncertainties.length > 0) {
       const uncertaintyLines = uncertainties.map((item, idx) => {
-        return `决策 ${idx + 1}：${item.topic} → 当前方案 "${item.method}"，确定性：${item.certainty}`;
+        return `决策 ${idx + 1}：${item.topic} → 当前方案 "${
+          item.method
+        }"，确定性：${item.certainty}`;
       });
-      notes.push(`cursor-rules-generator 记录了 ${uncertainties.length} 个待确认决策：\n${uncertaintyLines.join("\n")}`);
+      notes.push(
+        `cursor-rules-generator 记录了 ${
+          uncertainties.length
+        } 个待确认决策：\n${uncertaintyLines.join("\n")}`
+      );
     }
 
     let outputMessage = `cursor-rules-generator 已被调用，开始处理项目：${projectPath}\n\n`;
@@ -1013,6 +1357,17 @@ class CursorRulesGeneratorServer {
       });
     }
 
+    // v1.7: 添加结构化生成摘要
+    const generationSummary = this.generationCoordinator.generateSummary(
+      rules,
+      projectPath,
+      fileOrganization,
+      locationConfirmations
+    );
+
+    outputMessage += `\n## 📦 生成摘要（结构化输出）\n\n`;
+    outputMessage += this.formatGenerationSummary(generationSummary);
+
     return {
       content: [
         {
@@ -1021,6 +1376,104 @@ class CursorRulesGeneratorServer {
         },
       ],
     };
+  }
+
+  /**
+   * 格式化生成摘要为可读文本
+   */
+  private formatGenerationSummary(summary: GenerationSummary): string {
+    let output = "";
+
+    // 状态
+    const statusEmoji =
+      summary.status === "success"
+        ? "✅"
+        : summary.status === "needs-confirmation"
+        ? "⚠️"
+        : "❌";
+    output += `**状态**: ${statusEmoji} ${
+      summary.status === "success"
+        ? "成功"
+        : summary.status === "needs-confirmation"
+        ? "需要确认"
+        : "错误"
+    }\n\n`;
+
+    // 生成的文件
+    output += `### ✅ 生成的文件路径\n\n`;
+    for (const file of summary.filesGenerated) {
+      output += `- **${file.path}**\n`;
+      output += `  - 类型: ${file.type}\n`;
+      output += `  - 源规则: ${file.sourceRule}\n`;
+      if (file.explanation) {
+        output += `  - 触发条件: ${file.explanation.triggerCondition}\n`;
+        output += `  - 使用说明: ${file.explanation.usageGuidance}\n`;
+      }
+      output += `\n`;
+    }
+
+    // 上下文评估
+    output += `### 🧩 上下文评估\n\n`;
+    output += `**检测到的项目结构**:\n`;
+    for (const structure of summary.contextEvaluation.detectedStructure) {
+      output += `- ${structure}\n`;
+    }
+    output += `\n`;
+    output += `**应用的生成规则**: ${summary.contextEvaluation.appliedStructureRule}\n\n`;
+
+    if (
+      summary.contextEvaluation.mismatches &&
+      summary.contextEvaluation.mismatches.length > 0
+    ) {
+      output += `**⚠️ 检测到不匹配**:\n`;
+      for (const mismatch of summary.contextEvaluation.mismatches) {
+        const severityEmoji =
+          mismatch.severity === "high"
+            ? "🔴"
+            : mismatch.severity === "medium"
+            ? "🟡"
+            : "🟢";
+        output += `- ${severityEmoji} ${mismatch.type}: 检测到 "${
+          mismatch.detected || "无"
+        }"，期望 "${mismatch.expected}"\n`;
+      }
+      output += `\n`;
+    }
+
+    // 用户指导
+    output += `### 💡 用户指导\n\n`;
+    for (const guidance of summary.userGuidance) {
+      output += `- ${guidance}\n`;
+    }
+    output += `\n`;
+
+    // 备注
+    if (summary.notes.length > 0) {
+      output += `### 📝 备注\n\n`;
+      for (const note of summary.notes) {
+        output += `- ${note}\n`;
+      }
+      output += `\n`;
+    }
+
+    // 需要确认的事项
+    if (summary.confirmationsNeeded && summary.confirmationsNeeded.length > 0) {
+      output += `### ⚠️ 需要确认的位置\n\n`;
+      for (const confirmation of summary.confirmationsNeeded) {
+        output += `**${confirmation.topic}**\n`;
+        output += `- 当前路径: \`${confirmation.currentPath}\`\n`;
+        output += `- 原因: ${confirmation.reason}\n`;
+        if (confirmation.alternatives && confirmation.alternatives.length > 0) {
+          output += `- 建议的替代位置:\n`;
+          for (const alt of confirmation.alternatives) {
+            output += `  - \`${alt}\`\n`;
+          }
+        }
+        output += `\n`;
+      }
+    }
+
+    return output;
   }
 
   /**
@@ -1132,7 +1585,9 @@ class CursorRulesGeneratorServer {
       content: [
         {
           type: "text",
-          text: `✅ 描述文件已更新！\n\n更新的内容：\n${report.inconsistencies.map((inc) => `  - ${inc.description}`).join("\n")}`,
+          text: `✅ 描述文件已更新！\n\n更新的内容：\n${report.inconsistencies
+            .map((inc) => `  - ${inc.description}`)
+            .join("\n")}`,
         },
       ],
     };
@@ -1203,7 +1658,7 @@ class CursorRulesGeneratorServer {
       const logFilePath = this.getLogFilePath();
       const fs = await import("fs");
       const path = await import("path");
-      
+
       // 检查日志目录是否可写
       const logDir = path.dirname(logFilePath);
       try {
@@ -1219,8 +1674,10 @@ class CursorRulesGeneratorServer {
 
     // 检查环境变量配置
     const envVars = {
-      CURSOR_RULES_GENERATOR_LOG_FILE: process.env.CURSOR_RULES_GENERATOR_LOG_FILE,
-      CURSOR_RULES_GENERATOR_LOG_LEVEL: process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL,
+      CURSOR_RULES_GENERATOR_LOG_FILE:
+        process.env.CURSOR_RULES_GENERATOR_LOG_FILE,
+      CURSOR_RULES_GENERATOR_LOG_LEVEL:
+        process.env.CURSOR_RULES_GENERATOR_LOG_LEVEL,
       CURSOR_RULES_GENERATOR_DEBUG: process.env.CURSOR_RULES_GENERATOR_DEBUG,
     };
     info.environmentVariables = envVars;
@@ -1238,7 +1695,11 @@ class CursorRulesGeneratorServer {
 
     // 检查依赖（基本检查）
     try {
-      const packageJsonPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+      const packageJsonPath = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "..",
+        "package.json"
+      );
       const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
       info.packageName = packageJson.name;
     } catch (error) {
@@ -1300,14 +1761,24 @@ class CursorRulesGeneratorServer {
     if (envLogFile) {
       return envLogFile;
     }
-    
+
     // 使用默认路径逻辑
     const platform = os.platform();
-    
+
     if (platform === "darwin") {
-      return join(os.homedir(), "Library", "Logs", "cursor-rules-generator.log");
+      return join(
+        os.homedir(),
+        "Library",
+        "Logs",
+        "cursor-rules-generator.log"
+      );
     } else if (platform === "win32") {
-      return join(os.homedir(), "AppData", "Local", "cursor-rules-generator.log");
+      return join(
+        os.homedir(),
+        "AppData",
+        "Local",
+        "cursor-rules-generator.log"
+      );
     } else {
       return join(os.homedir(), ".local", "log", "cursor-rules-generator.log");
     }
@@ -1316,43 +1787,53 @@ class CursorRulesGeneratorServer {
   /**
    * 生成项目结构树
    */
-  private generateProjectStructureTree(fileOrg: { structure: Array<{ path: string; purpose: string; fileCount: number }> }, projectPath: string): string {
+  private generateProjectStructureTree(
+    fileOrg: {
+      structure: Array<{ path: string; purpose: string; fileCount: number }>;
+    },
+    projectPath: string
+  ): string {
     const projectName = path.basename(projectPath);
     let tree = "```\n";
     tree += `${projectName}/\n`;
-    
+
     // 获取顶级目录
     const topDirs = fileOrg.structure
       .filter((d: any) => !d.path.includes("/"))
       .sort((a: any, b: any) => b.fileCount - a.fileCount)
       .slice(0, 12);
-    
+
     for (let i = 0; i < topDirs.length; i++) {
       const dir = topDirs[i];
       const isLast = i === topDirs.length - 1;
       const prefix = isLast ? "└──" : "├──";
       const purpose = dir.purpose !== "其他" ? ` # ${dir.purpose}` : "";
-      
+
       tree += `${prefix} ${dir.path}/ (${dir.fileCount} 个文件)${purpose}\n`;
-      
+
       // 显示重要的子目录（前 5 个）
       if (!isLast && i < 8) {
         const children = fileOrg.structure
-          .filter((d: any) => d.path.startsWith(dir.path + "/") && d.path.split("/").length === 2)
+          .filter(
+            (d: any) =>
+              d.path.startsWith(dir.path + "/") &&
+              d.path.split("/").length === 2
+          )
           .slice(0, 5);
-        
+
         for (let j = 0; j < children.length; j++) {
           const child = children[j];
           const childName = child.path.split("/").pop();
           const childIsLast = j === children.length - 1;
           const childPrefix = childIsLast ? "    └──" : "    ├──";
-          const childPurpose = child.purpose !== "其他" ? ` # ${child.purpose}` : "";
-          
+          const childPurpose =
+            child.purpose !== "其他" ? ` # ${child.purpose}` : "";
+
           tree += `${childPrefix} ${childName}/  (${child.fileCount})${childPurpose}\n`;
         }
       }
     }
-    
+
     tree += "```\n";
     return tree;
   }
@@ -1395,4 +1876,3 @@ server.run().catch((error) => {
   logger.error("服务器启动失败", error);
   process.exit(1);
 });
-
