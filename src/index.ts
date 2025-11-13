@@ -25,7 +25,7 @@ import { RouterDetector } from './modules/router-detector.js';
 import { RuleValidator } from './modules/rule-validator.js';
 import { RulesGenerator } from './modules/rules-generator.js';
 import { TechStackDetector } from './modules/tech-stack-detector.js';
-import { CursorRule, GenerationSummary, InstructionsFile } from './types.js';
+import { CursorRule, Dependency, GenerationSummary, InstructionsFile } from './types.js';
 import { createErrorResponse } from './utils/errors.js';
 import { logger } from './utils/logger.js';
 
@@ -827,7 +827,7 @@ class CursorRulesGeneratorServer {
 
     // 任务 7：识别路由系统（增强版：同时检查依赖和文件结构）
     startTask(7, "cursor-rules-generator 正在识别路由框架。");
-    const dependencies = techStack.dependencies.map((d) => ({
+    const dependencies = techStack.dependencies.map((d: Dependency) => ({
       name: d.name,
       version: d.version,
     }));
