@@ -15,63 +15,19 @@
 
 ## 📦 安装
 
-### 方式一：通过 npm 安装（推荐）
+### 为什么需要安装？
 
-```bash
-# 全局安装
-npm install -g cursor-rules-generators
+本项目依赖多个 npm 包（`@modelcontextprotocol/sdk`、`glob`、`pino` 等）。如果直接配置指向 `dist/index.js` 而不安装依赖，Node.js 无法解析这些模块，会报错 `Cannot find module`。
 
-# 或本地安装到项目
-npm install cursor-rules-generators
-```
+### 方式一：使用 npx（最简单，推荐）
 
-### 方式二：从源码安装
+**无需手动安装**，`npx` 会自动下载并运行：
 
-```bash
-git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
-cd cursor-rules-generator
-npm install
-npm run build
-```
-
-### 配置 Cursor
-
-在 Cursor 的 MCP 配置文件中添加此 Server：
+在 Cursor 的 MCP 配置文件中添加：
 
 **macOS/Linux:** `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
 
 **Windows:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
-
-**如果通过 npm 全局安装**，添加以下配置：
-
-```json
-{
-  "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "cursor-rules-generator",
-      "disabled": false,
-      "alwaysAllow": []
-    }
-  }
-}
-```
-
-**如果通过 npm 本地安装**，使用以下配置之一：
-
-```json
-{
-  "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "node",
-      "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
-      "disabled": false,
-      "alwaysAllow": []
-    }
-  }
-}
-```
-
-或使用 `npx`：
 
 ```json
 {
@@ -86,7 +42,55 @@ npm run build
 }
 ```
 
-**如果从源码安装**，将 `/path/to/cursor-rules-generator` 替换为实际的项目路径：
+### 方式二：通过 npm 安装
+
+```bash
+# 全局安装
+npm install -g cursor-rules-generators
+
+# 或本地安装到项目
+npm install cursor-rules-generators
+```
+
+**如果全局安装**，配置：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "cursor-rules-generator",
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+**如果本地安装**，配置：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "node",
+      "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+### 方式三：从源码安装（不推荐，除非需要开发）
+
+```bash
+git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
+cd cursor-rules-generator
+npm install  # 必须安装依赖！
+npm run build
+```
+
+配置：
 
 ```json
 {
@@ -100,6 +104,8 @@ npm run build
   }
 }
 ```
+
+**重要**：必须确保已运行 `npm install`，否则会因缺少依赖而无法运行。
 
 ### 重启 Cursor
 
