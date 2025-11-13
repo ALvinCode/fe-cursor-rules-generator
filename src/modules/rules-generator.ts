@@ -1,21 +1,22 @@
+import * as path from 'path';
+
 import {
-  CursorRule,
-  RuleGenerationContext,
-  BestPractice,
-  Module,
-  CodeFeature,
-  InstructionsFile,
-  TechStack,
-} from "../types.js";
-import * as path from "path";
-import { findBestFrameworkMatch, getFrameworkFormatTemplate, FrameworkMatch } from "./framework-matcher.js";
-import { findBestTechStackMatches, MultiCategoryMatch, TechStackMatch } from "./tech-stack-matcher.js";
-import { logger } from "../utils/logger.js";
-import { BestPracticeExtractor } from "./best-practice-extractor.js";
-import { BestPracticeComparator } from "./best-practice-comparator.js";
-import { SuggestionCollector } from "./suggestion-collector.js";
-import { BestPracticeWebSearcher } from "./best-practice-web-searcher.js";
-import { FileUtils } from "../utils/file-utils.js";
+    BestPractice, CodeFeature, CursorRule, InstructionsFile, Module, RuleGenerationContext,
+    TechStack
+} from '../types.js';
+import { FileUtils } from '../utils/file-utils.js';
+import { logger } from '../utils/logger.js';
+import { BestPracticeComparator } from './best-practice-comparator.js';
+import { BestPracticeExtractor } from './best-practice-extractor.js';
+import { BestPracticeWebSearcher } from './best-practice-web-searcher.js';
+import {
+    findBestFrameworkMatch, FrameworkMatch, getFrameworkFormatTemplate
+} from './framework-matcher.js';
+import { RuleRequirementsAnalyzer } from './rule-requirements-analyzer.js';
+import { SuggestionCollector } from './suggestion-collector.js';
+import {
+    findBestTechStackMatches, MultiCategoryMatch, TechStackMatch
+} from './tech-stack-matcher.js';
 
 /**
  * 规则生成引擎
@@ -28,12 +29,14 @@ export class RulesGenerator {
   private bestPracticeExtractor: BestPracticeExtractor;
   private bestPracticeComparator: BestPracticeComparator;
   private webSearcher: BestPracticeWebSearcher;
+  private requirementsAnalyzer: RuleRequirementsAnalyzer;
 
   constructor() {
     this.suggestionCollector = new SuggestionCollector();
     this.bestPracticeExtractor = new BestPracticeExtractor();
     this.bestPracticeComparator = new BestPracticeComparator();
     this.webSearcher = new BestPracticeWebSearcher();
+    this.requirementsAnalyzer = new RuleRequirementsAnalyzer();
   }
 
   /**
@@ -57,6 +60,26 @@ export class RulesGenerator {
     return this.suggestionCollector;
   }
 
+  /**
+   * 获取规则需求分析器（用于输出显示）
+   */
+  getRequirementsAnalyzer(): RuleRequirementsAnalyzer {
+    return this.requirementsAnalyzer;
+  }
+
+  /**
+   * 按来源分组规则需求
+   */
+  private groupRequirementsBySource(
+    requirements: Array<{ detectedFrom: string }>
+  ): Record<string, number> {
+    const grouped: Record<string, number> = {};
+    for (const req of requirements) {
+      grouped[req.detectedFrom] = (grouped[req.detectedFrom] || 0) + 1;
+    }
+    return grouped;
+  }
+
   async generate(
     context: RuleGenerationContext,
     webSearchResults?: Record<string, string>
@@ -69,48 +92,53 @@ export class RulesGenerator {
     // v1.4: 框架匹配 - 找到最相似的框架规则格式
     this.frameworkMatch = findBestFrameworkMatch(context.techStack);
     if (this.frameworkMatch) {
-      logger.info('框架匹配成功', {
+      logger.info("框架匹配成功", {
         framework: this.frameworkMatch.framework,
-        similarity: Math.round(this.frameworkMatch.similarity * 100) + '%',
-        format: this.frameworkMatch.format
+        similarity: Math.round(this.frameworkMatch.similarity * 100) + "%",
+        format: this.frameworkMatch.format,
       });
     }
 
     // v1.6: 多类别技术栈匹配 - 支持所有类别的规则
     this.multiCategoryMatch = await findBestTechStackMatches(context.techStack);
     if (this.multiCategoryMatch && this.multiCategoryMatch.matches.length > 0) {
-      logger.info('多类别技术栈匹配成功', {
+      logger.info("多类别技术栈匹配成功", {
         totalMatches: this.multiCategoryMatch.matches.length,
         categories: this.multiCategoryMatch.categories,
         primaryMatch: this.multiCategoryMatch.primaryMatch?.ruleName,
-        primarySimilarity: this.multiCategoryMatch.primaryMatch 
-          ? Math.round(this.multiCategoryMatch.primaryMatch.similarity * 100) + '%' 
-          : 'N/A'
+        primarySimilarity: this.multiCategoryMatch.primaryMatch
+          ? Math.round(this.multiCategoryMatch.primaryMatch.similarity * 100) +
+            "%"
+          : "N/A",
       });
     }
 
     // v1.5: 提取和对比最佳实践
     let missingPractices: any[] = [];
     let ambiguousPractices: any[] = [];
-    
+
     // 优先使用多类别匹配（如果可用）
     if (this.multiCategoryMatch && this.multiCategoryMatch.matches.length > 0) {
       try {
-        const extractedPractices = await this.bestPracticeExtractor.extractFromMultiCategoryMatch(
-          this.multiCategoryMatch,
-          context.techStack
+        const extractedPractices =
+          await this.bestPracticeExtractor.extractFromMultiCategoryMatch(
+            this.multiCategoryMatch,
+            context.techStack
+          );
+
+        const comparison = await this.bestPracticeComparator.compare(
+          extractedPractices,
+          context
         );
-        
-        const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
         missingPractices = comparison.missingPractices;
         ambiguousPractices = comparison.ambiguousPractices;
         this.suggestionCollector.addAll(comparison.suggestions);
-        
-        logger.info('最佳实践对比完成（多类别）', {
+
+        logger.info("最佳实践对比完成（多类别）", {
           extracted: extractedPractices.length,
           missing: missingPractices.length,
           ambiguous: ambiguousPractices.length,
-          suggestions: comparison.suggestions.length
+          suggestions: comparison.suggestions.length,
         });
 
         // v1.5: 识别项目使用但规则中没有的技术栈
@@ -122,10 +150,12 @@ export class RulesGenerator {
         // 对于缺失的技术栈，尝试网络搜索最佳实践
         if (missingTechStacks.length > 0) {
           let webPractices: any[] = [];
-          
+
           // 如果有网络搜索结果，解析它们
           if (webSearchResults && Object.keys(webSearchResults).length > 0) {
-            for (const [tech, searchResult] of Object.entries(webSearchResults)) {
+            for (const [tech, searchResult] of Object.entries(
+              webSearchResults
+            )) {
               if (missingTechStacks.includes(tech)) {
                 const parsed = this.webSearcher.parseWebSearchResults(
                   searchResult,
@@ -138,71 +168,87 @@ export class RulesGenerator {
 
           if (webPractices.length > 0) {
             missingPractices.push(...webPractices);
-            logger.info('网络搜索找到最佳实践', { 
+            logger.info("网络搜索找到最佳实践", {
               techStacks: missingTechStacks,
-              practices: webPractices.length 
+              practices: webPractices.length,
             });
           } else {
             // 使用备用方案
-            logger.debug('网络搜索无结果，使用备用方案');
-            const fallbackPractices = this.getFallbackPractices(missingTechStacks);
+            logger.debug("网络搜索无结果，使用备用方案");
+            const fallbackPractices =
+              this.getFallbackPractices(missingTechStacks);
             if (fallbackPractices.length > 0) {
               missingPractices.push(...fallbackPractices);
-              logger.info('使用备用方案找到最佳实践', { 
-                practices: fallbackPractices.length 
+              logger.info("使用备用方案找到最佳实践", {
+                practices: fallbackPractices.length,
               });
             }
           }
         }
       } catch (error) {
-        logger.debug('多类别最佳实践提取失败，回退到框架匹配', { error });
+        logger.debug("多类别最佳实践提取失败，回退到框架匹配", { error });
         // 回退到旧的框架匹配方式
         if (this.frameworkMatch) {
           try {
-            const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
-              this.frameworkMatch,
-              context.techStack
+            const extractedPractices =
+              await this.bestPracticeExtractor.extractFromFrameworkMatch(
+                this.frameworkMatch,
+                context.techStack
+              );
+
+            const comparison = await this.bestPracticeComparator.compare(
+              extractedPractices,
+              context
             );
-            
-            const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
             missingPractices = comparison.missingPractices;
             ambiguousPractices = comparison.ambiguousPractices;
             this.suggestionCollector.addAll(comparison.suggestions);
-            
-            logger.info('最佳实践对比完成（框架匹配）', {
+
+            logger.info("最佳实践对比完成（框架匹配）", {
               extracted: extractedPractices.length,
               missing: missingPractices.length,
               ambiguous: ambiguousPractices.length,
-              suggestions: comparison.suggestions.length
+              suggestions: comparison.suggestions.length,
             });
           } catch (error2) {
-            logger.debug('框架匹配最佳实践提取失败', { error: error2 });
+            logger.debug("框架匹配最佳实践提取失败", { error: error2 });
           }
         }
       }
     } else if (this.frameworkMatch) {
       // 回退到旧的框架匹配方式
       try {
-        const extractedPractices = await this.bestPracticeExtractor.extractFromFrameworkMatch(
-          this.frameworkMatch,
-          context.techStack
+        const extractedPractices =
+          await this.bestPracticeExtractor.extractFromFrameworkMatch(
+            this.frameworkMatch,
+            context.techStack
+          );
+
+        const comparison = await this.bestPracticeComparator.compare(
+          extractedPractices,
+          context
         );
-        
-        const comparison = await this.bestPracticeComparator.compare(extractedPractices, context);
         missingPractices = comparison.missingPractices;
         ambiguousPractices = comparison.ambiguousPractices;
         this.suggestionCollector.addAll(comparison.suggestions);
-        
-        logger.info('最佳实践对比完成（框架匹配）', {
+
+        logger.info("最佳实践对比完成（框架匹配）", {
           extracted: extractedPractices.length,
           missing: missingPractices.length,
           ambiguous: ambiguousPractices.length,
-          suggestions: comparison.suggestions.length
+          suggestions: comparison.suggestions.length,
         });
       } catch (error) {
-        logger.debug('最佳实践提取失败', { error });
+        logger.debug("最佳实践提取失败", { error });
       }
     }
+
+    // v1.7: 使用规则需求分析器决定生成哪些规则
+    const requirements = this.requirementsAnalyzer.analyzeRequirements(context);
+    logger.info("规则需求分析完成", {
+      totalRequirements: requirements.length,
+      bySource: this.groupRequirementsBySource(requirements),
+    });
 
     // v1.3: 生成多个专注的规则文件（每个 < 500 行）
 
@@ -215,7 +261,10 @@ export class RulesGenerator {
     rules.push(codeStyleRule);
 
     // 3. 项目架构规则（必需，约 250 行）
-    const architectureRule = this.generateArchitectureRule(context, missingPractices);
+    const architectureRule = this.generateArchitectureRule(
+      context,
+      missingPractices
+    );
     rules.push(architectureRule);
 
     // 4. 自定义工具规则（按需，约 150 行）
@@ -226,37 +275,187 @@ export class RulesGenerator {
 
     // 5. 错误处理规则（按需，约 180 行）
     if (this.hasErrorHandling(context)) {
-      const errorHandlingRule = this.generateErrorHandlingRule(context, missingPractices);
+      const errorHandlingRule = this.generateErrorHandlingRule(
+        context,
+        missingPractices
+      );
       rules.push(errorHandlingRule);
     }
 
     // 6. 状态管理规则（按需，约 200 行）
-    if (this.hasStateManagement(context)) {
+    // v1.7: 基于需求分析器结果或原有检测逻辑
+    const needsStateManagement =
+      requirements.some((r) => r.ruleType === "state-management") ||
+      this.hasStateManagement(context);
+    if (needsStateManagement) {
       const stateManagementRule = this.generateStateManagementRule(context);
       rules.push(stateManagementRule);
     }
 
     // 7. UI/UX 规则（按需，约 250 行）
-    if (this.isFrontendProject(context)) {
+    const needsUIUX =
+      requirements.some((r) => r.ruleType === "ui-ux") ||
+      this.isFrontendProject(context);
+    if (needsUIUX) {
       const uiUxRule = this.generateUIUXRule(context);
       rules.push(uiUxRule);
     }
 
     // 8. 前端路由规则（按需，约 300 行）
-    if (context.frontendRouter && context.frontendRouter.info.exists) {
-      const frontendRoutingRule = this.generateFrontendRoutingRule(context);
-      rules.push(frontendRoutingRule);
+    // v1.7: 基于需求分析器结果，即使没有路由文件，只要有依赖就生成
+    const needsFrontendRouting = requirements.some(
+      (r) => r.ruleType === "frontend-routing"
+    );
+    if (needsFrontendRouting) {
+      // 如果没有检测到路由信息，创建一个基础的路由信息
+      if (!context.frontendRouter) {
+        // 从需求分析中获取路由框架信息
+        const routingReq = requirements.find(
+          (r) => r.ruleType === "frontend-routing"
+        );
+        if (
+          routingReq &&
+          routingReq.dependencies &&
+          routingReq.dependencies.length > 0
+        ) {
+          // 根据依赖推断路由框架
+          const depName = routingReq.dependencies[0].toLowerCase();
+          let inferredFramework = "React Router";
+          let inferredType: "file-based" | "config-based" = "config-based";
+          let inferredLocation = ["src/"];
+
+          if (depName.includes("next")) {
+            inferredFramework = "Next.js";
+            inferredType = "file-based";
+            inferredLocation = ["app/"];
+          } else if (depName.includes("nuxt")) {
+            inferredFramework = "Nuxt";
+            inferredType = "file-based";
+            inferredLocation = ["pages/"];
+          } else if (depName.includes("remix")) {
+            inferredFramework = "Remix";
+            inferredType = "file-based";
+            inferredLocation = ["app/routes/"];
+          } else if (depName.includes("sveltekit")) {
+            inferredFramework = "SvelteKit";
+            inferredType = "file-based";
+            inferredLocation = ["src/routes/"];
+          } else if (depName.includes("vue-router")) {
+            inferredFramework = "Vue Router";
+            inferredType = "config-based";
+            inferredLocation = ["src/"];
+          }
+
+          // 创建基础的路由信息
+          context.frontendRouter = {
+            info: {
+              exists: true,
+              type: inferredType,
+              framework: inferredFramework,
+              location: inferredLocation,
+            },
+            pattern: {
+              organization: "mixed",
+              urlNaming: "kebab-case",
+              fileNaming: "page.tsx",
+              dynamicRoutePattern: "[id]",
+              dynamicRouteExamples: [],
+              hasRouteGroups: false,
+              supportsLayouts: true,
+              hasGuards: false,
+              usesLazyLoading: false,
+              hasRouteMeta: false,
+              isDynamicGenerated: false,
+            },
+            examples: [],
+          };
+        }
+      }
+
+      if (context.frontendRouter) {
+        const frontendRoutingRule = this.generateFrontendRoutingRule(context);
+        rules.push(frontendRoutingRule);
+      }
     }
 
     // 9. 后端路由规则（按需，约 300 行）
-    if (context.backendRouter && context.backendRouter.info.exists) {
-      const backendRoutingRule = this.generateBackendRoutingRule(context);
-      rules.push(backendRoutingRule);
+    // v1.7: 基于需求分析器结果，即使没有路由文件，只要有依赖就生成
+    const needsBackendRouting = requirements.some(
+      (r) => r.ruleType === "backend-routing"
+    );
+    if (needsBackendRouting) {
+      // 如果没有检测到路由信息，创建一个基础的路由信息
+      if (!context.backendRouter) {
+        // 从需求分析中获取路由框架信息
+        const routingReq = requirements.find(
+          (r) => r.ruleType === "backend-routing"
+        );
+        if (
+          routingReq &&
+          routingReq.dependencies &&
+          routingReq.dependencies.length > 0
+        ) {
+          // 根据依赖推断路由框架
+          const depName = routingReq.dependencies[0].toLowerCase();
+          let inferredFramework = "Express";
+          let inferredType: "file-based" | "config-based" | "programmatic" =
+            "programmatic";
+          let inferredLocation = ["src/routes/", "src/api/"];
+
+          if (depName.includes("fastify")) {
+            inferredFramework = "Fastify";
+          } else if (depName.includes("koa")) {
+            inferredFramework = "Koa";
+          } else if (depName.includes("nestjs")) {
+            inferredFramework = "NestJS";
+            inferredLocation = ["src/"];
+          } else if (depName.includes("django")) {
+            inferredFramework = "Django";
+            inferredType = "config-based";
+            inferredLocation = [""];
+          } else if (depName.includes("flask")) {
+            inferredFramework = "Flask";
+            inferredLocation = ["app/"];
+          }
+
+          // 创建基础的路由信息
+          context.backendRouter = {
+            info: {
+              exists: true,
+              type: inferredType,
+              framework: inferredFramework,
+              location: inferredLocation,
+            },
+            pattern: {
+              organization: "mixed",
+              urlNaming: "kebab-case",
+              fileNaming: "route.ts",
+              dynamicRoutePattern: ":id",
+              dynamicRouteExamples: [],
+              hasRouteGroups: false,
+              supportsLayouts: false,
+              hasGuards: false,
+              usesLazyLoading: false,
+              hasRouteMeta: false,
+              isDynamicGenerated: false,
+            },
+            examples: [],
+          };
+        }
+      }
+
+      if (context.backendRouter) {
+        const backendRoutingRule = this.generateBackendRoutingRule(context);
+        rules.push(backendRoutingRule);
+      }
     }
 
     // 10. 测试规则（按需，约 220 行或简短提示）
-    const testingRule = this.generateTestingRule(context);
-    rules.push(testingRule);
+    const needsTesting = requirements.some((r) => r.ruleType === "testing");
+    if (needsTesting || this.featureExists(context, "testing")) {
+      const testingRule = this.generateTestingRule(context);
+      rules.push(testingRule);
+    }
 
     // 11. 模块规则（如果是多模块项目）
     if (context.includeModuleRules && context.modules.length > 1) {
@@ -272,9 +471,11 @@ export class RulesGenerator {
   /**
    * 生成 instructions.md 文件
    */
-  async generateInstructions(context: RuleGenerationContext): Promise<InstructionsFile> {
+  async generateInstructions(
+    context: RuleGenerationContext
+  ): Promise<InstructionsFile> {
     const content = this.generateInstructionsContent(context);
-    
+
     return {
       content,
       fileName: "instructions.md",
@@ -328,23 +529,35 @@ export class RulesGenerator {
 
     // 生成角色定义（基于框架匹配）
     const persona = this.generatePersona(context);
-    const frameworkReference = this.frameworkMatch 
-      ? `\n> 💡 **格式参考**: 本规则参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${this.frameworkMatch.framework}** 格式（相似度: ${Math.round(this.frameworkMatch.similarity * 100)}%），采用 **${this.frameworkMatch.format}** 格式风格。\n`
-      : '';
+    const frameworkReference = this.frameworkMatch
+      ? `\n> 💡 **格式参考**: 本规则参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${
+          this.frameworkMatch.framework
+        }** 格式（相似度: ${Math.round(
+          this.frameworkMatch.similarity * 100
+        )}%），采用 **${this.frameworkMatch.format}** 格式风格。\n`
+      : "";
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 项目概述
 
 ${persona}
 
-这是一个基于 ${context.techStack.primary.join(", ")} 的项目。${frameworkReference}
+这是一个基于 ${context.techStack.primary.join(
+        ", "
+      )} 的项目。${frameworkReference}
 
 ## 技术栈
 
 **主要技术**: ${context.techStack.primary.join(", ")}  
 **语言**: ${context.techStack.languages.join(", ")}  
 **包管理器**: ${context.techStack.packageManagers.join(", ")}  
-${context.techStack.frameworks.length > 0 ? `**框架**: ${context.techStack.frameworks.join(", ")}` : ""}
+${
+  context.techStack.frameworks.length > 0
+    ? `**框架**: ${context.techStack.frameworks.join(", ")}`
+    : ""
+}
 
 ## 开发规范文件
 
@@ -352,7 +565,33 @@ ${context.techStack.frameworks.length > 0 ? `**框架**: ${context.techStack.fra
 
 - **@code-style.mdc** - 代码风格和格式化规范
 - **@architecture.mdc** - 项目架构和文件组织
-${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工具（必须优先使用）\n" : ""}${this.hasErrorHandling(context) ? "- **@error-handling.mdc** - 错误处理规范\n" : ""}${this.hasStateManagement(context) ? "- **@state-management.mdc** - 状态管理规范\n" : ""}${context.frontendRouter ? "- **@frontend-routing.mdc** - 前端路由规范\n" : ""}${context.backendRouter ? "- **@api-routing.mdc** - API 路由规范\n" : ""}${this.isFrontendProject(context) ? "- **@ui-ux.mdc** - UI/UX 设计规范\n" : ""}${this.featureExists(context, "testing") ? "- **@testing.mdc** - 测试规范\n" : ""}
+${
+  this.hasCustomTools(context)
+    ? "- **@custom-tools.mdc** - 项目自定义工具（必须优先使用）\n"
+    : ""
+}${
+        this.hasErrorHandling(context)
+          ? "- **@error-handling.mdc** - 错误处理规范\n"
+          : ""
+      }${
+        this.hasStateManagement(context)
+          ? "- **@state-management.mdc** - 状态管理规范\n"
+          : ""
+      }${
+        context.frontendRouter
+          ? "- **@frontend-routing.mdc** - 前端路由规范\n"
+          : ""
+      }${
+        context.backendRouter ? "- **@api-routing.mdc** - API 路由规范\n" : ""
+      }${
+        this.isFrontendProject(context)
+          ? "- **@ui-ux.mdc** - UI/UX 设计规范\n"
+          : ""
+      }${
+        this.featureExists(context, "testing")
+          ? "- **@testing.mdc** - 测试规范\n"
+          : ""
+      }
 **工作流程**: 详见 @../instructions.md
 
 ## 核心开发原则
@@ -377,11 +616,15 @@ ${this.hasCustomTools(context) ? "- **@custom-tools.mdc** - 项目自定义工�
 
 **说明**：生成代码时，不要创建任何 Markdown 文档文件。所有文档都应该通过代码注释、类型定义和清晰的命名来表达。
 
-${context.techStack.frameworks.length > 0 ? `
+${
+  context.techStack.frameworks.length > 0
+    ? `
 ## 框架特定原则
 
 ${this.generateFrameworkPrinciples(context)}
-` : ""}
+`
+    : ""
+}
 
 ## 开始任务前
 
@@ -427,10 +670,13 @@ ${this.generateFrameworkPrinciples(context)}
     );
 
     // 补充缺失的最佳实践
-    const codeStylePractices = missingPractices?.filter(p => p.category === 'code-style') || [];
+    const codeStylePractices =
+      missingPractices?.filter((p) => p.category === "code-style") || [];
     const additionalPractices = this.formatMissingPractices(codeStylePractices);
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 代码风格规范
 
 参考: @global-rules.mdc
@@ -442,9 +688,13 @@ ${this.generateFrameworkPrinciples(context)}
 - 使用描述性的变量名和函数名
 - 优先使用函数式编程模式
 
-${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.generateCodeStyleGuidelines(context)}
+${
+  context.projectConfig
+    ? this.generateConfigBasedStyleRules(context)
+    : this.generateCodeStyleGuidelines(context)
+}
 
-${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ""}
 
 ---
 
@@ -466,7 +716,10 @@ ${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n`
    * v1.3: 生成项目架构规则（约 250 行）
    * v1.5: 补充缺失的最佳实践
    */
-  private generateArchitectureRule(context: RuleGenerationContext, missingPractices?: any[]): CursorRule {
+  private generateArchitectureRule(
+    context: RuleGenerationContext,
+    missingPractices?: any[]
+  ): CursorRule {
     const metadata = this.generateRuleMetadata(
       "项目架构",
       "文件组织和模块结构规范",
@@ -478,17 +731,26 @@ ${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n`
     );
 
     // 补充缺失的最佳实践
-    const architecturePractices = missingPractices?.filter(p => p.category === 'architecture') || [];
-    const additionalPractices = this.formatMissingPractices(architecturePractices);
+    const architecturePractices =
+      missingPractices?.filter((p) => p.category === "architecture") || [];
+    const additionalPractices = this.formatMissingPractices(
+      architecturePractices
+    );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 项目架构
 
 参考: @global-rules.mdc
 
-${context.fileOrganization ? this.generateStructureBasedFileOrgRules(context) : this.generateFileOrganizationGuidelines(context)}
+${
+  context.fileOrganization
+    ? this.generateStructureBasedFileOrgRules(context)
+    : this.generateFileOrganizationGuidelines(context)
+}
 
-${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ""}
 
 ---
 
@@ -520,7 +782,9 @@ ${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n`
       ["global-rules"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 项目自定义工具
 
 参考: @global-rules.mdc
@@ -546,7 +810,10 @@ ${this.generateCustomToolsRules(context)}
   /**
    * v1.3: 生成错误处理规则（约 180 行）
    */
-  private generateErrorHandlingRule(context: RuleGenerationContext, missingPractices?: any[]): CursorRule {
+  private generateErrorHandlingRule(
+    context: RuleGenerationContext,
+    missingPractices?: any[]
+  ): CursorRule {
     const metadata = this.generateRuleMetadata(
       "错误处理规范",
       "基于项目实践的错误处理和日志规范",
@@ -558,17 +825,22 @@ ${this.generateCustomToolsRules(context)}
     );
 
     // 补充缺失的最佳实践
-    const errorHandlingPractices = missingPractices?.filter(p => p.category === 'error-handling') || [];
-    const additionalPractices = this.formatMissingPractices(errorHandlingPractices);
+    const errorHandlingPractices =
+      missingPractices?.filter((p) => p.category === "error-handling") || [];
+    const additionalPractices = this.formatMissingPractices(
+      errorHandlingPractices
+    );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 错误处理规范
 
 参考: @global-rules.mdc, @custom-tools.mdc
 
 ${this.generatePracticeBasedErrorHandling(context)}
 
-${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ''}
+${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n` : ""}
 
 ---
 
@@ -589,7 +861,9 @@ ${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n`
   /**
    * v1.3: 生成状态管理规则（约 200 行）
    */
-  private generateStateManagementRule(context: RuleGenerationContext): CursorRule {
+  private generateStateManagementRule(
+    context: RuleGenerationContext
+  ): CursorRule {
     const stateLib = context.techStack.dependencies.find((d) =>
       ["redux", "mobx", "zustand", "pinia", "vuex"].some((lib) =>
         d.name.toLowerCase().includes(lib)
@@ -606,7 +880,9 @@ ${additionalPractices ? `\n## 补充的最佳实践\n\n${additionalPractices}\n`
       ["global-rules"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 状态管理规范
 
 参考: @global-rules.mdc
@@ -643,7 +919,9 @@ ${this.generateStateManagementContent(context, stateLib?.name)}
       ["global-rules", "code-style"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # UI/UX 设计规范
 
 参考: @global-rules.mdc, @code-style.mdc
@@ -669,7 +947,9 @@ ${this.generateUIUXGuidelines(context)}
   /**
    * v1.3.x: 生成前端路由规则（约 300 行）
    */
-  private generateFrontendRoutingRule(context: RuleGenerationContext): CursorRule {
+  private generateFrontendRoutingRule(
+    context: RuleGenerationContext
+  ): CursorRule {
     const router = context.frontendRouter!;
     const metadata = this.generateRuleMetadata(
       "前端路由规范",
@@ -681,14 +961,18 @@ ${this.generateUIUXGuidelines(context)}
       ["global-rules", "architecture"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 前端路由规范
 
 参考: @global-rules.mdc, @architecture.mdc
 
 ## 项目当前使用
 
-**路由系统**: ${router.info.framework}${router.info.version ? ` (${router.info.version})` : ""}  
+**路由系统**: ${router.info.framework}${
+        router.info.version ? ` (${router.info.version})` : ""
+      }  
 **路由类型**: ${this.getRouterTypeDescription(router.info.type)}  
 **路由位置**: ${router.info.location.map((l) => `\`@${l}\``).join(", ")}
 
@@ -713,7 +997,9 @@ ${this.generateFrontendRouterContent(router, context)}
   /**
    * v1.3.x: 生成后端路由规则（约 300 行）
    */
-  private generateBackendRoutingRule(context: RuleGenerationContext): CursorRule {
+  private generateBackendRoutingRule(
+    context: RuleGenerationContext
+  ): CursorRule {
     const router = context.backendRouter!;
     const metadata = this.generateRuleMetadata(
       "API 路由规范",
@@ -725,7 +1011,9 @@ ${this.generateFrontendRouterContent(router, context)}
       ["global-rules", "architecture"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # API 路由规范
 
 参考: @global-rules.mdc, @architecture.mdc
@@ -769,18 +1057,22 @@ ${this.generateBackendRouterContent(router, context)}
     if (dynamicAnalysis && dynamicAnalysis.isDynamic) {
       content += this.generateDynamicRoutingSection(dynamicAnalysis);
     }
-    
+
     // 路由组织方式
     content += `## 路由组织方式\n\n`;
-    content += `**组织模式**: ${this.getOrganizationDescription(pattern.organization)}\n`;
+    content += `**组织模式**: ${this.getOrganizationDescription(
+      pattern.organization
+    )}\n`;
     content += `**URL 命名**: ${pattern.urlNaming}\n`;
     content += `**文件命名**: ${pattern.fileNaming}\n\n`;
 
     // 实际示例
     if (examples.length > 0) {
       content += `## 实际路由示例\n\n`;
-      
-      const staticRoutes = examples.filter((e) => e.type === "static").slice(0, 3);
+
+      const staticRoutes = examples
+        .filter((e) => e.type === "static")
+        .slice(0, 3);
       if (staticRoutes.length > 0) {
         content += `### 静态路由\n\n`;
         for (const route of staticRoutes) {
@@ -789,7 +1081,9 @@ ${this.generateBackendRouterContent(router, context)}
         content += `\n`;
       }
 
-      const dynamicRoutes = examples.filter((e) => e.type === "dynamic").slice(0, 3);
+      const dynamicRoutes = examples
+        .filter((e) => e.type === "dynamic")
+        .slice(0, 3);
       if (dynamicRoutes.length > 0) {
         content += `### 动态路由\n\n`;
         for (const route of dynamicRoutes) {
@@ -845,7 +1139,9 @@ ${this.generateBackendRouterContent(router, context)}
 
     // API 路由组织
     content += `## API 路由组织\n\n`;
-    content += `**组织模式**: ${this.getOrganizationDescription(pattern.organization)}\n`;
+    content += `**组织模式**: ${this.getOrganizationDescription(
+      pattern.organization
+    )}\n`;
     content += `**URL 命名**: ${pattern.urlNaming}\n\n`;
 
     if (pattern.isDynamicGenerated) {
@@ -856,7 +1152,7 @@ ${this.generateBackendRouterContent(router, context)}
     // 实际 API 示例
     if (examples.length > 0) {
       content += `## 实际 API 路由示例\n\n`;
-      
+
       const grouped = this.groupExamplesByFile(examples);
       for (const [file, routes] of Object.entries(grouped).slice(0, 3)) {
         content += `### @${file}\n\n`;
@@ -978,8 +1274,8 @@ ${this.generateBackendRouterContent(router, context)}
     const descriptions: Record<string, string> = {
       "file-based": "文件系统路由（约定式）",
       "config-based": "配置式路由（声明式）",
-      "programmatic": "编程式路由（代码定义）",
-      "mixed": "混合模式",
+      programmatic: "编程式路由（代码定义）",
+      mixed: "混合模式",
     };
     return descriptions[type] || type;
   }
@@ -989,10 +1285,10 @@ ${this.generateBackendRouterContent(router, context)}
    */
   private getOrganizationDescription(org: string): string {
     const descriptions: Record<string, string> = {
-      "centralized": "集中管理",
-      "distributed": "分散定义",
+      centralized: "集中管理",
+      distributed: "分散定义",
       "feature-based": "按功能模块组织",
-      "mixed": "混合方式",
+      mixed: "混合方式",
     };
     return descriptions[org] || org;
   }
@@ -1002,40 +1298,44 @@ ${this.generateBackendRouterContent(router, context)}
    */
   private generateDynamicRoutingSection(analysis: any): string {
     let section = `## 路由生成方式\n\n`;
-    
+
     const certaintyLabels: Record<string, string> = {
-      'certain': '✅ [确定]',
-      'likely': '⚠️ [可能]',
-      'uncertain': 'ℹ️ [不确定]',
+      certain: "✅ [确定]",
+      likely: "⚠️ [可能]",
+      uncertain: "ℹ️ [不确定]",
     };
-    
-    const label = certaintyLabels[analysis.recommendation.certainty] || 'ℹ️ [未知]';
+
+    const label =
+      certaintyLabels[analysis.recommendation.certainty] || "ℹ️ [未知]";
     section += `### ${label} ${analysis.recommendation.explanation}\n\n`;
-    
+
     if (analysis.documentation.found) {
       // 基于文档
       section += `**文档来源**: @${analysis.documentation.file}\n\n`;
       section += `项目文档说明：\n`;
       section += `> ${analysis.documentation.section.slice(0, 200)}...\n\n`;
       section += `**生成方法**: \`${analysis.recommendation.method}\`\n\n`;
-      
+
       if (analysis.documentation.file) {
         section += `详见: @${analysis.documentation.file} 的路由章节\n\n`;
       }
-    } else if (analysis.recommendation.certainty === 'certain' || analysis.recommendation.certainty === 'likely') {
+    } else if (
+      analysis.recommendation.certainty === "certain" ||
+      analysis.recommendation.certainty === "likely"
+    ) {
       // 基于高置信度检测
       section += `**检测到的方法**: \`${analysis.recommendation.method}\`\n\n`;
-      
+
       if (analysis.scripts.files.length > 0) {
         section += `**脚本文件**: @${analysis.scripts.files[0]}\n`;
       }
-      
+
       section += `\n**使用方法**:\n`;
       section += `\`\`\`bash\n${analysis.recommendation.method}\n\`\`\`\n\n`;
     } else {
       // 不确定
       section += `检测到项目可能使用脚本动态生成路由，但无法完全确定。\n\n`;
-      
+
       section += `**可能的选项**:\n`;
       if (analysis.scripts.commands.length > 0) {
         section += `命令：\n`;
@@ -1049,22 +1349,22 @@ ${this.generateBackendRouterContent(router, context)}
           section += `- @${file}\n`;
         }
       }
-      
+
       section += `\n**当前假设**: 使用 \`${analysis.recommendation.method}\`\n`;
       section += `（${analysis.recommendation.explanation}）\n\n`;
-      
+
       section += `❓ **请确认**: 如果不正确，请告诉我正确的方式，我将更新此规则。\n\n`;
     }
-    
-    if (analysis.recommendation.certainty === 'certain') {
+
+    if (analysis.recommendation.certainty === "certain") {
       section += `✅ **新建路由时**: 使用上述方法生成路由，保持一致性。\n\n`;
     } else {
       section += `⚠️ **新建路由时**: 请先确认正确的生成方式，然后使用。\n\n`;
     }
-    
+
     return section;
   }
-  
+
   /**
    * 按文件分组示例
    */
@@ -1095,7 +1395,9 @@ ${this.generateBackendRouterContent(router, context)}
       ["global-rules"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # 测试规范
 
 参考: @global-rules.mdc
@@ -1104,7 +1406,11 @@ ${this.generateConditionalTestingRules(context)}
 
 ---
 
-${hasTests ? "*测试是代码质量的保证，保持良好的测试覆盖率。*" : "*当前项目未配置测试，按需添加。*"}
+${
+  hasTests
+    ? "*测试是代码质量的保证，保持良好的测试覆盖率。*"
+    : "*当前项目未配置测试，按需添加。*"
+}
 `;
 
     return {
@@ -1129,8 +1435,10 @@ ${hasTests ? "*测试是代码质量的保证，保持良好的测试覆盖率�
       context.techStack.primary,
       ["global", "best-practices"]
     );
-    
-    let content = metadata + `
+
+    let content =
+      metadata +
+      `
 # 项目概述
 
 这是一个基于 ${context.techStack.primary.join(", ")} 的项目。
@@ -1144,7 +1452,11 @@ ${context.techStack.primary.map((tech) => `- ${tech}`).join("\n")}
 
 **包管理器：** ${context.techStack.packageManagers.join(", ")}
 
-${context.techStack.frameworks.length > 0 ? `**框架：** ${context.techStack.frameworks.join(", ")}` : ""}
+${
+  context.techStack.frameworks.length > 0
+    ? `**框架：** ${context.techStack.frameworks.join(", ")}`
+    : ""
+}
 
 ## 项目结构
 
@@ -1164,13 +1476,21 @@ ${this.generateDevelopmentGuidelines(context)}
 
 # 代码风格
 
-${context.projectConfig ? this.generateConfigBasedStyleRules(context) : this.generateCodeStyleGuidelines(context)}
+${
+  context.projectConfig
+    ? this.generateConfigBasedStyleRules(context)
+    : this.generateCodeStyleGuidelines(context)
+}
 
 ---
 
 ${context.customPatterns ? this.generateCustomToolsRules(context) : ""}
 
-${context.customPatterns && context.customPatterns.customHooks.length > 0 ? "---\n\n" : ""}
+${
+  context.customPatterns && context.customPatterns.customHooks.length > 0
+    ? "---\n\n"
+    : ""
+}
 
 # 最佳实践
 
@@ -1180,7 +1500,11 @@ ${this.generateBestPracticesSection(context.bestPractices)}
 
 # 文件组织
 
-${context.fileOrganization ? this.generateStructureBasedFileOrgRules(context) : this.generateFileOrganizationGuidelines(context)}
+${
+  context.fileOrganization
+    ? this.generateStructureBasedFileOrgRules(context)
+    : this.generateFileOrganizationGuidelines(context)
+}
 
 ---
 
@@ -1213,8 +1537,10 @@ ${this.generateCautions(context)}
       context.techStack.primary,
       tags
     );
-    
-    const content = metadata + `
+
+    const content =
+      metadata +
+      `
 # ${module.name} 模块
 
 **类型：** ${this.getModuleTypeName(module.type)}
@@ -1233,9 +1559,20 @@ ${this.generateModuleGuidelines(context, module)}
 
 ## 依赖关系
 
-${module.dependencies.length > 0 ? `此模块依赖以下包：
-${module.dependencies.slice(0, 10).map((d) => `- ${d}`).join("\n")}
-${module.dependencies.length > 10 ? `\n...以及其他 ${module.dependencies.length - 10} 个依赖` : ""}` : "此模块没有外部依赖。"}
+${
+  module.dependencies.length > 0
+    ? `此模块依赖以下包：
+${module.dependencies
+  .slice(0, 10)
+  .map((d) => `- ${d}`)
+  .join("\n")}
+${
+  module.dependencies.length > 10
+    ? `\n...以及其他 ${module.dependencies.length - 10} 个依赖`
+    : ""
+}`
+    : "此模块没有外部依赖。"
+}
 
 ## 注意事项
 
@@ -1270,7 +1607,9 @@ ${this.generateModuleCautions(module)}
       modulesByType.get(module.type)!.push(module);
     }
 
-    let desc = `这是一个${context.modules.length > 5 ? "大型" : ""}多模块项目，包含以下模块：\n\n`;
+    let desc = `这是一个${
+      context.modules.length > 5 ? "大型" : ""
+    }多模块项目，包含以下模块：\n\n`;
 
     for (const [type, modules] of modulesByType) {
       desc += `**${this.getModuleTypeName(type)}模块：**\n`;
@@ -1297,7 +1636,11 @@ ${this.generateModuleCautions(module)}
 
 - **类型：** ${f.type}
 - **使用频率：** ${f.frequency} 处
-${f.examples.length > 0 ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}` : ""}
+${
+  f.examples.length > 0
+    ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}`
+    : ""
+}
 `
       )
       .join("\n");
@@ -1306,7 +1649,9 @@ ${f.examples.length > 0 ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}`
   /**
    * 生成开发指南
    */
-  private generateDevelopmentGuidelines(context: RuleGenerationContext): string {
+  private generateDevelopmentGuidelines(
+    context: RuleGenerationContext
+  ): string {
     let guidelines = "";
 
     // 根据技术栈生成指南
@@ -1368,7 +1713,7 @@ ${f.examples.length > 0 ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}`
     }
 
     // 添加错误处理指南（使用基于项目实践的版本）
-    guidelines += context.projectPractice 
+    guidelines += context.projectPractice
       ? this.generatePracticeBasedErrorHandling(context)
       : this.generateErrorHandlingGuidelines(context);
 
@@ -1399,8 +1744,17 @@ ${f.examples.length > 0 ? `- **示例：** ${f.examples.slice(0, 3).join(", ")}`
    * 判断是否为前端项目
    */
   private isFrontendProject(context: RuleGenerationContext): boolean {
-    const frontendFrameworks = ["React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt"];
-    return context.techStack.frameworks.some(f => frontendFrameworks.includes(f));
+    const frontendFrameworks = [
+      "React",
+      "Vue",
+      "Angular",
+      "Svelte",
+      "Next.js",
+      "Nuxt",
+    ];
+    return context.techStack.frameworks.some((f) =>
+      frontendFrameworks.includes(f)
+    );
   }
 
   /**
@@ -1712,8 +2066,10 @@ const theme = {
 `;
 
     // 根据语言添加特定风格
-    if (context.techStack.languages.includes("JavaScript") ||
-        context.techStack.languages.includes("TypeScript")) {
+    if (
+      context.techStack.languages.includes("JavaScript") ||
+      context.techStack.languages.includes("TypeScript")
+    ) {
       style += this.generateJavaScriptStyleGuide(context);
     }
 
@@ -1733,7 +2089,7 @@ const theme = {
    */
   private generateJavaScriptStyleGuide(context: RuleGenerationContext): string {
     const isTypeScript = context.techStack.languages.includes("TypeScript");
-    
+
     return `## JavaScript/TypeScript 代码风格
 
 ### 基本规范
@@ -1755,17 +2111,21 @@ const theme = {
   1. 外部库导入
   2. 内部模块导入
   3. 相对路径导入
-  ${isTypeScript ? "4. 类型导入（使用 \`import type\`）" : ""}
+  ${isTypeScript ? "4. 类型导入（使用 `import type`）" : ""}
 - **导出**：优先使用命名导出，避免默认导出（提高可维护性）
 
-${isTypeScript ? `### TypeScript 特定规范
+${
+  isTypeScript
+    ? `### TypeScript 特定规范
 - 优先使用 \`interface\` 定义对象类型
 - 使用 \`type\` 定义联合类型和工具类型
 - 避免使用 \`any\`，使用 \`unknown\` 代替
 - 为函数参数和返回值显式添加类型
 - 使用严格模式（\`strict: true\`）
 - 使用类型守卫而非类型断言
-` : ""}
+`
+    : ""
+}
 `;
   }
 
@@ -1872,11 +2232,14 @@ ${this.generateFileNamingRules(context)}
   /**
    * 生成错误处理指南
    */
-  private generateErrorHandlingGuidelines(context: RuleGenerationContext): string {
-    const isJavaScript = context.techStack.languages.includes("JavaScript") || 
-                        context.techStack.languages.includes("TypeScript");
+  private generateErrorHandlingGuidelines(
+    context: RuleGenerationContext
+  ): string {
+    const isJavaScript =
+      context.techStack.languages.includes("JavaScript") ||
+      context.techStack.languages.includes("TypeScript");
     const isPython = context.techStack.languages.includes("Python");
-    
+
     let guidelines = `## 错误处理规范
 
 ### 基本原则
@@ -2012,7 +2375,7 @@ class ResourceNotFoundError(Exception):
    */
   private generateTestingGuidelines(context: RuleGenerationContext): string {
     const testLibs = context.codeFeatures["testing"]?.examples || [];
-    
+
     return `## 测试规范
 
 ### 测试原则
@@ -2106,28 +2469,28 @@ const mockEverything = jest.fn(() => jest.fn(() => jest.fn()));
   private generateFileNamingRules(context: RuleGenerationContext): string {
     const hasReact = context.techStack.frameworks.includes("React");
     const hasVue = context.techStack.frameworks.includes("Vue");
-    
+
     let rules = "";
-    
+
     if (hasReact) {
       rules += `- **React 组件**：PascalCase.tsx/jsx
   - 示例：\`UserProfile.tsx\`, \`Button.tsx\`
 `;
     }
-    
+
     if (hasVue) {
       rules += `- **Vue 组件**：PascalCase.vue 或 kebab-case.vue
   - 示例：\`UserProfile.vue\` 或 \`user-profile.vue\`
 `;
     }
-    
+
     rules += `- **工具/辅助文件**：camelCase 或 kebab-case
   - 示例：\`formatDate.ts\`, \`api-client.ts\`
 - **类型定义文件**：types.ts 或 interfaces.ts
 - **测试文件**：与源文件同名 + \`.test\` 或 \`.spec\`
   - 示例：\`UserProfile.test.tsx\`, \`utils.spec.ts\`
 `;
-    
+
     return rules;
   }
 
@@ -2327,9 +2690,15 @@ components/
     lines.push("cursor-rules-generator 输出以下规则文件：");
 
     for (const rule of rules) {
-      const relativePath = rule.scope === "module" && rule.modulePath
-        ? path.join(path.relative(projectPath, rule.modulePath), ".cursor", "rules", rule.fileName)
-        : path.join(".cursor", "rules", rule.fileName);
+      const relativePath =
+        rule.scope === "module" && rule.modulePath
+          ? path.join(
+              path.relative(projectPath, rule.modulePath),
+              ".cursor",
+              "rules",
+              rule.fileName
+            )
+          : path.join(".cursor", "rules", rule.fileName);
 
       let description = descriptionByFile[rule.fileName];
 
@@ -2376,13 +2745,13 @@ components/
   ): string {
     const now = new Date();
     const version = "1.3.0";
-    
+
     let metadata = `---
 title: ${title}
 description: ${description}
 priority: ${priority}
 version: ${version}
-generatedAt: ${now.toISOString().split('T')[0]}
+generatedAt: ${now.toISOString().split("T")[0]}
 techStack: ${JSON.stringify(techStack)}
 generator: cursor-rules-generator
 tags: ${JSON.stringify(tags)}`;
@@ -2406,7 +2775,9 @@ tags: ${JSON.stringify(tags)}`;
   private generatePersona(context: RuleGenerationContext): string {
     const techStack = [
       ...context.techStack.primary,
-      ...context.techStack.frameworks.filter(f => !context.techStack.primary.includes(f))
+      ...context.techStack.frameworks.filter(
+        (f) => !context.techStack.primary.includes(f)
+      ),
     ].join(", ");
 
     if (this.frameworkMatch) {
@@ -2473,7 +2844,10 @@ tags: ${JSON.stringify(tags)}`;
   /**
    * 生成状态管理内容
    */
-  private generateStateManagementContent(context: RuleGenerationContext, libName?: string): string {
+  private generateStateManagementContent(
+    context: RuleGenerationContext,
+    libName?: string
+  ): string {
     if (!libName) {
       return "项目使用状态管理，请遵循一致的状态更新模式。";
     }
@@ -2566,7 +2940,11 @@ export const UserProfile = observer(() => {
 在开始任何开发任务前，请确认：
 
 - [ ] 已阅读 @.cursor/rules/global-rules.mdc 了解项目概述
-${this.hasCustomTools(context) ? '- [ ] 已查看 @.cursor/rules/custom-tools.mdc 了解可用工具\n' : ''}- [ ] 已确认文件应该放在哪里（@.cursor/rules/architecture.mdc）
+${
+  this.hasCustomTools(context)
+    ? "- [ ] 已查看 @.cursor/rules/custom-tools.mdc 了解可用工具\n"
+    : ""
+}- [ ] 已确认文件应该放在哪里（@.cursor/rules/architecture.mdc）
 - [ ] **已让 Cursor 确认理解了任务** ⚠️ 重要
 
 ## 🚀 开始新任务的标准流程
@@ -2586,13 +2964,17 @@ ${this.hasCustomTools(context) ? '- [ ] 已查看 @.cursor/rules/custom-tools.md
 
 ### 步骤 2：检查可复用资源
 
-${this.hasCustomTools(context) ? `**查看项目工具**: @.cursor/rules/custom-tools.mdc
+${
+  this.hasCustomTools(context)
+    ? `**查看项目工具**: @.cursor/rules/custom-tools.mdc
 
 询问:
 \`\`\`
 对于 [功能]，项目中是否已有可用的 Hooks 或工具函数？
 \`\`\`
-` : ''}
+`
+    : ""
+}
 **查看参考代码**: 
 \`\`\`
 有没有类似功能的现有代码可以参考？
@@ -2613,7 +2995,11 @@ ${this.hasCustomTools(context) ? `**查看项目工具**: @.cursor/rules/custom-
 **明确指定**:
 \`\`\`
 请实现 [功能]：
-${this.hasCustomTools(context) ? '- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 使用 @src/utils/format.ts 的 formatDate\n' : ''}- 遵循 @.cursor/rules/code-style.mdc 的命名规范
+${
+  this.hasCustomTools(context)
+    ? "- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 使用 @src/utils/format.ts 的 formatDate\n"
+    : ""
+}- 遵循 @.cursor/rules/code-style.mdc 的命名规范
 - 参考 @src/components/[相似组件].tsx 的结构
 \`\`\`
 
@@ -2626,7 +3012,9 @@ ${this.hasCustomTools(context) ? '- 使用 @src/hooks/useAuth.ts 的 useAuth\n- 
 - [ ] 添加了 TypeScript 类型？
 - [ ] 添加了必要的错误处理？
 - [ ] 文件放在了正确的位置？
-${this.featureExists(context, "testing") ? '- [ ] 添加了测试？\n' : ''}- [ ] **运行了代码格式化？** ⚠️ 必须
+${
+  this.featureExists(context, "testing") ? "- [ ] 添加了测试？\n" : ""
+}- [ ] **运行了代码格式化？** ⚠️ 必须
 - [ ] **运行了 lint 检查和修复？** ⚠️ 必须
 
 ### 代码格式化（必需步骤）
@@ -2656,7 +3044,11 @@ ${this.generateFormattingCommandsSection(context)}
 
 然后实现组件，遵循：
 - @.cursor/rules/code-style.mdc - 命名和格式
-${this.isFrontendProject(context) ? '- @.cursor/rules/ui-ux.mdc - UI 规范\n' : ''}- @.cursor/rules/architecture.mdc - 文件位置
+${
+  this.isFrontendProject(context)
+    ? "- @.cursor/rules/ui-ux.mdc - UI 规范\n"
+    : ""
+}- @.cursor/rules/architecture.mdc - 文件位置
 \`\`\`
 
 ### 新建工具函数
@@ -2673,12 +3065,16 @@ ${this.isFrontendProject(context) ? '- @.cursor/rules/ui-ux.mdc - UI 规范\n' :
 ### API 调用
 
 \`\`\`
-${context.customPatterns?.apiClient?.exists ? `使用项目的 API 客户端：
+${
+  context.customPatterns?.apiClient?.exists
+    ? `使用项目的 API 客户端：
 - 定义: @src/services/api-client.ts
 - 使用示例: @src/services/[查看现有服务].ts
 
 不要直接使用 fetch 或 axios
-` : '统一的 API 调用方式，保持一致性'}
+`
+    : "统一的 API 调用方式，保持一致性"
+}
 \`\`\`
 
 ### 修复 Bug
@@ -2732,7 +3128,19 @@ ${context.customPatterns?.apiClient?.exists ? `使用项目的 API 客户端：
 - **@.cursor/rules/global-rules.mdc** - 项目概述和核心原则
 - **@.cursor/rules/code-style.mdc** - 代码风格和命名
 - **@.cursor/rules/architecture.mdc** - 文件组织
-${this.hasCustomTools(context) ? '- **@.cursor/rules/custom-tools.mdc** - 自定义工具（必读）\n' : ''}${this.hasErrorHandling(context) ? '- **@.cursor/rules/error-handling.mdc** - 错误处理\n' : ''}${this.hasStateManagement(context) ? '- **@.cursor/rules/state-management.mdc** - 状态管理\n' : ''}
+${
+  this.hasCustomTools(context)
+    ? "- **@.cursor/rules/custom-tools.mdc** - 自定义工具（必读）\n"
+    : ""
+}${
+      this.hasErrorHandling(context)
+        ? "- **@.cursor/rules/error-handling.mdc** - 错误处理\n"
+        : ""
+    }${
+      this.hasStateManagement(context)
+        ? "- **@.cursor/rules/state-management.mdc** - 状态管理\n"
+        : ""
+    }
 
 ### 关键文件引用
 
@@ -2747,37 +3155,39 @@ ${this.generateKeyFileReferences(context)}
   /**
    * 生成格式化命令章节
    */
-  private generateFormattingCommandsSection(context: RuleGenerationContext): string {
+  private generateFormattingCommandsSection(
+    context: RuleGenerationContext
+  ): string {
     let section = "";
-    
+
     if (context.projectConfig?.commands) {
       const cmds = context.projectConfig.commands;
-      
+
       if (cmds.format || cmds.lintFix || cmds.lint) {
         section += `\`\`\`bash\n`;
-        
+
         if (cmds.format) {
           section += `# 1. 格式化代码\n${cmds.format}\n\n`;
         }
-        
+
         if (cmds.lintFix) {
           section += `# 2. 修复 lint 问题\n${cmds.lintFix}\n\n`;
         } else if (cmds.lint) {
           section += `# 2. 检查 lint\n${cmds.lint}\n\n`;
         }
-        
+
         if (cmds.typeCheck) {
           section += `# 3. 类型检查\n${cmds.typeCheck}\n`;
         }
-        
+
         section += `\`\`\`\n\n`;
-        
+
         section += `**一键运行（推荐）**:\n`;
         section += `\`\`\`bash\n`;
         const oneLineCmd: string[] = [];
         if (cmds.format) oneLineCmd.push(cmds.format);
         if (cmds.lintFix) oneLineCmd.push(cmds.lintFix);
-        section += `${oneLineCmd.join(' && ')}\n`;
+        section += `${oneLineCmd.join(" && ")}\n`;
         section += `\`\`\`\n\n`;
       } else {
         section += `\`\`\`bash\n`;
@@ -2790,7 +3200,7 @@ ${this.generateKeyFileReferences(context)}
       section += `项目未检测到格式化命令。\n`;
       section += `建议配置 package.json 中的 scripts。\n\n`;
     }
-    
+
     return section;
   }
 
@@ -2800,7 +3210,10 @@ ${this.generateKeyFileReferences(context)}
   private generateKeyFileReferences(context: RuleGenerationContext): string {
     let refs = "";
 
-    if (context.customPatterns?.customHooks && context.customPatterns.customHooks.length > 0) {
+    if (
+      context.customPatterns?.customHooks &&
+      context.customPatterns.customHooks.length > 0
+    ) {
       refs += "**自定义 Hooks**:\n";
       context.customPatterns.customHooks.slice(0, 5).forEach((hook) => {
         refs += `- @${hook.relativePath} - ${hook.name}\n`;
@@ -2808,16 +3221,26 @@ ${this.generateKeyFileReferences(context)}
       refs += "\n";
     }
 
-    if (context.customPatterns?.customUtils && context.customPatterns.customUtils.length > 0) {
+    if (
+      context.customPatterns?.customUtils &&
+      context.customPatterns.customUtils.length > 0
+    ) {
       refs += "**工具函数**:\n";
-      const grouped = this.groupUtilsByCategory(context.customPatterns.customUtils);
-      Object.entries(grouped).slice(0, 3).forEach(([category, utils]) => {
-        refs += `- @${utils[0].relativePath} - ${category}\n`;
-      });
+      const grouped = this.groupUtilsByCategory(
+        context.customPatterns.customUtils
+      );
+      Object.entries(grouped)
+        .slice(0, 3)
+        .forEach(([category, utils]) => {
+          refs += `- @${utils[0].relativePath} - ${category}\n`;
+        });
       refs += "\n";
     }
 
-    if (context.fileOrganization?.componentLocation && context.fileOrganization.componentLocation.length > 0) {
+    if (
+      context.fileOrganization?.componentLocation &&
+      context.fileOrganization.componentLocation.length > 0
+    ) {
       refs += `**组件目录**: @${context.fileOrganization.componentLocation[0]}/\n`;
     }
 
@@ -2841,7 +3264,9 @@ ${this.generateKeyFileReferences(context)}
       ["global-rules"]
     );
 
-    const content = metadata + `
+    const content =
+      metadata +
+      `
 # ${module.name} 模块
 
 **类型**: ${this.getModuleTypeName(module.type)}  
@@ -2898,19 +3323,19 @@ ${this.generateModuleCautions(module)}
    */
   private formatMissingPractices(practices: any[]): string {
     if (!practices || practices.length === 0) {
-      return '';
+      return "";
     }
 
-    let content = '';
+    let content = "";
     for (const practice of practices) {
       content += `### ${practice.title}\n\n`;
       content += `${practice.content}\n\n`;
-      
+
       if (practice.techStack && practice.techStack.length > 0) {
-        content += `**相关技术栈**: ${practice.techStack.join(', ')}\n\n`;
+        content += `**相关技术栈**: ${practice.techStack.join(", ")}\n\n`;
       }
-      
-      content += '---\n\n';
+
+      content += "---\n\n";
     }
 
     return content.trim();
@@ -2930,38 +3355,44 @@ ${this.generateModuleCautions(module)}
     const allProjectTech = [
       ...projectTechStack.primary,
       ...projectTechStack.frameworks,
-      ...projectTechStack.languages
+      ...projectTechStack.languages,
     ];
 
     // 获取匹配规则中的技术栈
     let matchedTech: string[] = [];
-    
-    if ('techStack' in match && match.techStack) {
+
+    if ("techStack" in match && match.techStack) {
       // 多类别匹配
       matchedTech = match.techStack;
-    } else if ('framework' in match) {
+    } else if ("framework" in match) {
       // 框架匹配（向后兼容）
       const frameworkTechStacks: Record<string, string[]> = {
-        'react-typescript': ['React', 'TypeScript', 'Shadcn', 'Tailwind'],
-        'nextjs-typescript': ['Next.js', 'TypeScript', 'React', 'Tailwind'],
-        'nextjs-app-router': ['Next.js', 'React', 'TypeScript', 'Tailwind'],
-        'nextjs-15-react-19': ['Next.js', 'React', 'TypeScript', 'Tailwind', 'Vercel'],
-        'vue-typescript': ['Vue', 'TypeScript'],
-        'angular-typescript': ['Angular', 'TypeScript'],
-        'sveltekit-typescript': ['Svelte', 'TypeScript', 'Tailwind'],
-        'typescript-react': ['TypeScript', 'React', 'Next.js']
+        "react-typescript": ["React", "TypeScript", "Shadcn", "Tailwind"],
+        "nextjs-typescript": ["Next.js", "TypeScript", "React", "Tailwind"],
+        "nextjs-app-router": ["Next.js", "React", "TypeScript", "Tailwind"],
+        "nextjs-15-react-19": [
+          "Next.js",
+          "React",
+          "TypeScript",
+          "Tailwind",
+          "Vercel",
+        ],
+        "vue-typescript": ["Vue", "TypeScript"],
+        "angular-typescript": ["Angular", "TypeScript"],
+        "sveltekit-typescript": ["Svelte", "TypeScript", "Tailwind"],
+        "typescript-react": ["TypeScript", "React", "Next.js"],
       };
       matchedTech = frameworkTechStacks[match.framework] || [];
     }
 
     const frameworkTech = matchedTech;
-    const frameworkTechLower = frameworkTech.map(t => t.toLowerCase());
+    const frameworkTechLower = frameworkTech.map((t) => t.toLowerCase());
 
     // 找出项目使用但框架规则中没有的技术栈
-    const missing = allProjectTech.filter(tech => {
+    const missing = allProjectTech.filter((tech) => {
       const techLower = tech.toLowerCase();
-      return !frameworkTechLower.some(ft => 
-        techLower.includes(ft) || ft.includes(techLower)
+      return !frameworkTechLower.some(
+        (ft) => techLower.includes(ft) || ft.includes(techLower)
       );
     });
 
@@ -2986,61 +3417,68 @@ ${this.generateModuleCautions(module)}
    */
   private getFallbackPractices(techStacks: string[]): any[] {
     const practices: any[] = [];
-    
+
     // 内置的通用最佳实践（作为备用方案）
     const fallbackPractices: Record<string, any[]> = {
-      'TypeScript': [
+      TypeScript: [
         {
-          category: 'code-style',
-          title: 'TypeScript 类型安全',
-          content: '始终使用明确的类型定义，避免使用 `any`。优先使用接口（interface）定义对象类型，使用类型别名（type）定义联合类型和复杂类型。',
-          techStack: ['TypeScript'],
-          priority: 'high' as const
-        }
+          category: "code-style",
+          title: "TypeScript 类型安全",
+          content:
+            "始终使用明确的类型定义，避免使用 `any`。优先使用接口（interface）定义对象类型，使用类型别名（type）定义联合类型和复杂类型。",
+          techStack: ["TypeScript"],
+          priority: "high" as const,
+        },
       ],
-      'React': [
+      React: [
         {
-          category: 'component',
-          title: 'React 组件最佳实践',
-          content: '使用函数组件和 Hooks。保持组件单一职责，合理拆分大型组件。使用 `useMemo` 和 `useCallback` 优化性能，但避免过度优化。',
-          techStack: ['React'],
-          priority: 'high' as const
-        }
+          category: "component",
+          title: "React 组件最佳实践",
+          content:
+            "使用函数组件和 Hooks。保持组件单一职责，合理拆分大型组件。使用 `useMemo` 和 `useCallback` 优化性能，但避免过度优化。",
+          techStack: ["React"],
+          priority: "high" as const,
+        },
       ],
-      'Vue': [
+      Vue: [
         {
-          category: 'component',
-          title: 'Vue 组件最佳实践',
-          content: '使用 Composition API（Vue 3）。保持组件模板简洁，复杂逻辑抽取到 composables。使用 TypeScript 增强类型安全。',
-          techStack: ['Vue'],
-          priority: 'high' as const
-        }
+          category: "component",
+          title: "Vue 组件最佳实践",
+          content:
+            "使用 Composition API（Vue 3）。保持组件模板简洁，复杂逻辑抽取到 composables。使用 TypeScript 增强类型安全。",
+          techStack: ["Vue"],
+          priority: "high" as const,
+        },
       ],
-      'Node.js': [
+      "Node.js": [
         {
-          category: 'architecture',
-          title: 'Node.js 项目结构',
-          content: '使用模块化结构，按功能组织代码。使用环境变量管理配置。实现统一的错误处理机制。',
-          techStack: ['Node.js'],
-          priority: 'medium' as const
-        }
+          category: "architecture",
+          title: "Node.js 项目结构",
+          content:
+            "使用模块化结构，按功能组织代码。使用环境变量管理配置。实现统一的错误处理机制。",
+          techStack: ["Node.js"],
+          priority: "medium" as const,
+        },
       ],
-      'Express': [
+      Express: [
         {
-          category: 'routing',
-          title: 'Express 路由最佳实践',
-          content: '使用路由模块化，按功能组织路由。实现中间件进行认证、日志、错误处理。使用 async/await 处理异步操作。',
-          techStack: ['Express'],
-          priority: 'medium' as const
-        }
-      ]
+          category: "routing",
+          title: "Express 路由最佳实践",
+          content:
+            "使用路由模块化，按功能组织路由。实现中间件进行认证、日志、错误处理。使用 async/await 处理异步操作。",
+          techStack: ["Express"],
+          priority: "medium" as const,
+        },
+      ],
     };
 
     for (const tech of techStacks) {
       // 查找匹配的备用实践
       for (const [key, value] of Object.entries(fallbackPractices)) {
-        if (tech.toLowerCase().includes(key.toLowerCase()) || 
-            key.toLowerCase().includes(tech.toLowerCase())) {
+        if (
+          tech.toLowerCase().includes(key.toLowerCase()) ||
+          key.toLowerCase().includes(tech.toLowerCase())
+        ) {
           practices.push(...value);
         }
       }
@@ -3090,22 +3528,26 @@ ${this.generateModuleCautions(module)}
       const p = context.projectConfig.prettier;
       rules += `### 项目配置 (Prettier)\n\n`;
       rules += `项目使用 Prettier 进行代码格式化，配置如下：\n\n`;
-      rules += `- **缩进**: ${p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`}\n`;
+      rules += `- **缩进**: ${
+        p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`
+      }\n`;
       rules += `- **引号**: ${p.singleQuote ? "单引号" : "双引号"}\n`;
       rules += `- **分号**: ${p.semi ? "使用分号" : "不使用分号"}\n`;
       rules += `- **行长度**: ${p.printWidth || 80} 字符\n`;
       rules += `- **尾随逗号**: ${p.trailingComma || "none"}\n\n`;
       rules += `**配置文件**: @.prettierrc\n\n`;
-      
+
       rules += `### ⚠️ 代码格式化要求\n\n`;
       rules += `**生成代码时**，Cursor 必须：\n`;
       rules += `1. 尽量遵循上述 Prettier 配置\n`;
       rules += `2. 使用${p.singleQuote ? "单引号" : "双引号"}包裹字符串\n`;
-      rules += `3. 使用 ${p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`}缩进\n`;
+      rules += `3. 使用 ${
+        p.useTabs ? "Tab" : `${p.tabWidth || 2} 个空格`
+      }缩进\n`;
       rules += `4. ${p.semi ? "添加" : "不添加"}分号\n\n`;
-      
+
       rules += `**生成代码后**，必须运行格式化命令：\n\n`;
-      
+
       if (context.projectConfig.commands?.format) {
         rules += `\`\`\`bash\n`;
         rules += `${context.projectConfig.commands.format}\n`;
@@ -3125,10 +3567,26 @@ ${this.generateModuleCautions(module)}
       const style = context.projectPractice.codeStyle;
       rules += `### 项目当前实践（分析得出）\n\n`;
       rules += `通过分析项目代码，发现以下风格模式：\n\n`;
-      rules += `- **变量声明**: 主要使用 ${style.variableDeclaration === "const-let" ? "const/let" : "var"}\n`;
-      rules += `- **函数风格**: ${style.functionStyle === "arrow" ? "箭头函数" : "function 声明"}\n`;
-      rules += `- **字符串引号**: ${style.stringQuote === "single" ? "单引号" : style.stringQuote === "double" ? "双引号" : "混合"}\n`;
-      rules += `- **分号**: ${style.semicolon === "always" ? "使用" : style.semicolon === "never" ? "不使用" : "混合"}\n\n`;
+      rules += `- **变量声明**: 主要使用 ${
+        style.variableDeclaration === "const-let" ? "const/let" : "var"
+      }\n`;
+      rules += `- **函数风格**: ${
+        style.functionStyle === "arrow" ? "箭头函数" : "function 声明"
+      }\n`;
+      rules += `- **字符串引号**: ${
+        style.stringQuote === "single"
+          ? "单引号"
+          : style.stringQuote === "double"
+          ? "双引号"
+          : "混合"
+      }\n`;
+      rules += `- **分号**: ${
+        style.semicolon === "always"
+          ? "使用"
+          : style.semicolon === "never"
+          ? "不使用"
+          : "混合"
+      }\n\n`;
       // 移除建议，改为收集到 SuggestionCollector
       rules += `### 当前实践\n\n`;
       rules += `✅ 保持与现有代码一致的风格\n\n`;
@@ -3137,13 +3595,16 @@ ${this.generateModuleCautions(module)}
     // ESLint 配置和命令
     if (context.projectConfig.eslint || context.projectConfig.commands?.lint) {
       rules += `### ESLint 代码检查\n\n`;
-      
+
       if (context.projectConfig.eslint) {
         rules += `项目使用 ESLint 进行代码质量检查。\n\n`;
         rules += `**配置文件**: @.eslintrc\n\n`;
       }
-      
-      if (context.projectConfig.commands?.lint || context.projectConfig.commands?.lintFix) {
+
+      if (
+        context.projectConfig.commands?.lint ||
+        context.projectConfig.commands?.lintFix
+      ) {
         rules += `**生成代码后必须运行**：\n\n`;
         rules += `\`\`\`bash\n`;
         if (context.projectConfig.commands?.lint) {
@@ -3155,7 +3616,7 @@ ${this.generateModuleCautions(module)}
           rules += `${context.projectConfig.commands.lintFix}\n`;
         }
         rules += `\`\`\`\n\n`;
-        
+
         rules += `**提示**: 生成代码后，Cursor 应主动询问：\n`;
         rules += `\`\`\`\n`;
         rules += `需要我运行 lint 检查和修复吗？\n`;
@@ -3171,23 +3632,27 @@ ${this.generateModuleCautions(module)}
       rules += `### 代码生成后的标准流程\n\n`;
       rules += `**每次生成代码后，Cursor 必须提示运行**：\n\n`;
       rules += `\`\`\`bash\n`;
-      
+
       const steps: string[] = [];
       if (context.projectConfig.commands.format) {
         steps.push(`# 1. 格式化代码\n${context.projectConfig.commands.format}`);
       }
       if (context.projectConfig.commands.lintFix) {
-        steps.push(`# 2. 修复 lint 问题\n${context.projectConfig.commands.lintFix}`);
+        steps.push(
+          `# 2. 修复 lint 问题\n${context.projectConfig.commands.lintFix}`
+        );
       } else if (context.projectConfig.commands.lint) {
         steps.push(`# 2. 检查 lint\n${context.projectConfig.commands.lint}`);
       }
       if (context.projectConfig.commands.typeCheck) {
-        steps.push(`# 3. 类型检查\n${context.projectConfig.commands.typeCheck}`);
+        steps.push(
+          `# 3. 类型检查\n${context.projectConfig.commands.typeCheck}`
+        );
       }
-      
-      rules += steps.join('\n\n');
+
+      rules += steps.join("\n\n");
       rules += `\n\`\`\`\n\n`;
-      
+
       rules += `**Cursor 的标准提示**：\n`;
       rules += `\`\`\`\n`;
       rules += `代码已生成。需要我运行以下命令确保代码符合项目规范吗？\n\n`;
@@ -3201,10 +3666,15 @@ ${this.generateModuleCautions(module)}
     }
 
     // 添加路径别名信息
-    if (context.projectConfig?.pathAliases && Object.keys(context.projectConfig.pathAliases).length > 0) {
+    if (
+      context.projectConfig?.pathAliases &&
+      Object.keys(context.projectConfig.pathAliases).length > 0
+    ) {
       rules += `### 路径别名（必须使用）\n\n`;
       rules += `项目配置了以下路径别名，生成代码时必须使用：\n\n`;
-      for (const [alias, target] of Object.entries(context.projectConfig.pathAliases)) {
+      for (const [alias, target] of Object.entries(
+        context.projectConfig.pathAliases
+      )) {
         rules += `- \`${alias}\` → \`${target}\`\n`;
       }
       rules += `\n示例：\n`;
@@ -3237,14 +3707,24 @@ ${this.generateModuleCautions(module)}
     if (eh.type === "none" || eh.frequency === 0) {
       rules += `⚠️ 项目当前未实施系统的错误处理。\n\n`;
     } else {
-      rules += `项目主要使用 **${eh.type === "try-catch" ? "try-catch" : "Promise.catch()"}** 处理错误（发现 ${eh.frequency} 处）\n\n`;
+      rules += `项目主要使用 **${
+        eh.type === "try-catch" ? "try-catch" : "Promise.catch()"
+      }** 处理错误（发现 ${eh.frequency} 处）\n\n`;
 
       if (eh.customErrorTypes.length > 0) {
         rules += `**自定义错误类型**：\n`;
-        rules += eh.customErrorTypes.map((t: string) => `- \`${t}\``).join("\n") + "\n\n";
+        rules +=
+          eh.customErrorTypes.map((t: string) => `- \`${t}\``).join("\n") +
+          "\n\n";
       }
 
-      rules += `**日志方式**：${eh.loggingMethod === "console" ? "console.log/error" : eh.loggingMethod === "logger-library" ? `日志库 (${eh.loggerLibrary})` : "未检测到"}\n\n`;
+      rules += `**日志方式**：${
+        eh.loggingMethod === "console"
+          ? "console.log/error"
+          : eh.loggingMethod === "logger-library"
+          ? `日志库 (${eh.loggerLibrary})`
+          : "未检测到"
+      }\n\n`;
     }
 
     // 移除所有建议，改为收集到 SuggestionCollector
@@ -3257,7 +3737,11 @@ ${this.generateModuleCautions(module)}
    * 生成自定义工具使用规则（v1.2）
    */
   generateCustomToolsRules(context: RuleGenerationContext): string {
-    if (!context.customPatterns || (context.customPatterns.customHooks.length === 0 && context.customPatterns.customUtils.length === 0)) {
+    if (
+      !context.customPatterns ||
+      (context.customPatterns.customHooks.length === 0 &&
+        context.customPatterns.customUtils.length === 0)
+    ) {
       return "";
     }
 
@@ -3270,9 +3754,13 @@ ${this.generateModuleCautions(module)}
 
       const topHooks = context.customPatterns.customHooks.slice(0, 10);
       for (const hook of topHooks) {
-        rules += `**${hook.name}** ${hook.description ? `- ${hook.description}` : ""}\n`;
+        rules += `**${hook.name}** ${
+          hook.description ? `- ${hook.description}` : ""
+        }\n`;
         rules += `- 位置: \`${hook.relativePath}\`\n`;
-        rules += `- 使用频率: ${hook.frequency > 10 ? "高" : hook.frequency > 3 ? "中" : "低"} (${hook.frequency} 处)\n`;
+        rules += `- 使用频率: ${
+          hook.frequency > 10 ? "高" : hook.frequency > 3 ? "中" : "低"
+        } (${hook.frequency} 处)\n`;
         if (hook.usage) {
           rules += `- 使用方式:\n`;
           rules += `  \`\`\`typescript\n`;
@@ -3289,7 +3777,9 @@ ${this.generateModuleCautions(module)}
       rules += `项目定义了以下工具函数，**生成代码时必须优先使用**：\n\n`;
 
       // 按类别分组
-      const utilsByCategory = this.groupUtilsByCategory(context.customPatterns.customUtils);
+      const utilsByCategory = this.groupUtilsByCategory(
+        context.customPatterns.customUtils
+      );
 
       for (const [category, utils] of Object.entries(utilsByCategory)) {
         rules += `**${category}**:\n`;
@@ -3308,7 +3798,10 @@ ${this.generateModuleCautions(module)}
       const api = context.customPatterns.apiClient;
       rules += `### API 客户端\n\n`;
       rules += `项目使用自定义的 API 客户端：**\`${api.name}\`**\n`;
-      rules += `- 位置: \`${FileUtils.getRelativePath(context.projectPath, api.filePath)}\`\n`;
+      rules += `- 位置: \`${FileUtils.getRelativePath(
+        context.projectPath,
+        api.filePath
+      )}\`\n`;
       if (api.hasErrorHandling) {
         rules += `- ✅ 已内置错误处理\n`;
       }
@@ -3364,15 +3857,20 @@ ${this.generateModuleCautions(module)}
     rules += `\`\`\`\n`;
 
     // 显示主要目录
-    const topDirs = org.structure.filter((d) => !d.path.includes("/")).slice(0, 10);
+    const topDirs = org.structure
+      .filter((d) => !d.path.includes("/"))
+      .slice(0, 10);
     for (const dir of topDirs) {
       rules += `${dir.path}/  # ${dir.purpose} (${dir.fileCount} 个文件)\n`;
-      
+
       // 显示子目录
-      const children = org.structure.filter(
-        (d) => d.path.startsWith(dir.path + "/") && d.path.split("/").length === 2
-      ).slice(0, 5);
-      
+      const children = org.structure
+        .filter(
+          (d) =>
+            d.path.startsWith(dir.path + "/") && d.path.split("/").length === 2
+        )
+        .slice(0, 5);
+
       for (const child of children) {
         const childName = child.path.split("/").pop();
         rules += `  ├── ${childName}/  # ${child.purpose}\n`;
@@ -3407,7 +3905,10 @@ ${this.generateModuleCautions(module)}
     }
 
     // 导入规范
-    if (context.projectConfig?.pathAliases && Object.keys(context.projectConfig.pathAliases).length > 0) {
+    if (
+      context.projectConfig?.pathAliases &&
+      Object.keys(context.projectConfig.pathAliases).length > 0
+    ) {
       rules += `### 导入规范\n\n`;
       rules += `**必须使用路径别名**，不要使用相对路径：\n`;
       rules += `\`\`\`typescript\n`;
@@ -3427,7 +3928,10 @@ ${this.generateModuleCautions(module)}
   /**
    * 检查功能是否在项目中存在
    */
-  private featureExists(context: RuleGenerationContext, featureName: string): boolean {
+  private featureExists(
+    context: RuleGenerationContext,
+    featureName: string
+  ): boolean {
     // 检查代码特征
     if (context.codeFeatures[featureName]) {
       return context.codeFeatures[featureName].frequency > 0;
@@ -3435,9 +3939,9 @@ ${this.generateModuleCautions(module)}
 
     // 检查依赖
     const featureDeps: Record<string, string[]> = {
-      "testing": ["jest", "vitest", "mocha", "@testing-library"],
+      testing: ["jest", "vitest", "mocha", "@testing-library"],
       "state-management": ["redux", "zustand", "mobx", "pinia", "vuex"],
-      "styling": ["styled-components", "@emotion", "tailwindcss", "@mui"],
+      styling: ["styled-components", "@emotion", "tailwindcss", "@mui"],
     };
 
     if (featureDeps[featureName]) {
@@ -3464,4 +3968,3 @@ ${this.generateModuleCautions(module)}
     return this.generateTestingGuidelines(context);
   }
 }
-

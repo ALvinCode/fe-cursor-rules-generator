@@ -1,5 +1,6 @@
-import * as path from "path";
-import { FileUtils } from "../utils/file-utils.js";
+import * as path from 'path';
+
+import { FileUtils } from '../utils/file-utils.js';
 
 /**
  * 路由检测器
@@ -17,38 +18,38 @@ export interface RouterInfo {
 export interface RoutingPattern {
   // 组织方式
   organization: "centralized" | "distributed" | "feature-based" | "mixed";
-  
+
   // 命名规范
   urlNaming: "kebab-case" | "camelCase" | "snake_case" | "mixed";
   fileNaming: string; // 如 'page.tsx', '[id].tsx', 'index.vue'
-  
+
   // 动态路由
   dynamicRoutePattern: string; // '[id]', ':id', '<id>', '{id}'
   dynamicRouteExamples: string[];
-  
+
   // 路由分组
   hasRouteGroups: boolean;
   groupPattern?: string; // 如 '(auth)', '_auth', 等
-  
+
   // 布局/嵌套
   supportsLayouts: boolean;
   layoutPattern?: string;
-  
+
   // 守卫/中间件
   hasGuards: boolean;
   guardFiles?: string[];
-  
+
   // 懒加载
   usesLazyLoading: boolean;
   lazyLoadExamples?: string[];
-  
+
   // 元信息
   hasRouteMeta: boolean;
   metaExamples?: string[];
-  
+
   // 导航方式
   navigationMethod?: string; // 'useNavigate', 'router.push', 等
-  
+
   // 动态生成
   isDynamicGenerated: boolean; // 是否通过脚本动态生成
   generationScript?: string;
@@ -65,9 +66,38 @@ export interface RouteExample {
 
 export class RouterDetector {
   /**
-   * 检测前端路由
+   * 检测前端路由（增强版：同时检查依赖和文件结构）
    */
   async detectFrontendRouter(
+    projectPath: string,
+    files: string[],
+    dependencies?: Array<{ name: string; version?: string }>
+  ): Promise<RouterInfo | null> {
+    // 首先从文件结构检测
+    const fileBasedRouter = await this.detectFrontendRouterFromFiles(
+      projectPath,
+      files
+    );
+    if (fileBasedRouter) {
+      return fileBasedRouter;
+    }
+
+    // 如果文件结构未检测到，从依赖中检测
+    if (dependencies && dependencies.length > 0) {
+      const dependencyBasedRouter =
+        this.detectFrontendRouterFromDependencies(dependencies);
+      if (dependencyBasedRouter) {
+        return dependencyBasedRouter;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从文件结构检测前端路由（原有逻辑）
+   */
+  private async detectFrontendRouterFromFiles(
     projectPath: string,
     files: string[]
   ): Promise<RouterInfo | null> {
@@ -87,7 +117,11 @@ export class RouterDetector {
 
     // 2. 检测 Next.js Pages Router
     const pagesRouterFiles = files.filter(
-      (f) => f.includes("/pages/") && /\.(tsx?|jsx?)$/.test(f) && !f.includes("_app") && !f.includes("_document")
+      (f) =>
+        f.includes("/pages/") &&
+        /\.(tsx?|jsx?)$/.test(f) &&
+        !f.includes("_app") &&
+        !f.includes("_document")
     );
     if (pagesRouterFiles.length > 0) {
       return {
@@ -113,8 +147,8 @@ export class RouterDetector {
     }
 
     // 4. 检测 React Router（配置式）
-    const reactRouterConfig = files.find((f) =>
-      f.includes("router") || f.includes("routes")
+    const reactRouterConfig = files.find(
+      (f) => f.includes("router") || f.includes("routes")
     );
     if (reactRouterConfig) {
       const content = await FileUtils.readFile(reactRouterConfig);
@@ -149,7 +183,9 @@ export class RouterDetector {
     }
 
     // 6. 检测 Remix
-    const remixRoutes = files.filter((f) => f.includes("/routes/") && f.endsWith(".tsx"));
+    const remixRoutes = files.filter(
+      (f) => f.includes("/routes/") && f.endsWith(".tsx")
+    );
     if (remixRoutes.length > 0) {
       return {
         exists: true,
@@ -163,9 +199,120 @@ export class RouterDetector {
   }
 
   /**
-   * 检测后端 API 路由
+   * 从依赖中检测前端路由
+   */
+  private detectFrontendRouterFromDependencies(
+    dependencies: Array<{ name: string; version?: string }>
+  ): RouterInfo | null {
+    const depNames = dependencies.map((d) => d.name.toLowerCase());
+
+    // Next.js
+    if (depNames.some((name) => name === "next")) {
+      // 默认假设使用 App Router（较新）
+      return {
+        exists: true,
+        type: "file-based",
+        framework: "Next.js",
+        version: "App Router",
+        location: ["app/"],
+      };
+    }
+
+    // Nuxt
+    if (depNames.some((name) => name === "nuxt" || name.startsWith("nuxt-"))) {
+      return {
+        exists: true,
+        type: "file-based",
+        framework: "Nuxt",
+        location: ["pages/"],
+      };
+    }
+
+    // Remix
+    if (
+      depNames.some((name) => name === "@remix-run/react" || name === "remix")
+    ) {
+      return {
+        exists: true,
+        type: "file-based",
+        framework: "Remix",
+        location: ["app/routes/"],
+      };
+    }
+
+    // SvelteKit
+    if (depNames.some((name) => name === "@sveltejs/kit")) {
+      return {
+        exists: true,
+        type: "file-based",
+        framework: "SvelteKit",
+        location: ["src/routes/"],
+      };
+    }
+
+    // React Router
+    if (
+      depNames.some(
+        (name) =>
+          name === "react-router" ||
+          name === "react-router-dom" ||
+          name.startsWith("@react-router/")
+      )
+    ) {
+      return {
+        exists: true,
+        type: "config-based",
+        framework: "React Router",
+        location: ["src/"],
+      };
+    }
+
+    // Vue Router
+    if (depNames.some((name) => name === "vue-router")) {
+      return {
+        exists: true,
+        type: "config-based",
+        framework: "Vue Router",
+        location: ["src/"],
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * 检测后端 API 路由（增强版：同时检查依赖和文件结构）
    */
   async detectBackendRouter(
+    projectPath: string,
+    files: string[],
+    dependencies?: Array<{ name: string; version?: string }>
+  ): Promise<RouterInfo | null> {
+    // 首先从文件结构检测
+    const fileBasedRouter = await this.detectBackendRouterFromFiles(
+      projectPath,
+      files
+    );
+    if (fileBasedRouter) {
+      return fileBasedRouter;
+    }
+
+    // 如果文件结构未检测到，从依赖中检测
+    if (dependencies && dependencies.length > 0) {
+      const dependencyBasedRouter =
+        this.detectBackendRouterFromDependencies(dependencies);
+      if (dependencyBasedRouter) {
+        return dependencyBasedRouter;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从文件结构检测后端路由（原有逻辑）
+   */
+  private async detectBackendRouterFromFiles(
     projectPath: string,
     files: string[]
   ): Promise<RouterInfo | null> {
@@ -189,7 +336,10 @@ export class RouterDetector {
           exists: true,
           type: "programmatic",
           framework: "Express",
-          location: expressRoutes.map((f) => path.dirname(f)).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3),
+          location: expressRoutes
+            .map((f) => path.dirname(f))
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .slice(0, 3),
         };
       }
     }
@@ -197,7 +347,10 @@ export class RouterDetector {
     // 2. 检测 Fastify
     for (const file of files.slice(0, 20)) {
       const content = await FileUtils.readFile(file);
-      if (content.includes("fastify.route") || content.includes("fastify.get")) {
+      if (
+        content.includes("fastify.route") ||
+        content.includes("fastify.get")
+      ) {
         return {
           exists: true,
           type: "programmatic",
@@ -208,8 +361,8 @@ export class RouterDetector {
     }
 
     // 3. 检测 NestJS
-    const nestControllers = files.filter((f) =>
-      f.includes("controller") && f.endsWith(".ts")
+    const nestControllers = files.filter(
+      (f) => f.includes("controller") && f.endsWith(".ts")
     );
     if (nestControllers.length > 0) {
       const content = await FileUtils.readFile(nestControllers[0]);
@@ -245,6 +398,91 @@ export class RouterDetector {
           location: ["app/"],
         };
       }
+    }
+
+    return null;
+  }
+
+  /**
+   * 从依赖中检测后端路由
+   */
+  private detectBackendRouterFromDependencies(
+    dependencies: Array<{ name: string; version?: string }>
+  ): RouterInfo | null {
+    const depNames = dependencies.map((d) => d.name.toLowerCase());
+
+    // Express
+    if (depNames.some((name) => name === "express")) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "Express",
+        location: ["src/routes/", "src/api/"],
+      };
+    }
+
+    // Fastify
+    if (depNames.some((name) => name === "fastify")) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "Fastify",
+        location: ["src/routes/"],
+      };
+    }
+
+    // Koa
+    if (depNames.some((name) => name === "koa")) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "Koa",
+        location: ["src/routes/"],
+      };
+    }
+
+    // NestJS
+    if (
+      depNames.some(
+        (name) => name === "@nestjs/core" || name === "@nestjs/common"
+      )
+    ) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "NestJS",
+        location: ["src/"],
+      };
+    }
+
+    // Django
+    if (depNames.some((name) => name === "django")) {
+      return {
+        exists: true,
+        type: "config-based",
+        framework: "Django",
+        location: [""],
+      };
+    }
+
+    // Flask
+    if (depNames.some((name) => name === "flask")) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "Flask",
+        location: ["app/"],
+      };
+    }
+
+    // Gin (Go)
+    if (depNames.some((name) => name === "github.com/gin-gonic/gin")) {
+      return {
+        exists: true,
+        type: "programmatic",
+        framework: "Gin",
+        location: [""],
+      };
     }
 
     return null;
@@ -287,11 +525,15 @@ export class RouterDetector {
     const routeFiles = files.filter((f) => f.includes(`/${routeDir}/`));
 
     // 检测动态路由模式
-    const dynamicRoutes = routeFiles.filter((f) => f.includes("[") && f.includes("]"));
+    const dynamicRoutes = routeFiles.filter(
+      (f) => f.includes("[") && f.includes("]")
+    );
     const dynamicPattern = dynamicRoutes.length > 0 ? "[id]" : "none";
 
     // 检测路由分组（App Router 特性）
-    const hasGroups = routeFiles.some((f) => f.includes("(") && f.includes(")"));
+    const hasGroups = routeFiles.some(
+      (f) => f.includes("(") && f.includes(")")
+    );
 
     // 检测布局
     const hasLayouts = routeFiles.some((f) => f.includes("layout."));
@@ -317,9 +559,9 @@ export class RouterDetector {
       urlNaming,
       fileNaming: isAppRouter ? "page.tsx" : "[name].tsx",
       dynamicRoutePattern: dynamicPattern,
-      dynamicRouteExamples: dynamicRoutes.slice(0, 3).map((f) =>
-        FileUtils.getRelativePath(projectPath, f)
-      ),
+      dynamicRouteExamples: dynamicRoutes
+        .slice(0, 3)
+        .map((f) => FileUtils.getRelativePath(projectPath, f)),
       hasRouteGroups: hasGroups,
       groupPattern: hasGroups ? "(group)" : undefined,
       supportsLayouts: hasLayouts,
@@ -341,8 +583,8 @@ export class RouterDetector {
     files: string[],
     routerInfo: RouterInfo
   ): Promise<RoutingPattern> {
-    const routerConfigFile = files.find((f) =>
-      f.includes("router") || f.includes("routes")
+    const routerConfigFile = files.find(
+      (f) => f.includes("router") || f.includes("routes")
     );
 
     if (!routerConfigFile) {
@@ -352,11 +594,13 @@ export class RouterDetector {
     const content = await FileUtils.readFile(routerConfigFile);
 
     // 检测动态路由
-    const hasDynamicRoutes = content.includes(":id") || content.includes(":slug");
+    const hasDynamicRoutes =
+      content.includes(":id") || content.includes(":slug");
     const dynamicPattern = hasDynamicRoutes ? ":id" : "none";
 
     // 检测嵌套路由
-    const hasNesting = content.includes("children:") || content.includes("<Outlet");
+    const hasNesting =
+      content.includes("children:") || content.includes("<Outlet");
 
     // 检测路由守卫
     const hasGuards =
@@ -394,8 +638,8 @@ export class RouterDetector {
     routerInfo: RouterInfo
   ): Promise<RoutingPattern> {
     // 类似 React Router 的分析逻辑
-    const routerConfigFile = files.find((f) =>
-      f.includes("router") && f.endsWith(".ts")
+    const routerConfigFile = files.find(
+      (f) => f.includes("router") && f.endsWith(".ts")
     );
 
     if (!routerConfigFile) {
@@ -430,8 +674,7 @@ export class RouterDetector {
   ): Promise<RoutingPattern> {
     const routeFiles = files.filter(
       (f) =>
-        (f.includes("/routes/") || f.includes("/api/")) &&
-        /\.(ts|js)$/.test(f)
+        (f.includes("/routes/") || f.includes("/api/")) && /\.(ts|js)$/.test(f)
     );
 
     let hasMiddleware = false;
@@ -463,8 +706,7 @@ export class RouterDetector {
     }
 
     return {
-      organization:
-        routeFiles.length > 5 ? "distributed" : "centralized",
+      organization: routeFiles.length > 5 ? "distributed" : "centralized",
       urlNaming: "kebab-case",
       fileNaming: "模块文件",
       dynamicRoutePattern: ":id",
@@ -530,7 +772,9 @@ export class RouterDetector {
   /**
    * 分析 URL 命名模式
    */
-  private analyzeUrlNaming(routeFiles: string[]): "kebab-case" | "camelCase" | "snake_case" | "mixed" {
+  private analyzeUrlNaming(
+    routeFiles: string[]
+  ): "kebab-case" | "camelCase" | "snake_case" | "mixed" {
     let kebabCount = 0;
     let camelCount = 0;
     let snakeCount = 0;
@@ -586,7 +830,12 @@ export class RouterDetector {
       // 暂时返回占位
     } else if (routerInfo.type === "programmatic") {
       // 编程式路由（后端API）
-      await this.extractProgrammaticRoutes(files, routerInfo, examples, projectPath);
+      await this.extractProgrammaticRoutes(
+        files,
+        routerInfo,
+        examples,
+        projectPath
+      );
     }
 
     return examples.slice(0, 10);
@@ -655,80 +904,91 @@ export class RouterDetector {
     routerInfo: RouterInfo
   ): Promise<DynamicRoutingAnalysis> {
     // 步骤 1：判断是否动态生成
-    const isDynamic = await this.isDynamicallyGenerated(projectPath, files, routerInfo);
-    
+    const isDynamic = await this.isDynamicallyGenerated(
+      projectPath,
+      files,
+      routerInfo
+    );
+
     if (!isDynamic) {
       return {
         isDynamic: false,
-        confidence: 'certain',
+        confidence: "certain",
         documentation: { found: false },
-        scripts: { files: [], commands: [], confidence: 'high' },
+        scripts: { files: [], commands: [], confidence: "high" },
         needsConfirmation: false,
         confirmationQuestions: [],
         recommendation: {
-          certainty: 'certain',
-          method: '手动创建路由',
-          explanation: '项目使用标准的路由创建方式',
+          certainty: "certain",
+          method: "手动创建路由",
+          explanation: "项目使用标准的路由创建方式",
         },
       };
     }
-    
+
     // 步骤 3：查询文档说明
     const documentation = await this.checkDocumentation(projectPath);
-    
+
     if (documentation.found && documentation.method) {
       // 有明确的文档说明 - 确定性高
       return {
         isDynamic: true,
-        confidence: 'certain',
+        confidence: "certain",
         documentation,
-        scripts: { files: [], commands: [], confidence: 'high' },
+        scripts: { files: [], commands: [], confidence: "high" },
         needsConfirmation: false,
         confirmationQuestions: [],
         recommendation: {
-          certainty: 'certain',
+          certainty: "certain",
           method: documentation.method,
           explanation: `基于项目文档 @${documentation.file} 的说明`,
           source: `@${documentation.file}`,
         },
       };
     }
-    
+
     // 步骤 5：查找脚本文件
-    const scriptsAnalysis = await this.findGenerationScripts(projectPath, files);
+    const scriptsAnalysis = await this.findGenerationScripts(
+      projectPath,
+      files
+    );
     const commandsAnalysis = await this.findGenerationCommands(projectPath);
-    
+
     const allScripts = {
       files: scriptsAnalysis.scripts,
       commands: commandsAnalysis.commands,
-      confidence: this.evaluateOverallConfidence(scriptsAnalysis, commandsAnalysis),
+      confidence: this.evaluateOverallConfidence(
+        scriptsAnalysis,
+        commandsAnalysis
+      ),
     };
-    
+
     // 步骤 6：生成确认问题
-    const needsConfirmation = allScripts.confidence !== 'high';
-    const confirmationQuestions = needsConfirmation 
+    const needsConfirmation = allScripts.confidence !== "high";
+    const confirmationQuestions = needsConfirmation
       ? this.generateConfirmationQuestions(allScripts, documentation)
       : [];
-    
+
     // 选择最佳猜测
-    const bestGuess = commandsAnalysis.commands[0] || scriptsAnalysis.scripts[0] || '未知';
-    
+    const bestGuess =
+      commandsAnalysis.commands[0] || scriptsAnalysis.scripts[0] || "未知";
+
     return {
       isDynamic: true,
-      confidence: allScripts.confidence === 'high' ? 'likely' : 'uncertain',
+      confidence: allScripts.confidence === "high" ? "likely" : "uncertain",
       documentation,
       scripts: allScripts,
       needsConfirmation,
       confirmationQuestions,
       recommendation: {
-        certainty: allScripts.confidence === 'high' ? 'likely' : 'uncertain',
+        certainty: allScripts.confidence === "high" ? "likely" : "uncertain",
         method: bestGuess,
         explanation: this.explainChoice(bestGuess, allScripts),
         alternatives: this.getAlternatives(bestGuess, allScripts),
       },
     };
   }
-  
+
   /**
    * 步骤 1：判断是否动态生成
    */
@@ -738,68 +998,75 @@ export class RouterDetector {
     routerInfo: RouterInfo
   ): Promise<boolean> {
     const indicators: boolean[] = [];
-    
+
     // 指标 1：存在路由生成脚本
     indicators.push(await this.hasGenerationScript(files));
-    
+
     // 指标 2：package.json 有生成命令
     indicators.push(await this.hasGenerationCommand(projectPath));
-    
+
     // 指标 3：文档提到路由生成
     indicators.push(await this.documentationMentionsGeneration(projectPath));
-    
+
     // 指标 4：路由文件有统一模式（可能是生成的）
     indicators.push(this.hasUniformPattern(routerInfo));
-    
+
     // 至少 2 个指标为 true 才认为是动态生成
     return indicators.filter(Boolean).length >= 2;
   }
-  
+
   private async hasGenerationScript(files: string[]): Promise<boolean> {
-    return files.some(f =>
-      (f.includes('generate') || f.includes('build') || f.includes('create')) &&
-      (f.includes('route') || f.includes('page')) &&
-      /\.(js|ts|py|sh)$/.test(f)
+    return files.some(
+      (f) =>
+        (f.includes("generate") ||
+          f.includes("build") ||
+          f.includes("create")) &&
+        (f.includes("route") || f.includes("page")) &&
+        /\.(js|ts|py|sh)$/.test(f)
     );
   }
-  
+
   private async hasGenerationCommand(projectPath: string): Promise<boolean> {
-    const packageJsonPath = path.join(projectPath, 'package.json');
+    const packageJsonPath = path.join(projectPath, "package.json");
     if (await FileUtils.fileExists(packageJsonPath)) {
       const content = await FileUtils.readFile(packageJsonPath);
       const pkg = JSON.parse(content);
       if (pkg.scripts) {
-        return Object.keys(pkg.scripts).some(key =>
-          (key.includes('generate') || key.includes('build')) &&
-          (key.includes('route') || key.includes('page'))
+        return Object.keys(pkg.scripts).some(
+          (key) =>
+            (key.includes("generate") || key.includes("build")) &&
+            (key.includes("route") || key.includes("page"))
         );
       }
     }
     return false;
   }
-  
-  private async documentationMentionsGeneration(projectPath: string): Promise<boolean> {
-    const readmePath = path.join(projectPath, 'README.md');
+
+  private async documentationMentionsGeneration(
+    projectPath: string
+  ): Promise<boolean> {
+    const readmePath = path.join(projectPath, "README.md");
     if (await FileUtils.fileExists(readmePath)) {
       const content = await FileUtils.readFile(readmePath);
-      return content.toLowerCase().includes('generate') && 
-             (content.toLowerCase().includes('route') || content.toLowerCase().includes('路由'));
+      return (
+        content.toLowerCase().includes("generate") &&
+        (content.toLowerCase().includes("route") ||
+          content.toLowerCase().includes("路由"))
+      );
     }
     return false;
   }
-  
+
   private hasUniformPattern(routerInfo: RouterInfo): boolean {
     // 如果路由文件都遵循严格的模式，可能是生成的
     // 这是一个启发式判断，不太可靠
-    return false;  // 保守判断
+    return false; // 保守判断
   }
-  
+
   /**
    * 步骤 3：检查文档说明
    */
-  private async checkDocumentation(
-    projectPath: string
-  ): Promise<{
+  private async checkDocumentation(projectPath: string): Promise<{
     found: boolean;
     file?: string;
     section?: string;
@@ -813,18 +1080,18 @@ export class RouterDetector {
       "docs/routing.md",
       "docs/development.md",
     ];
-    
+
     for (const docFile of docFiles) {
       const docPath = path.join(projectPath, docFile);
       if (await FileUtils.fileExists(docPath)) {
         const content = await FileUtils.readFile(docPath);
-        
+
         // 查找路由相关章节
         const routeSection = this.extractRouteSection(content);
         if (routeSection) {
           // 提取生成方法
           const method = this.extractGenerationMethod(routeSection);
-          
+
           if (method) {
             return {
               found: true,
@@ -836,67 +1103,77 @@ export class RouterDetector {
         }
       }
     }
-    
+
     return { found: false };
   }
-  
+
   /**
    * 提取路由相关章节
    */
   private extractRouteSection(content: string): string | null {
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     let inRouteSection = false;
-    let section = '';
+    let section = "";
     let headerLevel = 0;
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // 检测章节开始
-      const headerMatch = line.match(/^(#{1,4})\s+(.*路由.*|.*Route.*|.*Routing.*)/i);
+      const headerMatch = line.match(
+        /^(#{1,4})\s+(.*路由.*|.*Route.*|.*Routing.*)/i
+      );
       if (headerMatch) {
         inRouteSection = true;
         headerLevel = headerMatch[1].length;
-        section = line + '\n';
+        section = line + "\n";
         continue;
       }
-      
+
       // 检测章节结束（同级或更高级标题）
       if (inRouteSection) {
         const nextHeaderMatch = line.match(/^(#{1,4})\s+/);
         if (nextHeaderMatch && nextHeaderMatch[1].length <= headerLevel) {
           break;
         }
-        section += line + '\n';
+        section += line + "\n";
       }
     }
-    
+
     return section.trim() || null;
   }
-  
+
   /**
    * 提取生成方法
    */
   private extractGenerationMethod(section: string): string | null {
     // 查找代码块中的命令
-    const codeBlockMatches = section.matchAll(/```(?:bash|sh)?\n([\s\S]*?)```/g);
-    
+    const codeBlockMatches = section.matchAll(
+      /```(?:bash|sh)?\n([\s\S]*?)```/g
+    );
+
     for (const match of codeBlockMatches) {
       const codeBlock = match[1];
-      
+
       // 查找命令行
-      const commandMatches = codeBlock.matchAll(/(?:npm run|yarn|pnpm|python|node)\s+[\w:.-]+/g);
+      const commandMatches = codeBlock.matchAll(
+        /(?:npm run|yarn|pnpm|python|node)\s+[\w:.-]+/g
+      );
       for (const cmdMatch of commandMatches) {
         const command = cmdMatch[0];
-        if (command.includes('route') || command.includes('generate') || command.includes('page')) {
+        if (
+          command.includes("route") ||
+          command.includes("generate") ||
+          command.includes("page")
+        ) {
           return command;
         }
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * 步骤 5：查找生成脚本（已有，增强版本）
    */
@@ -905,89 +1182,100 @@ export class RouterDetector {
     files: string[]
   ): Promise<{
     scripts: string[];
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
   }> {
-    const possibleScripts = files.filter(f =>
-      (f.includes('generate') || f.includes('build') || f.includes('create')) &&
-      (f.includes('route') || f.includes('page')) &&
-      /\.(js|ts|py|sh)$/.test(f) &&
-      !f.includes('node_modules')
-    ).map(f => FileUtils.getRelativePath(projectPath, f));
-    
-    let confidence: 'high' | 'medium' | 'low' = 'low';
-    
+    const possibleScripts = files
+      .filter(
+        (f) =>
+          (f.includes("generate") ||
+            f.includes("build") ||
+            f.includes("create")) &&
+          (f.includes("route") || f.includes("page")) &&
+          /\.(js|ts|py|sh)$/.test(f) &&
+          !f.includes("node_modules")
+      )
+      .map((f) => FileUtils.getRelativePath(projectPath, f));
+
+    let confidence: "high" | "medium" | "low" = "low";
+
     if (possibleScripts.length === 1) {
-      confidence = 'high';
+      confidence = "high";
     } else if (possibleScripts.length > 1 && possibleScripts.length <= 3) {
-      confidence = 'medium';
+      confidence = "medium";
     }
-    
+
     return { scripts: possibleScripts, confidence };
   }
-  
+
   /**
    * 查找 package.json 中的生成命令
    */
-  private async findGenerationCommands(
-    projectPath: string
-  ): Promise<{
+  private async findGenerationCommands(projectPath: string): Promise<{
     commands: string[];
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
   }> {
-    const packageJsonPath = path.join(projectPath, 'package.json');
+    const packageJsonPath = path.join(projectPath, "package.json");
     const commands: string[] = [];
-    
+
     if (await FileUtils.fileExists(packageJsonPath)) {
       const content = await FileUtils.readFile(packageJsonPath);
       const pkg = JSON.parse(content);
-      
+
       if (pkg.scripts) {
         for (const [key, value] of Object.entries(pkg.scripts)) {
           if (
-            (key.includes('generate') || key.includes('build') || key.includes('create')) &&
-            (key.includes('route') || key.includes('page'))
+            (key.includes("generate") ||
+              key.includes("build") ||
+              key.includes("create")) &&
+            (key.includes("route") || key.includes("page"))
           ) {
             commands.push(`npm run ${key}`);
           }
         }
       }
     }
-    
-    let confidence: 'high' | 'medium' | 'low' = 'low';
+
+    let confidence: "high" | "medium" | "low" = "low";
     if (commands.length === 1) {
-      confidence = 'high';
+      confidence = "high";
     } else if (commands.length > 1 && commands.length <= 3) {
-      confidence = 'medium';
+      confidence = "medium";
     }
-    
+
     return { commands, confidence };
   }
-  
+
   /**
    * 评估总体置信度
    */
   private evaluateOverallConfidence(
     scriptsAnalysis: any,
     commandsAnalysis: any
-  ): 'high' | 'medium' | 'low' {
+  ): "high" | "medium" | "low" {
     // 如果命令和脚本都只有一个，且一致
-    if (scriptsAnalysis.scripts.length === 1 && commandsAnalysis.commands.length === 1) {
-      return 'high';
+    if (
+      scriptsAnalysis.scripts.length === 1 &&
+      commandsAnalysis.commands.length === 1
+    ) {
+      return "high";
     }
-    
+
     // 如果命令明确（只有一个）
     if (commandsAnalysis.commands.length === 1) {
-      return 'high';
+      return "high";
     }
-    
+
     // 如果有多个选项
-    if (scriptsAnalysis.scripts.length > 1 || commandsAnalysis.commands.length > 1) {
-      return 'medium';
+    if (
+      scriptsAnalysis.scripts.length > 1 ||
+      commandsAnalysis.commands.length > 1
+    ) {
+      return "medium";
     }
-    
-    return 'low';
+
+    return "low";
   }
-  
+
   /**
    * 步骤 6：生成确认问题
    */
@@ -996,29 +1284,29 @@ export class RouterDetector {
     documentation: any
   ): ConfirmationQuestion[] {
     const questions: ConfirmationQuestion[] = [];
-    
+
     if (scripts.commands.length > 1 || scripts.files.length > 1) {
       const allOptions = [
         ...scripts.commands,
         ...scripts.files.map((f: string) => `使用脚本: @${f}`),
-        '项目不使用脚本生成路由',
+        "项目不使用脚本生成路由",
       ];
-      
+
       questions.push({
-        id: 'route-generation-method',
-        question: '项目使用哪种方式生成路由？',
+        id: "route-generation-method",
+        question: "项目使用哪种方式生成路由？",
         context: `检测到多个可能的选项`,
         options: allOptions,
         suggestedAnswer: scripts.commands[0] || scripts.files[0],
-        reason: '基于命令名称或文件名称',
+        reason: "基于命令名称或文件名称",
         relatedFiles: [...scripts.files],
-        impact: '这将决定路由规则中的新建路由指南',
+        impact: "这将决定路由规则中的新建路由指南",
       });
     }
-    
+
     return questions;
   }
-  
+
   /**
    * 解释选择理由
    */
@@ -1029,17 +1317,17 @@ export class RouterDetector {
     if (scripts.files.includes(choice)) {
       return `选择此脚本因为：文件名包含 'generate' 和 'route'`;
     }
-    return '基于启发式分析';
+    return "基于启发式分析";
   }
-  
+
   /**
    * 获取备选方案
    */
   private getAlternatives(current: string, scripts: any): string[] {
     const all = [...scripts.commands, ...scripts.files];
-    return all.filter(item => item !== current);
+    return all.filter((item) => item !== current);
   }
-  
+
   /**
    * 获取默认模式
    */
@@ -1065,26 +1353,26 @@ export class RouterDetector {
  */
 export interface DynamicRoutingAnalysis {
   isDynamic: boolean;
-  confidence: 'certain' | 'likely' | 'uncertain';
-  
+  confidence: "certain" | "likely" | "uncertain";
+
   documentation: {
     found: boolean;
     file?: string;
     section?: string;
     method?: string;
   };
-  
+
   scripts: {
     files: string[];
     commands: string[];
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
   };
-  
+
   needsConfirmation: boolean;
   confirmationQuestions: ConfirmationQuestion[];
-  
+
   recommendation: {
-    certainty: 'certain' | 'likely' | 'uncertain';
+    certainty: "certain" | "likely" | "uncertain";
     method: string;
     explanation: string;
     source?: string;
@@ -1102,4 +1390,3 @@ export interface ConfirmationQuestion {
   relatedFiles: string[];
   impact: string;
 }
-

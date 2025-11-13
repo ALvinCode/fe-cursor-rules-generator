@@ -825,15 +825,21 @@ class CursorRulesGeneratorServer {
     }
     completeTask(6);
 
-    // 任务 7：识别路由系统
+    // 任务 7：识别路由系统（增强版：同时检查依赖和文件结构）
     startTask(7, "cursor-rules-generator 正在识别路由框架。");
+    const dependencies = techStack.dependencies.map((d) => ({
+      name: d.name,
+      version: d.version,
+    }));
     const frontendRouterInfo = await this.routerDetector.detectFrontendRouter(
       projectPath,
-      files
+      files,
+      dependencies
     );
     const backendRouterInfo = await this.routerDetector.detectBackendRouter(
       projectPath,
-      files
+      files,
+      dependencies
     );
 
     if (frontendRouterInfo) {
@@ -1078,6 +1084,25 @@ class CursorRulesGeneratorServer {
     // 获取建议列表
     const suggestionCollector = this.rulesGenerator.getSuggestionCollector();
     const suggestionsOutput = suggestionCollector.formatForOutput();
+
+    // 获取规则需求分析结果
+    const requirementsAnalyzer = this.rulesGenerator.getRequirementsAnalyzer();
+    const requirements = requirementsAnalyzer.analyzeRequirements({
+      projectPath,
+      techStack,
+      modules,
+      codeFeatures,
+      bestPractices,
+      includeModuleRules,
+      projectPractice,
+      projectConfig,
+      customPatterns,
+      fileOrganization,
+      frontendRouter,
+      backendRouter,
+    });
+    const requirementsSummary =
+      requirementsAnalyzer.generateRequirementsSummary(requirements);
 
     const analysisLines: string[] = [];
     analysisLines.push(
@@ -1356,6 +1381,11 @@ class CursorRulesGeneratorServer {
         outputMessage += `说明：${uncertainty.explanation}\n\n`;
       });
     }
+
+    // v1.7: 添加规则需求分析输出
+    outputMessage += `\n## 📋 规则需求分析\n\n`;
+    outputMessage += requirementsSummary;
+    outputMessage += `\n\n`;
 
     // v1.7: 添加结构化生成摘要
     const generationSummary = this.generationCoordinator.generateSummary(
