@@ -1,37 +1,34 @@
 # Cursor Rules Generator
 
-一个智能 MCP Server，能够自动分析项目并生成符合项目特点的 Cursor Rules。
+An intelligent MCP Server that automatically analyzes your project and generates Cursor Rules tailored to your project's characteristics.
 
-## 🌟 特性
+## ✨ Features
 
-- ✅ **智能项目分析**：自动扫描项目文件，识别技术栈和依赖
-- ✅ **技术栈检测**：支持 Node.js、Python、Go、Rust、Java 等主流技术栈
-- ✅ **多模块支持**：自动检测 monorepo、微服务等多模块架构
-- ✅ **代码特征分析**：识别组件结构、API 路由、状态管理等开发模式
-- ✅ **一致性检查**：比对项目描述文档与实际实现，发现不一致
-- ✅ **最佳实践集成**：基于主流框架的最佳实践生成规则
-- ✅ **自动生成规则**：在 `.cursor/rules/` 目录生成 `.mdc` 格式的规则文件
-- ✅ **模块化规则**：支持全局规则 + 模块特定规则
-- ✅ **依赖驱动规则生成**：根据项目依赖自动生成对应规则（如路由、状态管理等）
-- ✅ **规则需求分析**：智能分析项目需要哪些规则文件，并说明生成原因
-- ✅ **生成位置确认**：自动检测规则文件生成位置，确保符合项目结构
-- ✅ **结构化输出**：提供详细的生成摘要和可解释性说明
+- ✅ **Smart Project Analysis**: Automatically scans project files and identifies tech stack and dependencies
+- ✅ **Tech Stack Detection**: Supports 20+ mainstream tech stacks including Node.js, Python, Go, Rust, Java
+- ✅ **Multi-Module Support**: Automatically detects monorepo, microservices, and other multi-module architectures
+- ✅ **Code Feature Analysis**: Identifies component structures, API routes, state management patterns
+- ✅ **Consistency Checking**: Compares project documentation with actual implementation
+- ✅ **Best Practices Integration**: Generates rules based on framework best practices
+- ✅ **Automatic Rule Generation**: Generates `.mdc` format rule files in `.cursor/rules/` directory
+- ✅ **Modular Rules**: Supports global rules + module-specific rules
+- ✅ **Dependency-Driven Rules**: Automatically generates rules based on project dependencies (routing, state management, etc.)
+- ✅ **Rule Requirements Analysis**: Intelligently analyzes which rule files are needed and explains why
+- ✅ **Generation Location Confirmation**: Automatically detects rule file generation locations to match project structure
+- ✅ **Structured Output**: Provides detailed generation summaries and explanations
 
-## 📦 安装
+## 🚀 Quick Start
 
-### 为什么需要安装？
+### Step 1: Configure Cursor (No Installation Required!)
 
-本项目依赖多个 npm 包（`@modelcontextprotocol/sdk`、`glob`、`pino` 等）。如果直接配置指向 `dist/index.js` 而不安装依赖，Node.js 无法解析这些模块，会报错 `Cannot find module`。
+**Recommended: Use npx** (automatically downloads and runs, no manual installation needed)
 
-### 方式一：使用 npx（最简单，推荐）
+Find your Cursor MCP configuration file:
 
-**无需手动安装**，`npx` 会自动下载并运行：
+- **macOS/Linux**: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+- **Windows**: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
 
-在 Cursor 的 MCP 配置文件中添加：
-
-**macOS/Linux:** `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
-
-**Windows:** `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+Add this configuration:
 
 ```json
 {
@@ -46,17 +43,43 @@
 }
 ```
 
-### 方式二：通过 npm 安装
+### Step 2: Restart Cursor
 
-```bash
-# 全局安装
-npm install -g cursor-rules-generators
+Completely quit and restart Cursor to apply the configuration.
 
-# 或本地安装到项目
-npm install cursor-rules-generators
+### Step 3: Generate Rules
+
+In Cursor's AI chat window, simply say:
+
+```
+Please generate Cursor Rules for the current project
 ```
 
-**如果全局安装**，配置：
+Or specify a project path:
+
+```
+Please generate Cursor Rules for /Users/myname/projects/my-app
+```
+
+That's it! The tool will automatically:
+
+1. Scan your project files
+2. Detect your tech stack
+3. Analyze code features
+4. Generate appropriate rules
+5. Save them to `.cursor/rules/` directory
+
+## 📖 Alternative Installation Methods
+
+### Option 2: Global Installation
+
+If you prefer to install globally:
+
+```bash
+npm install -g cursor-rules-generators
+```
+
+Then configure:
 
 ```json
 {
@@ -70,38 +93,22 @@ npm install cursor-rules-generators
 }
 ```
 
-**如果本地安装**，配置：
+### Option 3: Local Installation
 
-```json
-{
-  "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "node",
-      "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
-      "disabled": false,
-      "alwaysAllow": []
-    }
-  }
-}
-```
-
-### 方式三：从源码安装（不推荐，除非需要开发）
+For local installation in a project:
 
 ```bash
-git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
-cd cursor-rules-generator
-npm install  # 必须安装依赖！
-npm run build
+npm install cursor-rules-generators
 ```
 
-配置：
+Then configure with the full path:
 
 ```json
 {
   "mcpServers": {
     "cursor-rules-generator": {
       "command": "node",
-      "args": ["/path/to/cursor-rules-generator/dist/index.js"],
+      "args": ["/project/path/node_modules/cursor-rules-generators/dist/index.js"],
       "disabled": false,
       "alwaysAllow": []
     }
@@ -109,198 +116,187 @@ npm run build
 }
 ```
 
-**重要**：必须确保已运行 `npm install`，否则会因缺少依赖而无法运行。
-
-### 重启 Cursor
-
-重启 Cursor 使配置生效。
-
-## 🚀 使用方法
-
-### 生成 Cursor Rules
-
-在 Cursor 中，通过 AI 助手调用工具：
-
-```
-请使用 generate_cursor_rules 为当前项目生成规则
-```
-
-或者指定项目路径：
-
-```
-请为 /Users/myname/projects/my-app 生成 Cursor Rules
-```
-
-### 分析项目（不生成规则）
-
-```
-请分析项目结构和技术栈
-```
-
-### 检查一致性
-
-```
-请检查项目描述与实际代码的一致性
-```
-
-### 更新项目描述
-
-```
-请根据实际代码更新 README 文件
-```
-
-## 🛠️ 可用工具
+## 🛠️ Available Tools
 
 ### 1. `generate_cursor_rules`
 
-分析项目并生成完整的 Cursor Rules。
+Analyzes the project and generates complete Cursor Rules.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
-- `updateDescription` (可选): 是否自动更新描述文件，默认 `false`
-- `includeModuleRules` (可选): 是否生成模块特定规则，默认 `true`
+**Parameters:**
 
-**示例：**
-```typescript
-{
-  "projectPath": "/Users/myname/projects/my-app",
-  "updateDescription": false,
-  "includeModuleRules": true
-}
+- `projectPath` (required): Absolute path to project root directory
+- `updateDescription` (optional): Whether to automatically update description files, default `false`
+- `includeModuleRules` (optional): Whether to generate module-specific rules, default `true`
+
+**Example:**
+
+```
+Please generate Cursor Rules for /Users/myname/projects/my-app
 ```
 
 ### 2. `analyze_project`
 
-仅分析项目，不生成规则，返回详细的项目信息。
+Analyzes the project only, without generating rules. Returns detailed project information.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
+**Parameters:**
+
+- `projectPath` (required): Absolute path to project root directory
+
+**Example:**
+
+```
+Please analyze the project structure and tech stack
+```
 
 ### 3. `check_consistency`
 
-检查项目描述文档与实际代码的一致性。
+Checks consistency between project documentation and actual code.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
+**Parameters:**
+
+- `projectPath` (required): Absolute path to project root directory
+
+**Example:**
+
+```
+Please check if the project documentation matches the actual code
+```
 
 ### 4. `update_project_description`
 
-根据实际代码更新项目描述文档。
+Updates project description documents based on actual code.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
-- `descriptionFile` (可选): 要更新的文件，默认 `README.md`
+**Parameters:**
+
+- `projectPath` (required): Absolute path to project root directory
+- `descriptionFile` (optional): File to update, default `README.md`
+
+**Example:**
+
+```
+Please update the README based on the actual code
+```
 
 ### 5. `validate_rules`
 
-验证 Cursor Rules 文件的格式和内容是否正确。
+Validates the format and content of Cursor Rules files.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
-- `validateModules` (可选): 是否验证模块目录中的规则文件，默认 `true`
+**Parameters:**
+
+- `projectPath` (required): Absolute path to project root directory
+- `validateModules` (optional): Whether to validate rule files in module directories, default `true`
+
+**Example:**
+
+```
+Please validate the Cursor Rules files in the current project
+```
 
 ### 6. `preview_rules_generation`
 
-预览规则生成过程，列出所有任务、分析结果和需要确认的决策点，不实际生成文件。
+Previews the rule generation process, listing all tasks, analysis results, and decision points without actually generating files.
 
-**参数：**
-- `projectPath` (必需): 项目根目录的绝对路径
+**Parameters:**
+
+- `projectPath` (required): Absolute path to project root directory
+
+**Example:**
+
+```
+Please preview what rules would be generated
+```
 
 ### 7. `info`
 
-显示 MCP 工具信息，包括版本号、日志配置状态、环境变量配置和任何检测到的配置问题。
+Displays MCP tool information, including version, log configuration status, environment variables, and any detected configuration issues.
 
-**参数：** 无
+**Parameters:** None
 
-## 📋 工作流程
+**Example:**
 
 ```
-1. 收集项目文件（最多10层深度）
-   ↓
-2. 检测技术栈和依赖
-   ↓
-3. 识别多模块结构
-   ↓
-4. 分析代码特征
-   ↓
-5. 识别路由系统（从依赖和文件结构双重检测）
-   ↓
-6. 获取最佳实践（通过 Context7，如已配置）
-   ↓
-7. 分析规则需求（根据依赖、文件结构、配置决定需要哪些规则）
-   ↓
-8. 检查描述与实现的一致性
-   ↓
-9. （可选）提示用户更新描述文件
-   ↓
-10. 确认生成位置（检查目录结构和文件组织）
-   ↓
-11. 生成全局 + 模块规则（基于需求分析结果）
-   ↓
-12. 写入 .cursor/rules/*.mdc 文件
-   ↓
-13. 返回结构化摘要（包含规则需求分析、生成摘要等）
+Show tool information
 ```
 
-## 🔧 支持的技术栈
+## 📋 How It Works
 
-### 前端框架
-- React
-- Vue
-- Angular
-- Svelte
-- Next.js
-- Nuxt
-- SvelteKit
+```
+1. Collect project files (max 10 levels deep)
+   ↓
+2. Detect tech stack and dependencies
+   ↓
+3. Identify multi-module structure
+   ↓
+4. Analyze code features
+   ↓
+5. Identify routing systems (from dependencies and file structure)
+   ↓
+6. Get best practices (via Context7 if configured)
+   ↓
+7. Analyze rule requirements (determine which rules are needed)
+   ↓
+8. Check documentation consistency
+   ↓
+9. (Optional) Prompt user to update description files
+   ↓
+10. Confirm generation locations (check directory structure)
+   ↓
+11. Generate global + module rules (based on requirements analysis)
+   ↓
+12. Write .cursor/rules/*.mdc files
+   ↓
+13. Return structured summary
+```
 
-### 后端框架
-- Express
-- Fastify
-- NestJS
-- Koa
-- Hapi
-- Django
-- Flask
-- FastAPI
+## 🔧 Supported Tech Stacks
 
-### 语言
-- JavaScript
-- TypeScript
-- Python
-- Go
-- Rust
-- Java
-- PHP
-- Ruby
+### Frontend Frameworks
 
-### 工具链
+- React, Vue, Angular, Svelte
+- Next.js, Nuxt, SvelteKit
+
+### Backend Frameworks
+
+- Express, Fastify, NestJS, Koa, Hapi
+- Django, Flask, FastAPI
+
+### Languages
+
+- JavaScript, TypeScript
+- Python, Go, Rust, Java
+- PHP, Ruby
+
+### Tools
+
 - npm / yarn / pnpm
 - pip / pipenv
 - cargo
 - go modules
 - maven / gradle
 
-## 📁 生成的文件结构
+## 📁 Generated File Structure
 
 ### Single Module Project
 
 ```
-your-single-project/
+your-project/
 ├── .cursor/
 │   └── rules/
-│       └── 00-global-rules.mdc      # Global rules
+│       ├── global-rules.mdc      # Global rules
+│       ├── code-style.mdc        # Code style rules
+│       └── architecture.mdc       # Architecture rules
 ├── src/
 ├── package.json
 └── README.md
 ```
 
-### Multi-Module Project (Smart Hierarchical Generation)
+### Multi-Module Project
 
 ```
 your-multi-module-project/
 ├── .cursor/
 │   └── rules/
-│       └── 00-global-rules.mdc      # Global rules
+│       └── global-rules.mdc      # Global rules
 ├── frontend/
 │   ├── .cursor/
 │   │   └── rules/
@@ -318,79 +314,40 @@ your-multi-module-project/
     └── src/
 ```
 
-**Smart Features**:
+**Smart Features:**
+
 - ✅ Global rules in project root affect the entire project
 - ✅ Module rules in their respective directories affect only that module
 - ✅ Cursor automatically loads relevant rules based on current file location
 - ✅ Module rules can override global rule configurations
 
-## 🎯 规则内容
+## 📝 Example Output
 
-生成的规则包含：
+Generated rules include:
 
-- **项目概述**：技术栈、语言、框架
-- **项目结构**：模块组织和职责
-- **核心功能特征**：组件、API、状态管理等
-- **开发规范**：针对具体技术栈的开发指南
-- **代码风格**：命名、格式、最佳实践
-- **文件组织**：目录结构和文件命名约定
-- **注意事项**：常见陷阱和重要提醒
+- **Project Overview**: Tech stack, languages, frameworks
+- **Project Structure**: Module organization and responsibilities
+- **Core Features**: Components, APIs, state management, etc.
+- **Development Guidelines**: Framework-specific development guides
+- **Code Style**: Naming conventions, formatting, best practices
+- **File Organization**: Directory structure and file naming conventions
+- **Important Notes**: Common pitfalls and important reminders
 
-## 📝 示例输出
+## 🤝 Context7 Integration
 
-```markdown
----
-title: my-app - 全局开发规则
-description: 基于项目实际情况和最佳实践自动生成的 Cursor Rules
-priority: 100
----
+If you have Context7 MCP Server configured in your environment, this tool will automatically fetch official documentation and best practices for your dependencies.
 
-# 项目概述
+If Context7 is not configured, the tool will use built-in best practice templates.
 
-这是一个基于 React, TypeScript, Next.js 的项目。
+**Configuring Context7 (Optional):**
 
-## 技术栈
+Refer to [Context7 MCP Server documentation](https://context7.ai/) for setup instructions.
 
-**主要技术栈：**
-- React
-- TypeScript
-- Next.js
+## 🔍 Excluded Directories
 
-**语言：** TypeScript, JavaScript
+The following directories are automatically excluded:
 
-**包管理器：** npm
-
-## 项目结构
-
-这是一个单体应用项目。
-
-## 核心功能特征
-
-### 项目使用自定义组件结构
-
-- **类型：** custom-components
-- **使用频率：** 25 处
-- **示例：** Button.tsx, Card.tsx, Modal.tsx
-
-...
-```
-
-## 🤝 集成 Context7
-
-如果您的环境中配置了 Context7 MCP Server，本工具会自动获取依赖库的官方文档和最佳实践。
-
-如果未配置 Context7，工具会使用内置的最佳实践模板。
-
-**配置 Context7（可选）：**
-
-请参考 [Context7 MCP Server 文档](https://context7.ai/) 进行配置。
-
-## 🔍 排除的目录
-
-以下目录会被自动排除：
-
-- `node_modules`
-- `.git`
+- `node_modules`, `.git`
 - `dist`, `build`, `out`
 - `.next`, `.nuxt`
 - `coverage`, `.cache`
@@ -399,22 +356,25 @@ priority: 100
 - `venv`, `env`
 - `target`, `bin`, `obj`
 
-## ⚙️ 环境变量配置
+## ⚙️ Environment Variables
 
-支持通过环境变量控制日志级别、调试模式和输出保护：
+### Log Level
 
-### 日志级别
+Control log verbosity:
 
 ```bash
-# 设置日志级别（DEBUG, INFO, WARN, ERROR, NONE）
+# Set log level (DEBUG, INFO, WARN, ERROR, NONE)
 export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
+```
 
-# 或在 Cursor 配置中设置
+Or in Cursor configuration:
+
+```json
 {
   "mcpServers": {
     "cursor-rules-generator": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "cursor-rules-generators"],
       "env": {
         "CURSOR_RULES_GENERATOR_LOG_LEVEL": "INFO"
       }
@@ -423,169 +383,95 @@ export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
 }
 ```
 
-### 输出保护（防止 AI 修改输出）
-
-> **注意**：此功能目前尚未实现。相关文档请查看 [防止 AI 修改输出的指南](./docs/guides/PREVENT_AI_MODIFICATION.md)。
-
-未来版本将支持通过环境变量 `MCP_PROTECT_OUTPUT` 控制输出保护功能。
-
-### 调试模式
+### Custom Log File Location
 
 ```bash
-# 启用调试模式（自动将日志级别设为 DEBUG）
+export CURSOR_RULES_GENERATOR_LOG_FILE=/path/to/your/logfile.log
+```
+
+### Debug Mode
+
+```bash
+# Enable debug mode (automatically sets log level to DEBUG)
 export CURSOR_RULES_GENERATOR_DEBUG=true
 ```
 
-**日志级别说明**：
-- `DEBUG`: 输出所有日志，包括详细的调试信息
-- `INFO`: 输出信息性日志（默认）
-- `WARN`: 仅输出警告和错误
-- `ERROR`: 仅输出错误
-- `NONE`: 不输出任何日志
+**Log Levels:**
 
-## ⚠️ 注意事项
+- `DEBUG`: All logs including detailed debugging information
+- `INFO`: Informational logs (default)
+- `WARN`: Warnings and errors only
+- `ERROR`: Errors only
+- `NONE`: No logs
 
-1. **首次生成**：首次生成可能需要几秒钟，取决于项目大小
-2. **大型项目**：超大型项目（10000+ 文件）可能需要更长时间
-3. **覆盖规则**：再次生成会覆盖现有的规则文件
-4. **手动编辑**：建议将自定义规则放在独立文件中，避免被覆盖
-5. **Context7**：Context7 集成是可选的，未配置不影响基本功能
-6. **日志输出**：日志会写入文件，不会干扰 MCP 协议通信（stdio 用于 JSON-RPC）
+### Viewing Logs
 
-## 📄 许可证
+Logs are written to files (not stdout/stderr) to avoid interfering with MCP protocol communication.
+
+**Default log locations:**
+
+- **macOS**: `~/Library/Logs/cursor-rules-generator.log`
+- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generator.log`
+- **Linux/Unix**: `~/.local/log/cursor-rules-generator.log`
+
+**View logs:**
+
+```bash
+# macOS/Linux
+tail -f ~/Library/Logs/cursor-rules-generator.log
+
+# Windows
+Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generator.log -Tail 100
+```
+
+Or use the `info` tool to see the log file path:
+
+```
+Show tool information
+```
+
+## ⚠️ Important Notes
+
+1. **First Generation**: First generation may take a few seconds depending on project size
+2. **Large Projects**: Very large projects (10,000+ files) may take longer
+3. **Rule Overwriting**: Regenerating will overwrite existing rule files
+4. **Manual Editing**: Consider placing custom rules in separate files to avoid overwriting
+5. **Context7**: Context7 integration is optional; basic functionality works without it
+6. **Logs**: Logs are written to files, not displayed in the console
+
+## 📄 License
 
 MIT
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Contributions are welcome! Please feel free to submit Issues and Pull Requests.
 
-### 贡献指南
-
-1. **Fork 本仓库**
-2. **创建功能分支** (`git checkout -b feature/AmazingFeature`)
-3. **提交更改** (`git commit -m 'Add some AmazingFeature'`)
-4. **推送到分支** (`git push origin feature/AmazingFeature`)
-5. **开启 Pull Request**
-
-### 开发环境设置
+### Development Setup
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
 cd cursor-rules-generator
 
-# 安装依赖
+# Install dependencies
 pnpm install
 
-# 开发模式（自动编译）
+# Development mode (auto-recompile)
 pnpm run watch
 
-# 编译
+# Build
 pnpm run build
 
-# 测试
+# Test
 pnpm test
 ```
 
-### 代码规范
+## 📮 Feedback & Support
 
-- 使用 TypeScript 编写，遵循严格类型检查
-- 使用统一的日志系统（`src/utils/logger.ts`）
-- 使用统一的错误处理（`src/utils/errors.ts`）
-- 遵循现有的代码风格和模块化结构
+- **GitHub Issues**: [Report Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)
+- **Repository**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generator)
 
-## 📁 项目结构
+---
 
-### 目录结构
-
-```
-cursor-rules-generator/
-├── src/                          # 源代码
-│   ├── index.ts                  # MCP Server 主入口
-│   ├── types.ts                  # TypeScript 类型定义
-│   ├── modules/                  # 核心功能模块（20 个）
-│   │   ├── project-analyzer.ts   # 项目文件收集
-│   │   ├── tech-stack-detector.ts # 技术栈检测
-│   │   ├── tech-stack-matcher.ts # 技术栈匹配
-│   │   ├── module-detector.ts    # 模块结构识别
-│   │   ├── code-analyzer.ts      # 代码特征分析
-│   │   ├── practice-analyzer.ts  # 项目实践分析
-│   │   ├── config-parser.ts      # 配置文件解析
-│   │   ├── custom-pattern-detector.ts # 自定义模式检测
-│   │   ├── file-structure-learner.ts  # 文件结构学习
-│   │   ├── router-detector.ts    # 路由系统检测
-│   │   ├── consistency-checker.ts # 一致性检查
-│   │   ├── rules-generator.ts    # 规则生成引擎
-│   │   ├── file-writer.ts        # 文件写入器
-│   │   ├── rule-validator.ts    # 规则验证器
-│   │   ├── context7-integration.ts # Context7 集成
-│   │   ├── best-practice-extractor.ts # 最佳实践提取
-│   │   ├── best-practice-comparator.ts # 最佳实践比较
-│   │   ├── best-practice-web-searcher.ts # 最佳实践网络搜索
-│   │   ├── framework-matcher.ts  # 框架匹配
-│   │   └── suggestion-collector.ts # 建议收集器
-│   └── utils/                    # 工具类
-│       ├── logger.ts             # 日志工具
-│       ├── errors.ts             # 错误处理
-│       └── file-utils.ts         # 文件操作工具
-├── docs/                         # 文档目录
-│   ├── architecture/            # 架构设计文档
-│   └── guides/                  # 使用指南
-├── scripts/                      # 脚本文件
-│   └── quick-test.sh            # 快速测试脚本
-├── dist/                         # 编译输出（自动生成）
-├── package.json                  # 项目配置
-├── tsconfig.json                 # TypeScript 配置
-├── README.md                     # 项目说明（本文档）
-├── README.zh-CN.md               # 中文详细文档
-├── CHANGELOG.md                  # 版本更新日志
-└── LICENSE                       # MIT 许可证
-```
-
-### 核心模块说明
-
-**分析模块**（10 个）：
-- `project-analyzer.ts` - 收集项目文件
-- `tech-stack-detector.ts` - 检测技术栈和依赖
-- `tech-stack-matcher.ts` - 技术栈匹配
-- `module-detector.ts` - 识别多模块结构
-- `code-analyzer.ts` - 分析代码特征
-- `practice-analyzer.ts` - 分析项目实践规范
-- `config-parser.ts` - 解析配置文件（Prettier、ESLint 等）
-- `custom-pattern-detector.ts` - 检测自定义工具和模式
-- `file-structure-learner.ts` - 学习文件组织结构
-- `router-detector.ts` - 检测路由系统（支持从依赖和文件结构双重检测）
-
-**规则相关**（5 个）：
-- `rules-generator.ts` - 规则生成引擎（核心模块）
-- `file-writer.ts` - 写入规则文件（集成生成位置确认）
-- `rule-validator.ts` - 验证规则文件
-- `rule-requirements-analyzer.ts` - 规则需求分析器（根据依赖和配置分析需要哪些规则）
-- `generation-coordinator.ts` - 生成协调器（位置确认、上下文约束、可解释性）
-
-**最佳实践模块**（4 个）：
-- `best-practice-extractor.ts` - 提取最佳实践
-- `best-practice-comparator.ts` - 比较最佳实践
-- `best-practice-web-searcher.ts` - 网络搜索最佳实践
-- `framework-matcher.ts` - 框架匹配
-
-**其他模块**（4 个）：
-- `consistency-checker.ts` - 检查文档一致性
-- `context7-integration.ts` - Context7 MCP 集成
-- `suggestion-collector.ts` - 建议收集器
-- `code-generation-requirements.ts` - 代码生成需求检查器（分析生成可直接使用代码所需的信息）
-
-### 工具类
-
-- `logger.ts` - 统一的日志系统，支持日志级别控制
-- `errors.ts` - 统一的错误处理体系
-- `file-utils.ts` - 文件操作工具（递归扫描、读写文件等）
-
-## 📮 反馈与支持
-
-如有问题或建议，请创建 [Issue](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)。
-
-- **GitHub 仓库**: [fe-cursor-rules-generator](https://github.com/ALvinCode/fe-cursor-rules-generator)
-- **作者**: [Zheng Kuo](https://github.com/ALvinCode)
-
+If this tool helps you, please give us a ⭐️!

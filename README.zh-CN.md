@@ -14,8 +14,8 @@
 
 ### 代码特征分析
 - **组件结构识别**：自动发现自定义组件和复用模式
-- **API 路由分析**：识别 RESTful API 和路由结构
-- **状态管理检测**：识别 Redux、Vuex、Pinia 等状态管理方案
+- **API 路由分析**：识别 RESTful API 和路由结构（支持从依赖和文件结构双重检测）
+- **状态管理检测**：识别 Redux、Vuex、Pinia、Zustand 等状态管理方案
 - **样式方案识别**：检测 CSS Modules、Tailwind、styled-components 等
 - **测试覆盖分析**：统计测试文件和测试框架使用情况
 - **数据库集成检测**：识别 Prisma、TypeORM、Mongoose 等 ORM
@@ -25,43 +25,27 @@
 - **模块规则**：为不同模块生成专属规则（前端、后端、共享等）
 - **最佳实践集成**：整合框架官方推荐和社区最佳实践
 - **自定义平衡**：在项目实际实现与标准实践间找到平衡
+- **规则需求分析**：智能分析项目需要哪些规则文件，并说明生成原因
+- **生成位置确认**：自动检测规则文件生成位置，确保符合项目结构
 
 ### 一致性保障
 - **文档对比**：检查 README 与实际代码的一致性
 - **差异提示**：友好地提示发现的不一致
-- **自动更新**：可选的自动更新描述文档功能
+- **自动更新**：可选的自动更新描述文档功能（需要用户确认）
 - **人工确认**：重要变更需要用户确认
 
 ## 🚀 快速开始
 
-### 安装步骤
+### 第一步：配置 Cursor（无需安装！）
 
-#### 方式一：通过 npm 安装（推荐）
-
-**为什么需要安装？**
-
-本项目依赖多个 npm 包（`@modelcontextprotocol/sdk`、`glob`、`pino` 等）。如果直接配置指向 `dist/index.js` 而不安装依赖，Node.js 无法解析这些模块，会报错 `Cannot find module`。
-
-**安装方式：**
-
-```bash
-# 全局安装
-npm install -g cursor-rules-generators
-
-# 或本地安装到项目
-npm install cursor-rules-generators
-```
-
-**配置到 Cursor：**
+**推荐方式：使用 npx**（自动下载运行，无需手动安装）
 
 找到 Cursor 的 MCP 配置文件：
 
 - **macOS/Linux**: `~/Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
 - **Windows**: `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
 
-**方案 A：使用 npx（最简单，推荐）**
-
-无需手动安装，`npx` 会自动下载并运行：
+添加以下配置：
 
 ```json
 {
@@ -76,7 +60,42 @@ npm install cursor-rules-generators
 }
 ```
 
-**方案 B：全局安装后配置**
+### 第二步：重启 Cursor
+
+完全退出并重新打开 Cursor，使配置生效。
+
+### 第三步：生成规则
+
+在 Cursor 的 AI 聊天窗口中，直接说：
+
+```
+请为当前项目生成 Cursor Rules
+```
+
+或者指定项目路径：
+
+```
+请为 /Users/zhangsan/projects/my-app 生成 Cursor Rules
+```
+
+就这么简单！工具会自动：
+1. 扫描项目文件
+2. 检测技术栈
+3. 分析代码特征
+4. 生成合适的规则
+5. 保存到 `.cursor/rules/` 目录
+
+## 📖 其他安装方式
+
+### 方式二：全局安装（可选）
+
+如果你希望全局安装：
+
+```bash
+npm install -g cursor-rules-generators
+```
+
+然后配置：
 
 ```json
 {
@@ -90,7 +109,15 @@ npm install cursor-rules-generators
 }
 ```
 
-**方案 C：本地安装后配置**
+### 方式三：本地安装（可选）
+
+在项目中本地安装：
+
+```bash
+npm install cursor-rules-generators
+```
+
+然后使用完整路径配置：
 
 ```json
 {
@@ -105,119 +132,28 @@ npm install cursor-rules-generators
 }
 ```
 
-**方案 D：从源码安装并配置（需要先安装依赖）**
+## 🛠️ 可用工具
 
-如果你有源码，需要先安装依赖：
-
-```bash
-cd cursor-rules-generator
-npm install  # 安装依赖
-npm run build  # 构建项目
-```
-
-然后配置：
-
-```json
-{
-  "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "node",
-      "args": ["/绝对路径/cursor-rules-generator/dist/index.js"],
-      "disabled": false,
-      "alwaysAllow": []
-    }
-  }
-}
-```
-
-#### 方式二：从源码安装（不推荐，除非需要开发）
-
-如果你需要修改源码或参与开发，可以从源码安装：
-
-```bash
-# 克隆仓库
-git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
-cd cursor-rules-generator
-
-# 安装依赖（必须！否则无法运行）
-npm install
-
-# 构建项目
-npm run build
-```
-
-**配置到 Cursor：**
-
-```json
-{
-  "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "node",
-      "args": ["/绝对路径/cursor-rules-generator/dist/index.js"],
-      "disabled": false,
-      "alwaysAllow": []
-    }
-  }
-}
-```
-
-**重要**：
-- 将 `/绝对路径/cursor-rules-generator` 替换为实际路径
-- **必须确保已运行 `npm install`**，否则会因缺少依赖而无法运行
-
-#### 3. 重启 Cursor
-
-完全退出 Cursor 并重新打开，使配置生效。
-
-### 基本使用
-
-在 Cursor 的 AI 聊天窗口中：
-
-```
-请为当前项目生成 Cursor Rules
-```
-
-或指定项目路径：
-
-```
-请为 /Users/zhangsan/projects/my-web-app 生成 Cursor Rules
-```
-
-## 📖 详细使用指南
-
-### 工具列表
-
-#### 1. generate_cursor_rules - 生成规则
+### 1. `generate_cursor_rules` - 生成规则
 
 **功能**：完整分析项目并生成 Cursor Rules
 
 **参数**：
-```typescript
-{
-  projectPath: string;        // 必需：项目根目录绝对路径
-  updateDescription?: boolean; // 可选：是否自动更新描述文件（默认 false）
-  includeModuleRules?: boolean; // 可选：是否生成模块规则（默认 true）
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
+- `updateDescription` (可选): 是否自动更新描述文件，默认 `false`
+- `includeModuleRules` (可选): 是否生成模块规则，默认 `true`
 
 **使用示例**：
 ```
-请使用以下参数生成规则：
-- 项目路径：/Users/zhangsan/my-project
-- 自动更新描述：是
-- 包含模块规则：是
+请为当前项目生成 Cursor Rules
 ```
 
-#### 2. analyze_project - 分析项目
+### 2. `analyze_project` - 分析项目
 
 **功能**：仅分析项目，不生成规则文件，返回详细的项目信息
 
 **参数**：
-```typescript
-{
-  projectPath: string;  // 必需：项目根目录绝对路径
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
 
 **返回信息**：
 - 文件统计（总数、类型分布）
@@ -227,19 +163,15 @@ npm run build
 
 **使用示例**：
 ```
-请分析 /Users/zhangsan/my-project 的项目结构
+请分析当前项目的结构和技术栈
 ```
 
-#### 3. check_consistency - 一致性检查
+### 3. `check_consistency` - 一致性检查
 
 **功能**：检查项目描述文档与实际代码的一致性
 
 **参数**：
-```typescript
-{
-  projectPath: string;  // 必需：项目根目录绝对路径
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
 
 **检查内容**：
 - README 中的技术栈描述是否准确
@@ -252,57 +184,45 @@ npm run build
 请检查项目文档与代码的一致性
 ```
 
-#### 4. update_project_description - 更新描述
+### 4. `update_project_description` - 更新描述
 
 **功能**：根据实际代码自动更新项目描述文档
 
 **参数**：
-```typescript
-{
-  projectPath: string;       // 必需：项目根目录绝对路径
-  descriptionFile?: string;  // 可选：要更新的文件（默认 README.md）
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
+- `descriptionFile` (可选): 要更新的文件，默认 `README.md`
 
 **使用示例**：
 ```
 请根据实际代码更新 README
 ```
 
-#### 5. validate_rules - 验证规则
+### 5. `validate_rules` - 验证规则
 
-**功能**：验证 Cursor Rules 文件的格式和内容是否正确，检查元数据完整性、Markdown 格式等
+**功能**：验证 Cursor Rules 文件的格式和内容是否正确
 
 **参数**：
-```typescript
-{
-  projectPath: string;       // 必需：项目根目录绝对路径
-  validateModules?: boolean; // 可选：是否验证模块目录中的规则文件（默认 true）
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
+- `validateModules` (可选): 是否验证模块目录中的规则文件，默认 `true`
 
 **使用示例**：
 ```
 请验证当前项目的 Cursor Rules 文件
 ```
 
-#### 6. preview_rules_generation - 预览生成
+### 6. `preview_rules_generation` - 预览生成
 
 **功能**：预览规则生成过程，列出所有任务、分析结果和需要确认的决策点，不实际生成文件
 
 **参数**：
-```typescript
-{
-  projectPath: string;  // 必需：项目根目录绝对路径
-}
-```
+- `projectPath` (必需): 项目根目录的绝对路径
 
 **使用示例**：
 ```
 请预览规则生成过程
 ```
 
-#### 7. info - 显示信息
+### 7. `info` - 显示信息
 
 **功能**：显示 MCP 工具信息，包括版本号、日志配置状态、环境变量配置和任何检测到的配置问题
 
@@ -315,90 +235,57 @@ npm run build
 
 ## 🔄 完整工作流程
 
-```mermaid
-graph TD
-    A[开始] --> B[收集项目文件]
-    B --> C[检测技术栈]
-    C --> D[识别模块结构]
-    D --> E[分析代码特征]
-    E --> F[获取最佳实践]
-    F --> G[检查一致性]
-    G --> H{发现差异?}
-    H -->|是| I[提示用户]
-    H -->|否| J[生成规则]
-    I --> K{用户确认更新?}
-    K -->|是| L[更新描述文件]
-    K -->|否| J
-    L --> J
-    J --> M[写入 .mdc 文件]
-    M --> N[返回摘要]
-    N --> O[完成]
+```
+1. 收集项目文件（最多10层深度）
+   ↓
+2. 检测技术栈和依赖
+   ↓
+3. 识别多模块结构
+   ↓
+4. 分析代码特征
+   ↓
+5. 识别路由系统（从依赖和文件结构双重检测）
+   ↓
+6. 获取最佳实践（通过 Context7，如已配置）
+   ↓
+7. 分析规则需求（根据依赖、文件结构、配置决定需要哪些规则）
+   ↓
+8. 检查描述与实现的一致性
+   ↓
+9. （可选）提示用户更新描述文件
+   ↓
+10. 确认生成位置（检查目录结构和文件组织）
+   ↓
+11. 生成全局 + 模块规则（基于需求分析结果）
+   ↓
+12. 写入 .cursor/rules/*.mdc 文件
+   ↓
+13. 返回结构化摘要
 ```
 
-### 详细步骤说明
-
-1. **文件收集**
-   - 递归扫描项目目录（最多10层）
-   - 排除 node_modules、.git 等无关目录
-   - 识别代码、配置、文档文件
-
-2. **技术栈检测**
-   - 解析 package.json、requirements.txt 等
-   - 识别主要框架和库
-   - 确定包管理器和构建工具
-
-3. **模块识别**
-   - 检测 monorepo 结构（lerna、pnpm workspace）
-   - 识别前后端分离架构
-   - 发现微服务组织方式
-
-4. **代码分析**
-   - 统计组件数量和类型
-   - 识别 API 路由定义
-   - 分析状态管理方案
-   - 检测样式处理方式
-   - 评估测试覆盖情况
-
-5. **最佳实践**
-   - 集成内置的框架最佳实践
-   - （可选）从 Context7 获取最新文档
-
-6. **一致性检查**
-   - 比对 README 与实际技术栈
-   - 验证功能描述的准确性
-   - 发现过时或错误的信息
-
-7. **规则生成**
-   - 生成全局开发规范
-   - 为每个模块生成专属规则
-   - 整合最佳实践建议
-
-8. **文件输出**
-   - 在 .cursor/rules/ 创建目录
-   - 写入 .mdc 格式的规则文件
-   - 按优先级组织规则
-
-## 📁 输出文件结构
+## 📁 生成的文件结构
 
 ### 单体项目
 
 ```
-你的单体项目/
+你的项目/
 ├── .cursor/
 │   └── rules/
-│       └── 00-global-rules.mdc      # 全局规则
+│       ├── global-rules.mdc      # 全局规则
+│       ├── code-style.mdc        # 代码风格规则
+│       └── architecture.mdc       # 架构规则
 ├── src/
 ├── package.json
 └── README.md
 ```
 
-### 多模块项目（智能层级生成）
+### 多模块项目
 
 ```
 你的多模块项目/
 ├── .cursor/
 │   └── rules/
-│       └── 00-global-rules.mdc      # 全局通用规则
+│       └── global-rules.mdc      # 全局通用规则
 ├── frontend/
 │   ├── .cursor/
 │   │   └── rules/
@@ -422,133 +309,26 @@ graph TD
 - ✅ Cursor 根据当前文件位置自动加载相应规则
 - ✅ 模块规则可以覆盖全局规则的配置
 
-### 规则文件内容示例
-
-```markdown
----
-title: my-web-app - 全局开发规则
-description: 基于项目实际情况和最佳实践自动生成的 Cursor Rules
-priority: 100
----
-
-# 项目概述
-
-这是一个基于 React, TypeScript, Next.js 的项目。
-
-## 技术栈
-
-**主要技术栈：**
-- React
-- TypeScript  
-- Next.js
-
-**语言：** TypeScript, JavaScript
-
-**包管理器：** pnpm
-
-**框架：** Next.js
-
-## 项目结构
-
-这是一个多模块项目，包含以下模块：
-
-**前端模块：**
-- web
-
-**后端模块：**
-- api
-
-**共享模块：**
-- shared
-
-## 核心功能特征
-
-### 项目使用自定义组件结构
-
-- **类型：** custom-components
-- **使用频率：** 42 处
-- **示例：** Button.tsx, Card.tsx, Modal.tsx
-
-### 项目包含 API 路由定义
-
-- **类型：** api-routes
-- **使用频率：** 15 处
-- **示例：** users/route.ts, posts/route.ts
-
-### 使用 zustand 进行状态管理
-
-- **类型：** state-management
-- **使用频率：** 8 处
-- **示例：** useUserStore.ts, useCartStore.ts
-
----
-
-# 开发规范
-
-## TypeScript 使用
-
-- 优先使用 TypeScript 编写新代码
-- 为所有公共 API 提供完整的类型定义
-- 启用严格模式 (`strict: true`)
-- 避免使用 `any`，使用 `unknown` 或具体类型
-
-## React 开发
-
-- 使用函数组件和 Hooks，避免类组件
-- 遵循组件单一职责原则
-- 使用 PropTypes 或 TypeScript 进行类型检查
-- 合理使用 `useMemo` 和 `useCallback` 优化性能
-
-## Next.js 规范
-
-- 优先使用 App Router（如果项目使用）
-- Server Components 中进行数据获取
-- 使用 `next/image` 优化图片
-- 配置适当的元数据以改善 SEO
-
-...
-```
-
 ## 🎯 支持的技术栈
 
 ### 前端框架
-| 框架 | 检测方式 | 生成规则 |
-|------|---------|---------|
-| React | package.json | ✅ 组件、Hooks、性能优化 |
-| Vue | package.json | ✅ Composition API、组件通信 |
-| Angular | package.json | ✅ 模块、依赖注入、RxJS |
-| Svelte | package.json | ✅ 响应式、组件设计 |
-| Next.js | package.json | ✅ 路由、SSR、优化 |
-| Nuxt | package.json | ✅ 目录结构、SSR |
+- React, Vue, Angular, Svelte
+- Next.js, Nuxt, SvelteKit
 
 ### 后端框架
-| 框架 | 检测方式 | 生成规则 |
-|------|---------|---------|
-| Express | package.json | ✅ 中间件、路由、错误处理 |
-| Fastify | package.json | ✅ 插件、性能优化 |
-| NestJS | package.json | ✅ 模块、依赖注入、装饰器 |
-| Django | requirements.txt | ✅ MTV、ORM、最佳实践 |
-| Flask | requirements.txt | ✅ 蓝图、扩展、RESTful |
-| FastAPI | requirements.txt | ✅ 类型注解、异步、文档 |
+- Express, Fastify, NestJS, Koa, Hapi
+- Django, Flask, FastAPI
 
 ### 编程语言
-| 语言 | 检测方式 | 生成规则 |
-|------|---------|---------|
-| TypeScript | .ts/.tsx 文件 | ✅ 类型系统、配置 |
-| JavaScript | .js/.jsx 文件 | ✅ ES6+、模块化 |
-| Python | .py 文件 | ✅ PEP 8、类型注解 |
-| Go | go.mod | ✅ 包管理、错误处理 |
-| Rust | Cargo.toml | ✅ 所有权、错误处理 |
-| Java | pom.xml/build.gradle | ✅ OOP、设计模式 |
+- JavaScript, TypeScript
+- Python, Go, Rust, Java
+- PHP, Ruby
 
 ### 状态管理
 - Redux / Redux Toolkit
-- MobX
-- Zustand
-- Pinia
-- Vuex
-- Recoil
-- Jotai
+- MobX, Zustand
+- Pinia, Vuex
+- Recoil, Jotai
 
 ### UI 库
 - Material-UI (@mui)
@@ -559,12 +339,9 @@ priority: 100
 - Emotion
 
 ### 测试框架
-- Jest
-- Vitest
-- Mocha
-- Chai
-- Cypress
-- Playwright
+- Jest, Vitest
+- Mocha, Chai
+- Cypress, Playwright
 - Testing Library
 
 ## 🔧 高级配置
@@ -574,73 +351,98 @@ priority: 100
 如果您配置了 Context7 MCP Server，本工具会自动获取最新的官方文档和最佳实践。
 
 **配置方法**：
-
 1. 安装并配置 [Context7 MCP Server](https://context7.ai/)
 2. 在 Cursor 的 MCP 配置中添加 Context7
 3. 重启 Cursor
 
 **注意**：Context7 是可选的，未配置不影响基本功能。
 
-### 自定义排除目录
+### 环境变量配置
 
-目前排除目录是硬编码的，未来版本将支持自定义配置。
+#### 日志级别
 
-默认排除的目录：
-```javascript
-[
-  "node_modules", ".git", "dist", "build", ".next",
-  ".nuxt", "out", "coverage", ".cache", ".vscode",
-  ".idea", "__pycache__", ".pytest_cache", "venv",
-  "env", "target", "bin", "obj"
-]
+控制日志详细程度：
+
+```bash
+# 设置日志级别（DEBUG, INFO, WARN, ERROR, NONE）
+export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
 ```
 
-### 手动编辑规则
+或在 Cursor 配置中设置：
 
-生成的规则可以手动编辑。建议：
-
-1. **不要直接编辑生成的文件**：再次生成会覆盖
-2. **创建自定义规则文件**：
-   ```
-   .cursor/rules/
-     ├── 00-global-rules.mdc        # 自动生成
-     ├── 99-custom-rules.mdc        # 手动创建（不会被覆盖）
-   ```
-3. **使用更高的优先级**：文件名前缀越大，优先级越高
-
-## 📊 项目统计
-
-生成规则时会输出详细统计：
-
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "npx",
+      "args": ["-y", "cursor-rules-generators"],
+      "env": {
+        "CURSOR_RULES_GENERATOR_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
 ```
-✅ Cursor Rules 生成成功！
 
-📁 生成的文件：
-  - .cursor/rules/00-global-rules.mdc
-  - .cursor/rules/frontend-rules.mdc
-  - .cursor/rules/backend-rules.mdc
+#### 自定义日志文件位置
 
-📊 项目分析结果：
-  - 主要技术栈: React, TypeScript, Next.js
-  - 检测到的模块: 3 个
-  - 代码特征: 6 项
-
-⚠️  一致性检查：
-  - 发现 2 处不一致
-  - ℹ️  描述文件未更新（请手动确认）
-
-📝 规则摘要：
-生成了 3 个规则文件：
-
-**全局规则：**
-  - 00-global-rules.mdc
-
-**模块规则：**
-  - frontend-rules.mdc (frontend)
-  - backend-rules.mdc (backend)
-
-💡 提示：规则已保存到 .cursor/rules/ 目录，Cursor 会自动加载这些规则。
+```bash
+export CURSOR_RULES_GENERATOR_LOG_FILE=/path/to/your/logfile.log
 ```
+
+#### 调试模式
+
+```bash
+# 启用调试模式（自动将日志级别设为 DEBUG）
+export CURSOR_RULES_GENERATOR_DEBUG=true
+```
+
+**日志级别说明**：
+- `DEBUG`: 输出所有日志，包括详细的调试信息
+- `INFO`: 输出信息性日志（默认）
+- `WARN`: 仅输出警告和错误
+- `ERROR`: 仅输出错误
+- `NONE`: 不输出任何日志
+
+### 查看日志
+
+日志会写入文件（不使用 stdout/stderr），以避免干扰 MCP 协议通信。
+
+**默认日志位置**：
+- **macOS**: `~/Library/Logs/cursor-rules-generator.log`
+- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generator.log`
+- **Linux/Unix**: `~/.local/log/cursor-rules-generator.log`
+
+**查看日志**：
+
+```bash
+# macOS/Linux
+tail -f ~/Library/Logs/cursor-rules-generator.log
+
+# 查看最后 100 行
+tail -n 100 ~/Library/Logs/cursor-rules-generator.log
+
+# Windows
+Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generator.log -Tail 100
+```
+
+或使用 `info` 工具查看日志文件路径：
+```
+显示工具信息
+```
+
+## 🔍 排除的目录
+
+以下目录会被自动排除：
+
+- `node_modules`, `.git`
+- `dist`, `build`, `out`
+- `.next`, `.nuxt`
+- `coverage`, `.cache`
+- `.vscode`, `.idea`
+- `__pycache__`, `.pytest_cache`
+- `venv`, `env`
+- `target`, `bin`, `obj`
 
 ## ❓ 常见问题
 
@@ -675,52 +477,47 @@ priority: 100
 3. 如果需要更新，运行 `update_project_description`
 4. 或者手动编辑文档使其准确
 
-### 4. 可以为子目录生成规则吗？
-
-**当前版本**：只能为项目根目录生成
-**未来计划**：支持为任意目录生成局部规则
-
-### 5. 规则文件可以提交到版本控制吗？
+### 4. 规则文件可以提交到版本控制吗？
 
 **建议**：
 - ✅ 提交自定义规则文件
 - ❌ 不要提交自动生成的文件
-- 在 .gitignore 中添加：
+- 在 `.gitignore` 中添加：
   ```
   .cursor/rules/*-rules.mdc
   !.cursor/rules/99-custom-rules.mdc
   ```
 
-## 🛣️ 路线图
+### 5. 如何查看日志文件？
 
-### v1.1（计划中）
-- [ ] 支持自定义排除目录配置
-- [ ] 增加更多语言支持（PHP、Ruby、C#）
-- [ ] 改进 Context7 集成
-- [ ] 支持增量更新（只更新变化的规则）
+使用 `info` 工具可以查看日志文件路径和状态：
+```
+显示工具信息
+```
 
-### v1.2（规划中）
-- [ ] Web UI 界面
-- [ ] 规则模板市场
-- [ ] 团队规则共享
-- [ ] 规则版本管理
+或者直接查看默认位置的日志文件（见上方"查看日志"部分）。
 
-### v2.0（远期）
-- [ ] AI 驱动的规则优化建议
-- [ ] 实时代码质量监控
-- [ ] IDE 插件支持
-- [ ] 企业版功能
+## ⚠️ 注意事项
+
+1. **首次生成**：首次生成可能需要几秒钟，取决于项目大小
+2. **大型项目**：超大型项目（10000+ 文件）可能需要更长时间
+3. **覆盖规则**：再次生成会覆盖现有的规则文件
+4. **手动编辑**：建议将自定义规则放在独立文件中，避免被覆盖
+5. **Context7**：Context7 集成是可选的，未配置不影响基本功能
+6. **日志输出**：日志会写入文件，不会干扰 MCP 协议通信
 
 ## 🤝 贡献指南
 
 我们欢迎所有形式的贡献！
 
 ### 报告问题
+
 - 使用 [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues) 报告问题
 - 提供详细的复现步骤
 - 附上项目的 package.json（脱敏后）
 
 ### 提交代码
+
 1. Fork 项目
 2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
 3. 提交更改 (`git commit -m 'Add amazing feature'`)
@@ -728,8 +525,9 @@ priority: 100
 5. 开启 Pull Request
 
 ### 开发环境设置
+
 ```bash
-# 克隆你的 fork
+# 克隆仓库
 git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
 cd cursor-rules-generator
 
@@ -761,4 +559,3 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 ---
 
 如果这个工具对您有帮助，请给我们一个 ⭐️！
-
