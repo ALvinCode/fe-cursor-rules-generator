@@ -1,6 +1,6 @@
 {
   "name": "cursor-rules-generators",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "一个智能 MCP Server，根据项目实际情况自动生成 Cursor Rules",
   "type": "module",
   "main": "dist/index.js",

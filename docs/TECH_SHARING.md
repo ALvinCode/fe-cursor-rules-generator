@@ -1,6 +1,6 @@
 # 让 AI 更懂你的项目 —— 基于 MCP 的 Cursor Rules 智能生成工具
 
-> **项目名称**: Cursor Rules Generator  
+> **项目名称**: Cursor Rules Generators  
 > **技术栈**: TypeScript + Node.js + MCP Protocol  
 > **项目定位**: 自动化分析项目代码结构并生成定制化 Cursor Rules 的智能工具  
 > **开源地址**: [GitHub](https://github.com/ALvinCode/fe-cursor-rules-generator)
@@ -20,7 +20,7 @@
 
 ### 核心目标
 
-Cursor Rules Generator 旨在通过**自动化分析 + 智能生成**的方式，解决上述痛点：
+Cursor Rules Generators 旨在通过**自动化分析 + 智能生成**的方式，解决上述痛点：
 
 - ✅ **零配置启动**：只需配置 MCP Server，自动完成全流程分析
 - ✅ **智能识别**：支持 20+ 种主流技术栈和框架的自动识别
@@ -102,7 +102,7 @@ determinePrimaryStack(languages, frameworks, dependencies) {
 
 #### 优势对比
 
-| 特性 | 传统方案 | Cursor Rules Generator |
+| 特性 | 传统方案 | Cursor Rules Generators |
 |------|---------|----------------------|
 | 识别方式 | 手动配置 | 自动检测 |
 | 覆盖范围 | 有限 | 20+ 种技术栈 |
@@ -335,7 +335,7 @@ async analyzeDynamicRouting(
 
 #### 相较于常规方案的优势
 
-| 分析维度 | 常规方案 | Cursor Rules Generator |
+| 分析维度 | 常规方案 | Cursor Rules Generators |
 |---------|---------|----------------------|
 | 组件识别 | 手动统计 | 自动分析组件文件和导出模式 |
 | 路由分析 | 需要查看文档 | 自动识别路由框架和生成方式（依赖+文件结构双重检测） |
@@ -635,60 +635,60 @@ async updateDescriptions(
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Cursor IDE                            │
-│  (通过 MCP Protocol 调用工具)                            │
+│                    Cursor IDE                           │
+│  (通过 MCP Protocol 调用工具)                             │
 └────────────────────┬────────────────────────────────────┘
                      │ MCP Protocol (JSON-RPC)
                      ↓
 ┌─────────────────────────────────────────────────────────┐
-│         Cursor Rules Generator MCP Server                │
+│         Cursor Rules Generators MCP Server               │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │  Tool Handlers (index.ts)                        │   │
 │  │  - generate_cursor_rules                         │   │
-│  │  - analyze_project                              │   │
-│  │  - check_consistency                            │   │
-│  └──────────────┬──────────────────────────────────┘   │
-│                 │                                        │
+│  │  - analyze_project                               │   │
+│  │  - check_consistency                             │   │
+│  └──────────────┬──────────────────────────────────┘    │
+│                 │                                       │
 │  ┌──────────────┴──────────────┐                        │
 │  │   Core Analysis Modules     │                        │
 │  ├─────────────────────────────┤                        │
-│  │ • ProjectAnalyzer          │ 文件收集                │
+│  │ • ProjectAnalyzer           │ 文件收集                │
 │  │ • TechStackDetector         │ 技术栈识别              │
 │  │ • ModuleDetector            │ 模块检测                │
-│  │ • CodeAnalyzer              │ 代码特征分析            │
-│  │ • RouterDetector            │ 路由系统识别（依赖+文件）│
-│  │ • PracticeAnalyzer          │ 实践规范分析            │
+│  │ • CodeAnalyzer              │ 代码特征分析             │
+│  │ • RouterDetector            │ 路由系统识别（依赖+文件）  │
+│  │ • PracticeAnalyzer          │ 实践规范分析             │
 │  └──────────────┬──────────────┘                        │
-│                 │                                        │
+│                 │                                       │
 │  ┌──────────────┴──────────────┐                        │
-│  │   Generation Modules         │                        │
+│  │   Generation Modules        │                        │
 │  ├─────────────────────────────┤                        │
-│  │ • RulesGenerator             │ 规则生成引擎            │
-│  │ • RuleRequirementsAnalyzer   │ 规则需求分析器（v1.7） │
-│  │ • GenerationCoordinator      │ 生成协调器（v1.7）     │
-│  │ • FrameworkMatcher           │ 框架匹配                │
-│  │ • TechStackMatcher           │ 技术栈匹配              │
-│  │ • BestPracticeExtractor      │ 最佳实践提取            │
-│  │ • FileWriter                 │ 文件写入（集成位置确认）│
+│  │ • RulesGenerator            │ 规则生成引擎             │
+│  │ • RuleRequirementsAnalyzer  │ 规则需求分析器（v1.7）    │
+│  │ • GenerationCoordinator     │ 生成协调器（v1.7）       │
+│  │ • FrameworkMatcher          │ 框架匹配                │
+│  │ • TechStackMatcher          │ 技术栈匹配              │
+│  │ • BestPracticeExtractor     │ 最佳实践提取             │
+│  │ • FileWriter                │ 文件写入（集成位置确认）   │
 │  └──────────────┬──────────────┘                        │
-│                 │                                        │
+│                 │                                       │
 │  ┌──────────────┴──────────────┐                        │
-│  │   Integration Modules        │                        │
+│  │   Integration Modules       │                        │
 │  ├─────────────────────────────┤                        │
-│  │ • Context7Integration        │ Context7 文档集成       │
-│  │ • ConsistencyChecker          │ 一致性检查              │
-│  │ • RuleValidator              │ 规则验证                │
-│  └──────────────────────────────┘                        │
+│  │ • Context7Integration       │ Context7 文档集成       │
+│  │ • ConsistencyChecker        │ 一致性检查              │
+│  │ • RuleValidator             │ 规则验证                │
+│  └─────────────────────────────┘                        │
 └─────────────────────────────────────────────────────────┘
                      │
                      ↓
 ┌─────────────────────────────────────────────────────────┐
-│              Project File System                         │
-│  .cursor/rules/                                          │
-│  ├── 00-global-rules.mdc                                │
+│              Project File System                        │
+│  .cursor/rules/                                         │
+│  ├── global-rules.mdc                                   │
 │  ├── code-style.mdc                                     │
 │  ├── architecture.mdc                                   │
-│  └── ...                                                 │
+│  └── ...                                                │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -771,7 +771,7 @@ src/
 └── types.ts                    # 类型定义
 ```
 
-### 性能、扩展性、安全性考量
+### 性能、扩展性、安全性考量 的现状和改进计划
 
 #### 性能优化
 
@@ -835,8 +835,8 @@ src/
 
 **解决方案**：
 
-- 实现完善的错误处理和重试机制
-- 添加心跳检测和自动重连
+- 实现完善的错误处理
+- 重试机制（规划中）
 - 优化日志输出（使用 stderr，避免干扰协议通信）
 
 ```typescript
@@ -858,7 +858,7 @@ try {
 
 - 实现文件过滤策略（排除 node_modules、dist 等）
 - 限制递归深度
-- 异步并发处理文件分析
+- 异步处理文件分析
 - 添加进度反馈机制
 
 ```typescript
@@ -979,6 +979,10 @@ function comparePractices(project: ProjectPractice, standard: BestPractice[]) {
 
 - **参考 awesome-cursorrules**：分析社区最佳实践
 - **框架匹配**：找到最相似的规则格式作为模板
+  - 使用 Jaccard 相似度：交集 / 并集
+  - 优点：简单、不受集合大小影响、适合集合比较
+  - 阈值：框架匹配 > 0.3，多类别匹配 > 0.1
+  - 结果：返回相似度最高的规则模板作为参考格式
 - **Markdown 优化**：使用清晰的标题层级、代码块、列表等
 
 ```typescript
@@ -1043,14 +1047,6 @@ class Logger {
 
 #### 重构 2：错误处理体系化
 
-**重构前**：
-
-- 错误信息不统一
-- 缺少错误上下文
-- 错误处理分散
-
-**重构后**：
-
 - 定义统一的错误类体系
 - 错误信息包含上下文
 - 统一的错误响应格式
@@ -1084,14 +1080,6 @@ function createErrorResponse(error: unknown) {
 ```
 
 #### 重构 3：类型系统完善
-
-**重构前**：
-
-- 大量使用 `any` 类型
-- 类型定义不完整
-- 缺少类型守卫
-
-**重构后**：
 
 - 定义完整的类型系统
 - 减少 `any` 使用
@@ -1133,13 +1121,11 @@ function isModule(obj: any): obj is Module {
 
 #### 快速开始
 
-1. **安装**：
+1. **安装与配置**：
 
-```bash
-npm install -g cursor-rules-generators
-```
+**方式一：使用 npx（推荐，无需安装）**
 
-2. **配置 Cursor**：
+直接配置 Cursor，`npx` 会自动下载并运行：
 
 ```json
 {
@@ -1153,7 +1139,30 @@ npm install -g cursor-rules-generators
 }
 ```
 
-3. **使用**：
+**方式二：先安装再配置（可选）**
+
+如果希望全局安装：
+
+- **安装**：
+
+```bash
+npm install -g cursor-rules-generators
+```
+
+- **配置 Cursor**：
+
+```json
+{
+  "mcpServers": {
+    "cursor-rules-generator": {
+      "command": "cursor-rules-generator",
+      "disabled": false
+    }
+  }
+}
+```
+
+1. **使用**：
 在 Cursor 的 AI 聊天窗口中：
 
 ```
@@ -1193,7 +1202,7 @@ graph TD
 - 需要阅读大量文档和代码
 - 容易遗漏某些规范
 
-**使用 Cursor Rules Generator**：
+**使用 Cursor Rules Generators**：
 
 - 生成规则后，AI 自动遵循项目规范
 - 新成员可以快速上手
@@ -1216,7 +1225,7 @@ graph TD
 - 难以统一规范
 - 重构后容易出现不一致
 
-**使用 Cursor Rules Generator**：
+**使用 Cursor Rules Generators**：
 
 - 为每个模块生成专属规则
 - AI 辅助重构时自动遵循模块规范
@@ -1237,7 +1246,7 @@ graph TD
 - 需要手动维护文档
 - 容易遗忘更新
 
-**使用 Cursor Rules Generator**：
+**使用 Cursor Rules Generators**：
 
 - 自动检测文档与代码不一致
 - 可选自动更新文档
@@ -1247,19 +1256,6 @@ graph TD
 
 - 文档维护时间减少 **60%**
 - 文档准确性提升 **90%**
-
-### 用户反馈
-
-> "这个工具大大提升了我们的开发效率。新成员可以快速上手，AI 生成的代码也更符合项目规范。"  
-> —— 某创业公司 CTO
-
-> "多模块项目的规则生成功能非常实用，每个模块都有专属规则，避免了规则冲突。"  
-> —— 某大型互联网公司架构师
-
-> "文档一致性检查功能帮助我们发现了多处文档过时的问题，非常实用。"  
-> —— 某开源项目维护者
-
----
 
 ## 🔮 未来规划与延展思考
 
@@ -1288,18 +1284,7 @@ async generateIncremental(
 }
 ```
 
-#### 2. Web UI 界面（规划中）
-
-**目标**：提供可视化的规则生成和管理界面
-
-**功能规划**（规划中）：
-
-- 项目分析结果可视化（规划中）
-- 规则预览和编辑（规划中）
-- 规则模板市场（规划中）
-- 团队规则共享（规划中）
-
-#### 3. AI 驱动的规则优化（规划中）
+#### 2. AI 驱动的规则优化（规划中）
 
 **目标**：基于项目实际使用情况，自动优化规则
 
@@ -1309,13 +1294,13 @@ async generateIncremental(
 - 识别规则中的冗余或缺失（规划中）
 - 自动建议规则优化方案（规划中）
 
-#### 4. 更多语言支持
+#### 3. 更多语言支持
 
 **当前支持**：TypeScript、JavaScript、Python、Go、Rust、Java
 
 **规划支持**：PHP、Ruby、C#、Swift、Kotlin
 
-### 可复用、可推广的经验
+### 项目开发过程中的可复用与可推广总结
 
 #### 1. MCP 协议开发最佳实践
 
@@ -1385,36 +1370,11 @@ async generateIncremental(
 
 ---
 
-## 📊 项目数据与成果
-
-### 项目统计
-
-- **代码行数**：~15,000 行 TypeScript
-- **模块数量**：20+ 个核心模块
-- **支持技术栈**：20+ 种主流技术栈
-- **npm 下载量**：持续增长中
-- **GitHub Stars**：持续增长中
-
-### 技术指标
-
-- **分析准确率**：> 90%（基于测试项目验证）
-- **规则生成时间**：平均 5-15 秒（取决于项目规模）
-- **支持项目规模**：100 - 100,000+ 文件
-- **内存占用**：< 100MB（典型项目）
-
-### 社区反馈
-
-- **用户满意度**：4.5/5.0（基于 GitHub Issues 和 Discussions）
-- **问题解决率**：> 90%
-- **功能请求响应**：积极跟进中
-
----
-
 ## 🎯 总结与展望
 
 ### 核心价值
 
-Cursor Rules Generator 通过**自动化分析 + 智能生成**的方式，解决了 AI 辅助开发中的规则配置痛点：
+Cursor Rules Generators 通过**自动化分析 + 智能生成**的方式，解决了 AI 辅助开发中的规则配置痛点：
 
 1. **零配置启动**：开发者无需手动编写规则
 2. **智能识别**：自动识别技术栈和代码特征
@@ -1430,24 +1390,17 @@ Cursor Rules Generator 通过**自动化分析 + 智能生成**的方式，解�
 4. **实践对比算法**：平衡项目实际与标准实践
 5. **模块化架构**：易于扩展和维护
 
-### 未来展望
-
-1. **更智能**：AI 驱动的规则优化（规划中）
-2. **更易用**：Web UI 界面（规划中）
-3. **更强大**：支持更多语言和框架
-4. **更开放**：规则模板市场和社区分享（规划中）
-
 ---
 
 ## 📚 参考资料
 
-- [Cursor Rules Generator GitHub](https://github.com/ALvinCode/fe-cursor-rules-generator)
+- [Cursor Rules Generators GitHub](https://github.com/ALvinCode/fe-cursor-rules-generator)
 - [MCP Protocol 文档](https://modelcontextprotocol.io/)
 - [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules)
 - [Context7 MCP Server](https://context7.ai/)
 
 ---
 
-**作者**: Cursor Rules Generator 团队  
-**最后更新**: 2025-11-12
-**版本**: 0.0.9
+**作者**: Zheng Kuo
+**最后更新**: 2025-11-14
+**版本**: 0.1.0
