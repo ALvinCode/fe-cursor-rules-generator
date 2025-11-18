@@ -465,6 +465,10 @@ export class RulesGenerator {
       }
     }
 
+    // 12. 自定义规则模板（可选，供用户填写）
+    const customRuleTemplate = this.generateCustomRuleTemplate(context);
+    rules.push(customRuleTemplate);
+
     return rules;
   }
 
@@ -591,8 +595,11 @@ ${
         this.featureExists(context, "testing")
           ? "- **@testing.mdc** - 测试规范\n"
           : ""
-      }
+      }- **@custom-rules-template.mdc** - 自定义规则模板（可选，用户可自行填写）
+
 **工作流程**: 详见 @../instructions.md
+
+> 💡 **提示**: \`custom-rules-template.mdc\` 是一个可选模板文件，用于添加项目特定的自定义规则。如果未填写或已删除，不影响其他规则的执行。
 
 ## 核心开发原则
 
@@ -2683,6 +2690,7 @@ components/
       "frontend-routing.mdc": "前端路由定义与导航策略",
       "api-routing.mdc": "后端或 API 路由组织规范",
       "testing.mdc": "测试策略与断言准则",
+      "custom-rules-template.mdc": "自定义规则模板（可选，用户可自行填写）",
       "00-global-rules.mdc": "项目全局导航与核心原则",
     };
 
@@ -3087,6 +3095,19 @@ ${
 4. 添加测试防止回归（如果项目有测试）
 \`\`\`
 
+### 使用自定义规则
+
+\`\`\`
+如果项目有自定义规则（@.cursor/rules/custom-rules-template.mdc）：
+
+1. 查看自定义规则文件，了解项目特定的规范
+2. 在生成代码时，明确引用自定义规则：
+   "遵循 @.cursor/rules/custom-rules-template.mdc 中的 [具体规范]"
+3. 确保生成的代码符合自定义规则的要求
+\`\`\`
+
+> 💡 **提示**: 自定义规则模板文件是可选的。如果文件不存在或未填写，可以忽略此步骤。
+
 ## 💡 与 Cursor 对话的最佳实践
 
 ### ✅ 好的提示
@@ -3140,7 +3161,9 @@ ${
       this.hasStateManagement(context)
         ? "- **@.cursor/rules/state-management.mdc** - 状态管理\n"
         : ""
-    }
+    }- **@.cursor/rules/custom-rules-template.mdc** - 自定义规则模板（可选）
+
+> 💡 **关于自定义规则模板**: \`custom-rules-template.mdc\` 是一个可选文件，用于添加项目特定的自定义规则。如果文件存在且已填写内容，Cursor 会自动应用这些规则。如果文件未填写或已删除，不影响其他规则的执行。详细使用说明请查看该文件。
 
 ### 关键文件引用
 
@@ -3966,5 +3989,286 @@ ${this.generateModuleCautions(module)}
 
     // 项目有测试 - 生成详细规则
     return this.generateTestingGuidelines(context);
+  }
+
+  /**
+   * 生成自定义规则模板（可选文件）
+   * 提供完整的模板和编写指导，用户可以根据需要填写
+   */
+  private generateCustomRuleTemplate(
+    context: RuleGenerationContext
+  ): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "自定义规则模板",
+      "项目特定的自定义规则模板（可选，用户可自行填写）",
+      60, // 较低优先级，确保不影响核心规则
+      context.techStack.primary,
+      ["custom", "template", "optional"],
+      "guideline",
+      ["global-rules"] // 依赖全局规则
+    );
+
+    const content =
+      metadata +
+      `
+# 自定义规则模板
+
+> ⚠️ **重要提示**: 这是一个**可选**的模板文件。如果您不需要自定义规则，可以：
+> - 直接删除此文件（不影响其他规则）
+> - 保留文件但保持模板状态（Cursor 会忽略空模板）
+> - 填写内容后，此规则将自动生效
+
+参考: @global-rules.mdc
+
+## 📝 使用说明
+
+### 何时使用自定义规则？
+
+当您需要添加以下类型的规则时，可以使用此模板：
+
+1. **项目特定的业务规则** - 如特定的数据处理方式、业务逻辑规范
+2. **团队约定** - 如代码审查流程、提交规范、命名约定
+3. **性能优化规范** - 项目特定的性能优化建议
+4. **第三方库使用规范** - 特定库的使用约定
+5. **其他项目特定需求** - 任何不在标准规则中的特殊要求
+
+### 如何填写？
+
+1. **保留元数据部分**（文件开头的 \`---\` 之间的内容）
+2. **修改标题和描述** - 将 "自定义规则模板" 改为您的规则名称
+3. **填写规则内容** - 在下方的内容区域填写您的规则
+4. **设置优先级** - 根据需要调整 priority（建议 60-85）
+5. **设置依赖关系** - 在 depends 中声明依赖的其他规则文件
+
+### 优先级建议
+
+- **60-69**: 补充性规则（如团队约定）
+- **70-79**: 重要实践（如性能优化）
+- **80-85**: 核心规范（如业务规则）
+
+---
+
+## 🎯 规则编写模板
+
+### 示例 1: 业务规则
+
+\`\`\`markdown
+## 业务数据处理规范
+
+### 数据验证
+
+所有用户输入必须经过验证：
+
+\`\`\`typescript
+// ✅ 正确 - 使用项目验证工具
+import { validateUserInput } from '@/utils/validation';
+
+const result = validateUserInput(data);
+if (!result.isValid) {
+  throw new ValidationError(result.errors);
+}
+
+// ❌ 错误 - 直接使用未验证的数据
+processData(userInput);
+\`\`\`
+
+### 数据转换
+
+遵循项目的数据转换规范：
+
+- 使用 @src/utils/data-transform.ts 中的工具函数
+- 参考 @src/services/api-client.ts 的数据处理方式
+\`\`\`
+
+### 示例 2: 性能优化规范
+
+\`\`\`markdown
+## 性能优化规范
+
+参考: @global-rules.mdc, @code-style.mdc
+
+### 组件优化
+
+对于大型列表组件，必须使用虚拟滚动：
+
+\`\`\`typescript
+// ✅ 正确 - 使用虚拟滚动
+import { VirtualList } from '@/components/VirtualList';
+
+<VirtualList items={largeDataSet} />
+
+// ❌ 错误 - 直接渲染大量数据
+{largeDataSet.map(item => <Item key={item.id} {...item} />)}
+\`\`\`
+
+### 图片优化
+
+- 使用项目配置的图片 CDN
+- 所有图片必须设置 width 和 height
+- 参考: @src/components/Image.tsx
+\`\`\`
+
+### 示例 3: 团队约定
+
+\`\`\`markdown
+## 团队开发约定
+
+### 代码审查流程
+
+1. 提交 PR 前必须运行测试：\`npm run test\`
+2. 确保所有 lint 检查通过：\`npm run lint\`
+3. 代码审查必须至少一人批准
+4. 合并前必须解决所有评论
+
+### Git 提交规范
+
+遵循 [Conventional Commits](https://www.conventionalcommits.org/)：
+
+- \`feat:\` 新功能
+- \`fix:\` 修复 bug
+- \`docs:\` 文档更新
+- \`style:\` 代码格式（不影响功能）
+- \`refactor:\` 重构
+- \`test:\` 测试相关
+- \`chore:\` 构建/工具相关
+\`\`\`
+
+---
+
+## 📋 规则编写最佳实践
+
+### 1. 结构清晰
+
+使用清晰的标题层级组织内容：
+
+\`\`\`markdown
+# 主标题（规则名称）
+
+## 核心原则
+
+### 具体规范
+
+#### 详细说明
+\`\`\`
+
+### 2. 提供代码示例
+
+始终提供 ✅ 正确和 ❌ 错误的对比示例：
+
+\`\`\`typescript
+// ✅ 正确 - 说明为什么这样做
+const result = useProjectHook();
+
+// ❌ 错误 - 说明为什么不这样做
+const result = useThirdPartyHook();
+\`\`\`
+
+### 3. 引用项目文件
+
+使用 \`@文件名\` 引用项目中的实际文件：
+
+\`\`\`markdown
+参考: @src/utils/validation.ts
+使用: @src/hooks/useAuth.ts
+示例: @src/components/Button.tsx
+\`\`\`
+
+### 4. 引用其他规则
+
+使用 \`@规则文件名.mdc\` 引用其他规则：
+
+\`\`\`markdown
+参考: @global-rules.mdc
+遵循: @code-style.mdc
+补充: @architecture.mdc
+\`\`\`
+
+### 5. 明确使用场景
+
+说明规则的适用场景和例外情况：
+
+\`\`\`markdown
+### 适用场景
+
+- 适用于所有新代码
+- 重构时逐步应用
+- 不适用于遗留代码（除非大规模重构）
+\`\`\`
+
+---
+
+## 🔧 元数据配置说明
+
+### 当前配置
+
+\`\`\`yaml
+title: 自定义规则模板          # 修改为您的规则名称
+description: 项目特定的自定义规则模板（可选，用户可自行填写）  # 修改为规则描述
+priority: 60                    # 根据需要调整（60-85 建议范围）
+techStack: ${JSON.stringify(context.techStack.primary)}  # 已自动配置
+tags: ["custom", "template", "optional"]  # 可以添加更多标签
+type: guideline                 # 可选: overview, guideline, reference, practice
+depends: ["global-rules"]      # 声明依赖的规则文件
+\`\`\`
+
+### 依赖关系
+
+\`depends\` 字段声明此规则依赖的其他规则。Cursor 会按依赖顺序加载规则。
+
+**当前依赖**: \`global-rules.mdc\`
+
+**可添加的依赖**:
+- \`code-style.mdc\` - 如果规则涉及代码风格
+- \`architecture.mdc\` - 如果规则涉及文件组织
+- \`custom-tools.mdc\` - 如果规则使用项目自定义工具
+- 其他规则文件...
+
+**示例**:
+\`\`\`yaml
+depends: ["global-rules", "code-style", "architecture"]
+\`\`\`
+
+---
+
+## ✅ 填写检查清单
+
+在提交自定义规则前，请确认：
+
+- [ ] 已修改标题和描述
+- [ ] 已填写实际的规则内容（删除模板说明）
+- [ ] 已设置合适的优先级
+- [ ] 已正确配置依赖关系
+- [ ] 已提供代码示例（✅ 正确 vs ❌ 错误）
+- [ ] 已引用相关的项目文件（使用 \`@文件名\`）
+- [ ] 已引用相关的规则文件（使用 \`@规则名.mdc\`）
+- [ ] 规则内容清晰、可执行
+- [ ] 已测试规则是否生效（在 Cursor 中验证）
+
+---
+
+## 🚀 开始编写
+
+删除上方的模板说明，从下方开始编写您的自定义规则：
+
+---
+
+# [在此填写您的规则标题]
+
+[在此填写您的规则内容...]
+
+---
+
+*提示: 编写完成后，可以使用 \`validate_rules\` 工具验证规则格式是否正确。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "custom-rules-template.mdc",
+      priority: 60,
+      type: "guideline",
+      depends: ["global-rules"],
+    };
   }
 }

@@ -229,5 +229,42 @@ export class FileUtils {
   static getRelativePath(basePath: string, filePath: string): string {
     return path.relative(basePath, filePath);
   }
+
+  /**
+   * 读取目录内容
+   */
+  static async readdir(dirPath: string): Promise<string[]> {
+    try {
+      const entries = await fs.readdir(dirPath);
+      return entries;
+    } catch (error) {
+      logger.error(`读取目录失败 ${dirPath}`, error);
+      return [];
+    }
+  }
+
+  /**
+   * 检查目录是否存在
+   */
+  static async directoryExists(dirPath: string): Promise<boolean> {
+    try {
+      const stat = await fs.stat(dirPath);
+      return stat.isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 创建目录
+   */
+  static async mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void> {
+    try {
+      await fs.mkdir(dirPath, { recursive: options?.recursive ?? true });
+    } catch (error) {
+      logger.error(`创建目录失败 ${dirPath}`, error);
+      throw new FileOperationError(`无法创建目录: ${dirPath}`, error instanceof Error ? error : undefined);
+    }
+  }
 }
 
