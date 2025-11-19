@@ -28,6 +28,7 @@
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --run --coverage",
+    "test:project": "npm run build && node dist/scripts/test-project.js",
     "prepare-release": "node scripts/prepare-release.js",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
     "lint": "echo 'No linter configured'",

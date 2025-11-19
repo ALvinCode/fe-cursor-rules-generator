@@ -252,7 +252,7 @@ export class RuleEffectivenessTracker {
     let totalChecks = 0;
 
     // 检查 Prettier 配置
-    if (context.projectConfig.hasConfig?.prettier) {
+    if (context.projectConfig.prettier) {
       totalChecks++;
       if (allRulesContent.includes("prettier") || allRulesContent.includes("格式化")) {
         alignmentCount++;
@@ -260,7 +260,7 @@ export class RuleEffectivenessTracker {
     }
 
     // 检查 ESLint 配置
-    if (context.projectConfig.hasConfig?.eslint) {
+    if (context.projectConfig.eslint) {
       totalChecks++;
       if (allRulesContent.includes("eslint") || allRulesContent.includes("lint")) {
         alignmentCount++;
@@ -268,7 +268,7 @@ export class RuleEffectivenessTracker {
     }
 
     // 检查 TypeScript 配置
-    if (context.projectConfig.hasConfig?.typescript) {
+    if (context.projectConfig.typescript) {
       totalChecks++;
       if (allRulesContent.includes("typescript") || allRulesContent.includes("类型")) {
         alignmentCount++;

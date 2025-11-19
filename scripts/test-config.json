@@ -1,0 +1,20 @@
+{
+  "testProjectPath": "",
+  "clearRulesBeforeTest": true,
+  "cleanUncommittedFiles": true,
+  "generateRules": true,
+  "testAnalyzers": true,
+  "testCodeGeneration": true,
+  "outputReport": true,
+  "testCases": [
+    "创建一个用户列表页面组件",
+    "创建一个自定义 Hook 用于数据获取",
+    "创建一个工具函数用于格式化日期",
+    "创建一个 API 服务用于用户管理",
+    "创建一个类型定义文件",
+    "创建一个复杂的表单组件，包含多个输入字段和验证逻辑",
+    "创建一个数据表格组件，支持排序和分页",
+    "创建一个模态框组件，支持打开和关闭动画"
+  ]
+}
+
