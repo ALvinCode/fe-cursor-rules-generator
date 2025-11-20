@@ -28,7 +28,6 @@
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --run --coverage",
-    "test:project": "npm run build && node dist/scripts/test-project.js",
     "prepare-release": "node scripts/prepare-release.js",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
     "lint": "echo 'No linter configured'",
@@ -67,6 +66,8 @@
   "devDependencies": {
     "@modelcontextprotocol/inspector": "^0.17.2",
     "@types/node": "^22.10.2",
+    "markdownlint": "^0.39.0",
+    "markdownlint-cli2": "^0.19.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

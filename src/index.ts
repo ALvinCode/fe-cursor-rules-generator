@@ -10,21 +10,22 @@ import {
     CallToolRequestSchema, ListToolsRequestSchema, Tool
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { CodeAnalyzer } from './modules/code-analyzer.js';
-import { ConfigParser } from './modules/config-parser.js';
-import { ConsistencyChecker } from './modules/consistency-checker.js';
-import { Context7Integration } from './modules/context7-integration.js';
-import { CustomPatternDetector } from './modules/custom-pattern-detector.js';
-import { FileStructureLearner } from './modules/file-structure-learner.js';
-import { FileWriter } from './modules/file-writer.js';
-import { GenerationCoordinator } from './modules/generation-coordinator.js';
-import { ModuleDetector } from './modules/module-detector.js';
-import { PracticeAnalyzer } from './modules/practice-analyzer.js';
-import { ProjectAnalyzer } from './modules/project-analyzer.js';
-import { RouterDetector } from './modules/router-detector.js';
-import { RuleValidator } from './modules/rule-validator.js';
-import { RulesGenerator } from './modules/rules-generator.js';
-import { TechStackDetector } from './modules/tech-stack-detector.js';
+import { CodeAnalyzer } from './modules/analyzers/code-analyzer.js';
+import { ConfigParser } from './modules/core/config-parser.js';
+import { ConsistencyChecker } from './modules/validators/consistency-checker.js';
+import { Context7Integration } from './modules/integrations/context7-integration.js';
+import { CustomPatternDetector } from './modules/analyzers/custom-pattern-detector.js';
+import { DeepDirectoryAnalyzer } from './modules/analyzers/deep-directory-analyzer.js';
+import { FileStructureLearner } from './modules/analyzers/file-structure-learner.js';
+import { FileWriter } from './modules/core/file-writer.js';
+import { GenerationCoordinator } from './modules/core/generation-coordinator.js';
+import { ModuleDetector } from './modules/analyzers/module-detector.js';
+import { PracticeAnalyzer } from './modules/analyzers/practice-analyzer.js';
+import { ProjectAnalyzer } from './modules/core/project-analyzer.js';
+import { RouterDetector } from './modules/analyzers/router-detector.js';
+import { RuleValidator } from './modules/validators/rule-validator.js';
+import { RulesGenerator } from './modules/core/rules-generator.js';
+import { TechStackDetector } from './modules/analyzers/tech-stack-detector.js';
 import { CursorRule, Dependency, GenerationSummary, InstructionsFile } from './types.js';
 import { createErrorResponse } from './utils/errors.js';
 import { logger } from './utils/logger.js';
@@ -68,6 +69,15 @@ class CursorRulesGeneratorServer {
   private routerDetector: RouterDetector;
 
   private version: string;
+  
+  // 添加 report 属性用于收集警告和错误
+  private report: {
+    warnings: string[];
+    errors: string[];
+  } = {
+    warnings: [],
+    errors: [],
+  };
 
   constructor() {
     this.version = getVersion();
@@ -680,6 +690,8 @@ class CursorRulesGeneratorServer {
     let projectPractice: any;
     let customPatterns: any;
     let fileOrganization: any;
+    let deepAnalysis: any[] = [];
+    let architecturePattern: any;
     let frontendRouter: any;
     let backendRouter: any;
     const uncertainties: any[] = [];
@@ -689,6 +701,12 @@ class CursorRulesGeneratorServer {
     let rules: CursorRule[] = [];
     let writtenFiles: string[] = [];
     let instructions: InstructionsFile | undefined;
+
+    // 重置 report 状态
+    this.report = {
+      warnings: [],
+      errors: [],
+    };
 
     // 任务 1：收集项目文件
     startTask(1, `cursor-rules-generator 正在扫描项目路径：${projectPath}`);
@@ -824,6 +842,36 @@ class CursorRulesGeneratorServer {
       );
     }
     completeTask(6);
+
+    // 任务 6.5：深度目录分析（v1.8 新增）
+    startTask(6.5, "cursor-rules-generator 正在深度分析目录结构和职能。");
+    const deepAnalyzer = new DeepDirectoryAnalyzer();
+    const dependenciesForAnalysis = techStack.dependencies.map((d: Dependency) => ({
+      name: d.name,
+      version: d.version,
+    }));
+    await deepAnalyzer.setDependencies(dependenciesForAnalysis);
+    deepAnalysis = await deepAnalyzer.analyzeProjectStructure(
+      projectPath,
+      files,
+      modules,
+      dependenciesForAnalysis
+    );
+    addDetail(6.5, `已分析 ${deepAnalysis.length} 个目录的职能和结构。`);
+    
+    // 识别架构模式
+    architecturePattern = await deepAnalyzer.identifyArchitecturePattern(
+      deepAnalysis,
+      projectPath,
+      files
+    );
+    if (architecturePattern.type !== "unknown") {
+      addDetail(
+        6.5,
+        `识别架构模式：${architecturePattern.type}（置信度：${architecturePattern.confidence}）。`
+      );
+    }
+    completeTask(6.5);
 
     // 任务 7：识别路由系统（增强版：同时检查依赖和文件结构）
     startTask(7, "cursor-rules-generator 正在识别路由框架。");
@@ -1016,12 +1064,49 @@ class CursorRulesGeneratorServer {
         projectConfig,
         customPatterns,
         fileOrganization,
+        deepAnalysis,
+        architecturePattern,
         frontendRouter,
         backendRouter,
+        files, // v1.8.1: 保存文件列表，用于可能的重新分析
       },
       webSearchResults
     );
     addDetail(9, `已生成 ${rules.length} 个规则文件草案。`);
+    
+    // 检查深度分析数据质量并添加警告
+    if (!deepAnalysis || deepAnalysis.length === 0) {
+      addDetail(
+        9,
+        `⚠️ 警告：未能获取目录深度分析数据，project-structure.mdc 将使用简化版结构。`
+      );
+      this.report.warnings.push(
+        "深度目录分析失败：未能获取完整的目录结构和职能信息。建议重新运行以获取完整数据。"
+      );
+    } else {
+      // 评估数据质量
+      const rootDirs = deepAnalysis.filter((d: any) => d.depth === 1);
+      const otherCount = deepAnalysis.filter(
+        (d: any) => d.purpose === "其他" || d.category === "other"
+      ).length;
+      const otherRatio = otherCount / deepAnalysis.length;
+      
+      if (rootDirs.length === 0) {
+        addDetail(
+          9,
+          `⚠️ 警告：深度分析数据不完整（缺少根目录），project-structure.mdc 可能不准确。`
+        );
+        this.report.warnings.push(
+          "深度目录分析不完整：缺少根目录数据，目录结构可能不准确。"
+        );
+      } else if (otherRatio > 0.5) {
+        addDetail(
+          9,
+          `⚠️ 提示：${Math.round(otherRatio * 100)}% 的目录职能未能精确识别，可能需要手动补充。`
+        );
+      }
+    }
+    
     completeTask(9);
 
     // 任务 10：写入规则文件与说明
@@ -1319,6 +1404,18 @@ class CursorRulesGeneratorServer {
           uncertainties.length
         } 个待确认决策：\n${uncertaintyLines.join("\n")}`
       );
+    }
+    
+    // 添加深度分析相关的警告和错误
+    if (this.report.warnings.length > 0) {
+      this.report.warnings.forEach((warning) => {
+        notes.push(`⚠️ ${warning}`);
+      });
+    }
+    if (this.report.errors.length > 0) {
+      this.report.errors.forEach((error) => {
+        notes.push(`❌ ${error}`);
+      });
     }
 
     let outputMessage = `cursor-rules-generator 已被调用，开始处理项目：${projectPath}\n\n`;

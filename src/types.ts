@@ -173,6 +173,11 @@ export interface RuleGenerationContext {
     pattern: RoutingPattern;
     examples: RouteExample[];
   };
+  // v1.8 新增字段：深度目录分析
+  deepAnalysis?: DeepDirectoryAnalysis[];
+  architecturePattern?: ArchitecturePattern;
+  // v1.8.1 新增：保存文件列表，用于重新分析
+  files?: string[];
 }
 
 /**
