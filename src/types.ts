@@ -30,6 +30,10 @@ export interface Module {
   type: "frontend" | "backend" | "shared" | "service" | "package" | "other";
   dependencies: string[];
   description?: string;
+  version?: string;
+  entryPoint?: string;
+  keywords?: string[];
+  buildConfig?: string; // vite, webpack, rollup 等
 }
 
 export interface CodeFeature {

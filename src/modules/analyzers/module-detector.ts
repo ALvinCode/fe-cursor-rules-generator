@@ -25,12 +25,32 @@ export class ModuleDetector {
 
     // 如果没有检测到模块，整个项目作为单一模块
     if (modules.length === 0) {
+      // 尝试从根目录的 package.json 获取信息
+      const rootPackageJson = path.join(projectPath, "package.json");
+      let version: string | undefined;
+      let entryPoint: string | undefined;
+      let keywords: string[] | undefined;
+      let buildConfig: string | undefined;
+
+      if (await FileUtils.fileExists(rootPackageJson)) {
+        const content = await FileUtils.readFile(rootPackageJson);
+        const data = JSON.parse(content);
+        version = data.version;
+        entryPoint = data.main || data.module;
+        keywords = data.keywords;
+        buildConfig = await this.detectBuildConfig(projectPath);
+      }
+
       modules.push({
         name: "main",
         path: projectPath,
         type: "other",
         dependencies: [],
         description: "主项目模块",
+        version,
+        entryPoint,
+        keywords,
+        buildConfig,
       });
     }
 
@@ -94,12 +114,22 @@ export class ModuleDetector {
             const content = await FileUtils.readFile(packageJsonPath);
             const data = JSON.parse(content);
 
+            // 提取入口文件
+            const entryPoint = data.main || data.module || data.exports?.["."]?.import || data.exports?.["."]?.require || data.index;
+            
+            // 识别构建配置
+            const buildConfig = await this.detectBuildConfig(modulePath);
+
             modules.push({
               name: entry.name,
               path: modulePath,
               type: this.inferModuleType(entry.name, data),
               dependencies: Object.keys(data.dependencies || {}),
               description: data.description,
+              version: data.version,
+              entryPoint: entryPoint,
+              keywords: data.keywords || [],
+              buildConfig: buildConfig,
             });
           }
         }
@@ -127,26 +157,16 @@ export class ModuleDetector {
     for (const dir of frontendDirs) {
       const dirPath = path.join(projectPath, dir);
       if (await FileUtils.fileExists(dirPath)) {
-        modules.push({
-          name: dir,
-          path: dirPath,
-          type: "frontend",
-          dependencies: [],
-          description: "前端模块",
-        });
+        const moduleInfo = await this.extractModuleInfo(dirPath, "frontend", "前端模块");
+        modules.push(moduleInfo);
       }
     }
 
     for (const dir of backendDirs) {
       const dirPath = path.join(projectPath, dir);
       if (await FileUtils.fileExists(dirPath)) {
-        modules.push({
-          name: dir,
-          path: dirPath,
-          type: "backend",
-          dependencies: [],
-          description: "后端模块",
-        });
+        const moduleInfo = await this.extractModuleInfo(dirPath, "backend", "后端模块");
+        modules.push(moduleInfo);
       }
     }
 
@@ -155,13 +175,8 @@ export class ModuleDetector {
     for (const dir of sharedDirs) {
       const dirPath = path.join(projectPath, dir);
       if (await FileUtils.fileExists(dirPath)) {
-        modules.push({
-          name: dir,
-          path: dirPath,
-          type: "shared",
-          dependencies: [],
-          description: "共享模块",
-        });
+        const moduleInfo = await this.extractModuleInfo(dirPath, "shared", "共享模块");
+        modules.push(moduleInfo);
       }
     }
 
@@ -190,17 +205,76 @@ export class ModuleDetector {
     );
 
     for (const serviceDir of serviceDirs) {
-      const name = path.basename(serviceDir);
-      modules.push({
-        name,
-        path: serviceDir,
-        type: "service",
-        dependencies: [],
-        description: `微服务: ${name}`,
-      });
+      const moduleInfo = await this.extractModuleInfo(serviceDir, "service", `微服务: ${path.basename(serviceDir)}`);
+      modules.push(moduleInfo);
     }
 
     return modules;
+  }
+
+  /**
+   * 提取模块信息（从 package.json 或使用默认值）
+   */
+  private async extractModuleInfo(
+    modulePath: string,
+    type: "frontend" | "backend" | "shared" | "service" | "package" | "other",
+    defaultDescription: string
+  ): Promise<Module> {
+    const packageJsonPath = path.join(modulePath, "package.json");
+    const name = path.basename(modulePath);
+
+    if (await FileUtils.fileExists(packageJsonPath)) {
+      const content = await FileUtils.readFile(packageJsonPath);
+      const data = JSON.parse(content);
+      const entryPoint = data.main || data.module || data.exports?.["."]?.import || data.exports?.["."]?.require;
+      const buildConfig = await this.detectBuildConfig(modulePath);
+
+      return {
+        name: data.name || name,
+        path: modulePath,
+        type: this.inferModuleType(name, data),
+        dependencies: Object.keys(data.dependencies || {}),
+        description: data.description || defaultDescription,
+        version: data.version,
+        entryPoint: entryPoint,
+        keywords: data.keywords || [],
+        buildConfig: buildConfig,
+      };
+    }
+
+    // 没有 package.json，使用默认值
+    return {
+      name,
+      path: modulePath,
+      type,
+      dependencies: [],
+      description: defaultDescription,
+      buildConfig: await this.detectBuildConfig(modulePath),
+    };
+  }
+
+  /**
+   * 检测构建配置
+   */
+  private async detectBuildConfig(modulePath: string): Promise<string | undefined> {
+    const buildConfigFiles = [
+      { file: "vite.config.ts", config: "vite" },
+      { file: "vite.config.js", config: "vite" },
+      { file: "webpack.config.js", config: "webpack" },
+      { file: "webpack.config.ts", config: "webpack" },
+      { file: "rollup.config.js", config: "rollup" },
+      { file: "rollup.config.ts", config: "rollup" },
+      { file: "tsconfig.json", config: "typescript" },
+    ];
+
+    for (const { file, config } of buildConfigFiles) {
+      const configPath = path.join(modulePath, file);
+      if (await FileUtils.fileExists(configPath)) {
+        return config;
+      }
+    }
+
+    return undefined;
   }
 
   /**

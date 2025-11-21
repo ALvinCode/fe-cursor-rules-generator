@@ -17,6 +17,8 @@ import { SuggestionCollector } from '../generators/suggestion-collector.js';
 import {
     findBestTechStackMatches, MultiCategoryMatch, TechStackMatch
 } from '../generators/tech-stack-matcher.js';
+import { ModuleStructureAnalyzer } from '../analyzers/module-structure-analyzer.js';
+import { ModuleBusinessAnalyzer } from '../analyzers/module-business-analyzer.js';
 
 /**
  * 规则生成引擎
@@ -30,6 +32,8 @@ export class RulesGenerator {
   private bestPracticeComparator: BestPracticeComparator;
   private webSearcher: BestPracticeWebSearcher;
   private requirementsAnalyzer: RuleRequirementsAnalyzer;
+  private moduleStructureAnalyzer: ModuleStructureAnalyzer;
+  private moduleBusinessAnalyzer: ModuleBusinessAnalyzer;
 
   constructor() {
     this.suggestionCollector = new SuggestionCollector();
@@ -37,6 +41,8 @@ export class RulesGenerator {
     this.bestPracticeComparator = new BestPracticeComparator();
     this.webSearcher = new BestPracticeWebSearcher();
     this.requirementsAnalyzer = new RuleRequirementsAnalyzer();
+    this.moduleStructureAnalyzer = new ModuleStructureAnalyzer();
+    this.moduleBusinessAnalyzer = new ModuleBusinessAnalyzer();
   }
 
   /**
@@ -464,7 +470,7 @@ export class RulesGenerator {
     // 12. 模块规则（如果是多模块项目）
     if (context.includeModuleRules && context.modules.length > 1) {
       for (const module of context.modules) {
-        const moduleRule = this.generateModuleOverviewRule(context, module);
+        const moduleRule = await this.generateModuleOverviewRule(context, module);
         rules.push(moduleRule);
       }
     }
@@ -3132,17 +3138,33 @@ ${p.content}
   /**
    * 生成模块职责说明
    */
-  private generateModuleResponsibilities(module: Module): string {
-    const typeDescriptions: Record<string, string> = {
-      frontend: "负责用户界面展示和交互逻辑",
-      backend: "负责业务逻辑处理和数据管理",
-      shared: "提供跨模块共享的工具和类型定义",
-      service: "提供特定领域的服务功能",
-      package: "作为独立包提供特定功能",
-      other: "提供项目所需的功能",
-    };
+  private generateModuleResponsibilities(
+    module: Module,
+    businessAnalysis?: any
+  ): string {
+    let description = "";
 
-    return typeDescriptions[module.type] || "提供项目所需的功能";
+    // 如果有业务分析，使用业务领域信息
+    if (businessAnalysis?.businessDomain) {
+      description = `负责 ${businessAnalysis.businessDomain} 相关的功能`;
+    } else {
+      const typeDescriptions: Record<string, string> = {
+        frontend: "负责用户界面展示和交互逻辑",
+        backend: "负责业务逻辑处理和数据管理",
+        shared: "提供跨模块共享的工具和类型定义",
+        service: "提供特定领域的服务功能",
+        package: "作为独立包提供特定功能",
+        other: "提供项目所需的功能",
+      };
+      description = typeDescriptions[module.type] || "提供项目所需的功能";
+    }
+
+    // 如果有主要功能，添加到描述中
+    if (businessAnalysis?.mainFeatures && businessAnalysis.mainFeatures.length > 0) {
+      description += `，主要包括：${businessAnalysis.mainFeatures.slice(0, 3).join("、")}`;
+    }
+
+    return description;
   }
 
   /**
@@ -3150,33 +3172,76 @@ ${p.content}
    */
   private generateModuleGuidelines(
     context: RuleGenerationContext,
-    module: Module
+    module: Module,
+    structureAnalysis?: any,
+    businessAnalysis?: any
   ): string {
-    let guidelines = "";
+    const guidelines: string[] = [];
 
+    // 基于模块类型的基础指南
     if (module.type === "frontend") {
-      guidelines = `- 保持组件可复用性和可测试性
-- 使用统一的状态管理方案
-- 优化性能，避免不必要的重渲染
-- 确保响应式设计适配不同设备`;
+      guidelines.push("- 保持组件可复用性和可测试性");
+      guidelines.push("- 使用统一的状态管理方案");
+      guidelines.push("- 优化性能，避免不必要的重渲染");
+      guidelines.push("- 确保响应式设计适配不同设备");
     } else if (module.type === "backend") {
-      guidelines = `- 实施适当的错误处理机制
-- 提供完整的 API 文档
-- 确保数据验证和安全性
-- 实现日志记录便于调试`;
+      guidelines.push("- 实施适当的错误处理机制");
+      guidelines.push("- 提供完整的 API 文档");
+      guidelines.push("- 确保数据验证和安全性");
+      guidelines.push("- 实现日志记录便于调试");
     } else if (module.type === "shared") {
-      guidelines = `- 保持代码通用性，避免特定业务逻辑
-- 提供完整的类型定义和文档
-- 确保向后兼容性
-- 编写充分的单元测试`;
+      guidelines.push("- 保持代码通用性，避免特定业务逻辑");
+      guidelines.push("- 提供完整的类型定义和文档");
+      guidelines.push("- 确保向后兼容性");
+      guidelines.push("- 编写充分的单元测试");
     } else {
-      guidelines = `- 遵循单一职责原则
-- 提供清晰的接口定义
-- 编写必要的文档和示例
-- 确保代码质量和测试覆盖`;
+      guidelines.push("- 遵循单一职责原则");
+      guidelines.push("- 提供清晰的接口定义");
+      guidelines.push("- 编写必要的文档和示例");
+      guidelines.push("- 确保代码质量和测试覆盖");
     }
 
-    return guidelines;
+    // 基于结构分析的指南
+    if (structureAnalysis) {
+      const pattern = structureAnalysis.fileOrganizationPattern;
+      
+      if (pattern.usesCoLocation) {
+        guidelines.push("- 相关文件（组件、样式、测试、类型）应放在同一目录（co-location）");
+      }
+      
+      if (pattern.usesIndexFiles) {
+        guidelines.push("- 使用 index 文件作为目录入口，统一导出");
+      }
+      
+      if (pattern.primaryNamingPattern !== "mixed") {
+        guidelines.push(`- 遵循 ${pattern.primaryNamingPattern} 命名规范`);
+      }
+    }
+
+    // 基于业务分析的指南
+    if (businessAnalysis?.businessPattern) {
+      if (businessAnalysis.businessPattern.includes("DDD")) {
+        guidelines.push("- 遵循领域驱动设计原则，保持领域模型清晰");
+        guidelines.push("- 区分实体、值对象、领域服务等概念");
+      } else if (businessAnalysis.businessPattern.includes("Feature-based")) {
+        guidelines.push("- 按功能特性组织代码，保持功能内聚");
+        guidelines.push("- 每个功能模块应包含完整的业务逻辑");
+      } else if (businessAnalysis.businessPattern.includes("Clean Architecture")) {
+        guidelines.push("- 遵循分层架构，保持依赖方向正确");
+        guidelines.push("- 业务逻辑不应依赖框架和外部库");
+      }
+    }
+
+    // 基于依赖关系的指南
+    if (businessAnalysis?.dependentModules && businessAnalysis.dependentModules.length > 0) {
+      guidelines.push(`- 此模块被其他模块依赖（${businessAnalysis.dependentModules.join("、")}），修改时需考虑兼容性`);
+    }
+
+    if (businessAnalysis?.internalDependencies && businessAnalysis.internalDependencies.length > 0) {
+      guidelines.push(`- 依赖内部模块（${businessAnalysis.internalDependencies.join("、")}），注意版本兼容性`);
+    }
+
+    return guidelines.join("\n");
   }
 
   /**
@@ -3203,6 +3268,126 @@ ${p.content}
     cautions.push("- 遵循模块的设计原则和约定");
 
     return cautions.map((c) => c).join("\n");
+  }
+
+  /**
+   * 生成模块代码生成指南
+   */
+  private generateModuleCodeGenerationGuide(
+    module: Module,
+    context: RuleGenerationContext,
+    structureAnalysis: any,
+    businessAnalysis: any
+  ): string {
+    let guide = "";
+
+    // 文件存放规则
+    guide += `### 文件存放规则\n\n`;
+    
+    if (structureAnalysis && structureAnalysis.mainDirectories.length > 0) {
+      const dirs = structureAnalysis.mainDirectories;
+      
+      // 根据目录类型生成规则
+      const componentDirs = dirs.filter((d: any) => 
+        d.category === "组件" || d.purpose.includes("组件") || 
+        path.basename(d.path).toLowerCase().includes("component")
+      );
+      const utilDirs = dirs.filter((d: any) => 
+        d.category === "工具" || d.purpose.includes("工具") || 
+        path.basename(d.path).toLowerCase().includes("util")
+      );
+      const typeDirs = dirs.filter((d: any) => 
+        d.category === "类型" || d.purpose.includes("类型") || 
+        path.basename(d.path).toLowerCase().includes("type")
+      );
+      const pageDirs = dirs.filter((d: any) => 
+        d.category === "页面" || d.purpose.includes("页面") || 
+        path.basename(d.path).toLowerCase().includes("page")
+      );
+
+      if (componentDirs.length > 0) {
+        const dir = componentDirs[0];
+        guide += `- **组件文件**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
+      }
+      if (utilDirs.length > 0) {
+        const dir = utilDirs[0];
+        guide += `- **工具函数**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
+      }
+      if (typeDirs.length > 0) {
+        const dir = typeDirs[0];
+        guide += `- **类型定义**: 放在 \`${path.basename(dir.path)}/\` 目录\n`;
+      } else if (structureAnalysis.fileOrganizationPattern.usesCoLocation) {
+        guide += `- **类型定义**: 与使用文件 co-location（放在同一目录）\n`;
+      }
+      if (pageDirs.length > 0) {
+        const dir = pageDirs[0];
+        guide += `- **页面组件**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
+      }
+    } else {
+      // 默认规则
+      guide += `- **组件文件**: 放在 \`components/\` 目录，使用 PascalCase 命名\n`;
+      guide += `- **工具函数**: 放在 \`utils/\` 目录，使用 camelCase 命名\n`;
+      guide += `- **类型定义**: 与使用文件 co-location 或放在 \`types/\` 目录\n`;
+    }
+
+    guide += `\n`;
+
+    // 依赖引用规则
+    guide += `### 依赖引用规则\n\n`;
+    
+    if (businessAnalysis && businessAnalysis.internalDependencies.length > 0) {
+      guide += `- **内部模块依赖**: 使用包名导入，例如：\n`;
+      guide += `  \`\`\`typescript\n`;
+      guide += `  import { something } from '@packages/${businessAnalysis.internalDependencies[0]}';\n`;
+      guide += `  \`\`\`\n\n`;
+    }
+    
+    if (module.type === "shared" || module.type === "package") {
+      guide += `- **模块内部依赖**: 使用相对路径 \`../\` 或别名（如 \`@/\`）\n`;
+    } else {
+      guide += `- **模块内部依赖**: 使用相对路径 \`../\` 或别名（如 \`@/\`）\n`;
+    }
+    
+    guide += `- **外部依赖**: 从 \`node_modules\` 导入，使用包名\n`;
+    
+    if (businessAnalysis && businessAnalysis.dependentModules.length > 0) {
+      guide += `- **共享模块**: 从 \`@packages/${module.name}\` 导入（供其他模块使用）\n`;
+    }
+
+    guide += `\n`;
+
+    // 命名规范
+    guide += `### 命名规范\n\n`;
+    if (structureAnalysis) {
+      const pattern = structureAnalysis.fileOrganizationPattern.primaryNamingPattern;
+      guide += `- **主要命名模式**: ${pattern}\n`;
+      
+      if (pattern === "PascalCase") {
+        guide += `  - 组件、类、类型使用 PascalCase：\`UserProfile.tsx\`, \`ApiClient.ts\`\n`;
+      } else if (pattern === "camelCase") {
+        guide += `  - 函数、变量使用 camelCase：\`getUserData.ts\`, \`apiClient.ts\`\n`;
+      } else if (pattern === "kebab-case") {
+        guide += `  - 文件使用 kebab-case：\`user-profile.tsx\`, \`api-client.ts\`\n`;
+      }
+    } else {
+      guide += `- 遵循项目全局命名规范（参考 @code-style.mdc）\n`;
+    }
+
+    guide += `\n`;
+
+    // 导入导出模式
+    guide += `### 导入导出模式\n\n`;
+    if (structureAnalysis && structureAnalysis.fileOrganizationPattern.usesIndexFiles) {
+      guide += `- **使用 index 文件**: 是\n`;
+      guide += `  - 目录应包含 \`index.ts\` 或 \`index.tsx\` 作为入口文件\n`;
+      guide += `  - 从目录导入时使用：\`import { Component } from './components'\`\n`;
+    } else {
+      guide += `- **直接导入**: 从具体文件导入：\`import { Component } from './components/Button'\`\n`;
+    }
+
+    guide += `\n`;
+
+    return guide;
   }
 
   /**
@@ -3842,10 +4027,10 @@ ${this.generateKeyFileReferences(context)}
   /**
    * v1.3: 生成模块概述规则（简化版，约 200 行）
    */
-  private generateModuleOverviewRule(
+  private async generateModuleOverviewRule(
     context: RuleGenerationContext,
     module: Module
-  ): CursorRule {
+  ): Promise<CursorRule> {
     const metadata = this.generateRuleMetadata(
       `${module.name} 模块规则`,
       module.description || `${module.name} 模块开发规范`,
@@ -3856,39 +4041,162 @@ ${this.generateKeyFileReferences(context)}
       ["global-rules"]
     );
 
-    const content =
-      metadata +
-      `
-# ${module.name} 模块
+    // 分析模块结构和业务信息
+    const structureAnalysis = context.deepAnalysis
+      ? this.moduleStructureAnalyzer.analyzeModuleStructure(
+          module,
+          context.deepAnalysis,
+          context.projectPath
+        )
+      : null;
 
-**类型**: ${this.getModuleTypeName(module.type)}  
-**路径**: \`${module.path}\`  
-${module.description ? `**描述**: ${module.description}` : ""}
+    const businessAnalysis = context.deepAnalysis
+      ? await this.moduleBusinessAnalyzer.analyzeModuleBusiness(
+          module,
+          context,
+          context.deepAnalysis
+        )
+      : null;
 
-## 模块职责
+    let content = metadata + `\n# ${module.name} 模块\n\n`;
 
-${this.generateModuleResponsibilities(module)}
+    // 1. 模块概览
+    content += `## 📋 模块概览\n\n`;
+    content += `**类型**: ${this.getModuleTypeName(module.type)}\n\n`;
+    content += `**路径**: \`${module.path}\`\n\n`;
+    if (module.version) {
+      content += `**版本**: ${module.version}\n\n`;
+    }
+    if (module.entryPoint) {
+      content += `**入口文件**: \`${module.entryPoint}\`\n\n`;
+    }
+    if (module.buildConfig) {
+      content += `**构建工具**: ${module.buildConfig}\n\n`;
+    }
+    if (module.description) {
+      content += `**描述**: ${module.description}\n\n`;
+    }
+    if (businessAnalysis?.businessDomain) {
+      content += `**业务领域**: ${businessAnalysis.businessDomain}\n\n`;
+    }
 
-## 相关规则
+    // 2. 模块职责
+    content += `## 🎯 模块职责\n\n`;
+    content += `${this.generateModuleResponsibilities(module, businessAnalysis)}\n\n`;
 
-本模块遵循全局规则，并有以下特定要求：
+    // 3. 目录结构
+    if (structureAnalysis && structureAnalysis.directoryTree) {
+      content += `## 📁 目录结构\n\n`;
+      content += structureAnalysis.directoryTree;
+    }
 
-- 参考: @../global-rules.mdc
-- 参考: @../code-style.mdc
-- 参考: @../architecture.mdc
+    // 4. 主要目录说明
+    if (structureAnalysis && structureAnalysis.mainDirectories.length > 0) {
+      content += `## 📂 主要目录说明\n\n`;
+      for (const dir of structureAnalysis.mainDirectories.slice(0, 10)) {
+        content += `### \`${path.basename(dir.path)}/\`\n\n`;
+        content += `- **职能**: ${dir.purpose}\n`;
+        content += `- **分类**: ${dir.category}\n`;
+        content += `- **文件数**: ${dir.fileCount}\n`;
+        if (dir.fileTypes.length > 0) {
+          content += `- **主要文件类型**: ${dir.fileTypes.join(", ")}\n`;
+        }
+        content += `- **命名规范**: ${dir.namingPattern}\n`;
+        if (dir.hasIndexFiles) {
+          content += `- **使用 index 文件**: 是\n`;
+        }
+        if (dir.coLocationPattern) {
+          const coLocationFeatures: string[] = [];
+          if (dir.coLocationPattern.styles) coLocationFeatures.push("样式");
+          if (dir.coLocationPattern.tests) coLocationFeatures.push("测试");
+          if (dir.coLocationPattern.types) coLocationFeatures.push("类型");
+          if (coLocationFeatures.length > 0) {
+            content += `- **Co-location**: ${coLocationFeatures.join(", ")}\n`;
+          }
+        }
+        content += `\n`;
+      }
+    }
 
-## 开发指南
+    // 5. 业务领域和功能
+    if (businessAnalysis) {
+      if (businessAnalysis.mainFeatures.length > 0) {
+        content += `## 🚀 主要功能\n\n`;
+        content += businessAnalysis.mainFeatures.map(f => `- ${f}`).join("\n") + `\n\n`;
+      }
 
-${this.generateModuleGuidelines(context, module)}
+      if (businessAnalysis.businessPattern) {
+        content += `## 🏗️ 业务架构模式\n\n`;
+        content += `本模块采用 **${businessAnalysis.businessPattern}** 架构模式。\n\n`;
+      }
+    }
 
-## 注意事项
+    // 6. 代码组织模式
+    if (structureAnalysis) {
+      content += `## 📦 代码组织模式\n\n`;
+      const pattern = structureAnalysis.fileOrganizationPattern;
+      if (pattern.usesCoLocation) {
+        content += `- **Co-location 模式**: 支持（相关文件放在同一目录）\n`;
+      }
+      if (pattern.usesIndexFiles) {
+        content += `- **Index 文件**: 使用 index 文件作为入口\n`;
+      }
+      content += `- **命名规范**: ${pattern.primaryNamingPattern}\n\n`;
+    }
 
-${this.generateModuleCautions(module)}
+    // 7. 依赖管理
+    content += `## 🔗 依赖管理\n\n`;
+    if (module.dependencies.length > 0) {
+      content += `### 外部依赖\n\n`;
+      content += `此模块依赖以下外部包：\n\n`;
+      content += module.dependencies
+        .slice(0, 15)
+        .map((d) => `- \`${d}\``)
+        .join("\n");
+      if (module.dependencies.length > 15) {
+        content += `\n\n...以及其他 ${module.dependencies.length - 15} 个依赖`;
+      }
+      content += `\n\n`;
+    }
 
----
+    if (businessAnalysis) {
+      if (businessAnalysis.internalDependencies.length > 0) {
+        content += `### 内部依赖\n\n`;
+        content += `此模块依赖以下内部模块：\n\n`;
+        content += businessAnalysis.internalDependencies
+          .map((d) => `- \`${d}\``)
+          .join("\n");
+        content += `\n\n`;
+      }
 
-*详细规范请参考全局规则文件。*
-`;
+      if (businessAnalysis.dependentModules.length > 0) {
+        content += `### 被依赖关系\n\n`;
+        content += `以下模块依赖此模块：\n\n`;
+        content += businessAnalysis.dependentModules
+          .map((d) => `- \`${d}\``)
+          .join("\n");
+        content += `\n\n`;
+      }
+    }
+
+    // 8. 代码生成指南
+    content += `## 💻 代码生成指南\n\n`;
+    content += this.generateModuleCodeGenerationGuide(module, context, structureAnalysis, businessAnalysis);
+
+    // 9. 相关规则
+    content += `## 📚 相关规则\n\n`;
+    content += `本模块遵循全局规则，并有以下特定要求：\n\n`;
+    content += `- 参考: @../global-rules.mdc\n`;
+    content += `- 参考: @../code-style.mdc\n`;
+    content += `- 参考: @../architecture.mdc\n\n`;
+
+    // 10. 开发指南
+    content += `## 🛠️ 开发指南\n\n`;
+    content += `${this.generateModuleGuidelines(context, module, structureAnalysis, businessAnalysis)}\n\n`;
+
+    // 11. 注意事项
+    content += `## ⚠️ 注意事项\n\n`;
+    content += `${this.generateModuleCautions(module)}\n\n`;
 
     return {
       scope: "module",
