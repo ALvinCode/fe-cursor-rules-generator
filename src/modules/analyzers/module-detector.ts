@@ -130,6 +130,7 @@ export class ModuleDetector {
               entryPoint: entryPoint,
               keywords: data.keywords || [],
               buildConfig: buildConfig,
+              packageName: data.name, // package.json 中的 name 字段
             });
           }
         }
@@ -239,6 +240,7 @@ export class ModuleDetector {
         entryPoint: entryPoint,
         keywords: data.keywords || [],
         buildConfig: buildConfig,
+        packageName: data.name, // package.json 中的 name 字段
       };
     }
 

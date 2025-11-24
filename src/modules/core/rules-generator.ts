@@ -3148,14 +3148,14 @@ ${p.content}
     if (businessAnalysis?.businessDomain) {
       description = `负责 ${businessAnalysis.businessDomain} 相关的功能`;
     } else {
-      const typeDescriptions: Record<string, string> = {
-        frontend: "负责用户界面展示和交互逻辑",
-        backend: "负责业务逻辑处理和数据管理",
-        shared: "提供跨模块共享的工具和类型定义",
-        service: "提供特定领域的服务功能",
-        package: "作为独立包提供特定功能",
-        other: "提供项目所需的功能",
-      };
+    const typeDescriptions: Record<string, string> = {
+      frontend: "负责用户界面展示和交互逻辑",
+      backend: "负责业务逻辑处理和数据管理",
+      shared: "提供跨模块共享的工具和类型定义",
+      service: "提供特定领域的服务功能",
+      package: "作为独立包提供特定功能",
+      other: "提供项目所需的功能",
+    };
       description = typeDescriptions[module.type] || "提供项目所需的功能";
     }
 
@@ -3215,7 +3215,7 @@ ${p.content}
       
       if (pattern.primaryNamingPattern !== "mixed") {
         guidelines.push(`- 遵循 ${pattern.primaryNamingPattern} 命名规范`);
-      }
+    }
     }
 
     // 基于业务分析的指南
@@ -3271,121 +3271,152 @@ ${p.content}
   }
 
   /**
-   * 生成模块代码生成指南
+   * 获取模块的 package.json 信息
+   */
+  private async getModulePackageInfo(modulePath: string): Promise<{
+    name?: string;
+    description?: string;
+    keywords?: string[];
+    version?: string;
+  } | null> {
+    const packageJsonPath = path.join(modulePath, "package.json");
+    
+    if (await FileUtils.fileExists(packageJsonPath)) {
+      try {
+        const content = await FileUtils.readFile(packageJsonPath);
+        const data = JSON.parse(content);
+        return {
+          name: data.name,
+          description: data.description,
+          keywords: data.keywords,
+          version: data.version,
+        };
+      } catch (error) {
+        logger.debug(`读取 package.json 失败: ${packageJsonPath}`, error);
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 生成模块代码生成指南（优化版，符合 Cursor Rules 最佳实践）
    */
   private generateModuleCodeGenerationGuide(
     module: Module,
     context: RuleGenerationContext,
     structureAnalysis: any,
-    businessAnalysis: any
+    businessAnalysis: any,
+    packageName: string
   ): string {
     let guide = "";
 
-    // 文件存放规则
+    // 代码生成规则（使用明确的指令格式）
+    guide += `### 代码生成规则\n\n`;
+    guide += `**MUST** 遵循以下规则：\n\n`;
+    guide += `1. **文件位置**: 查看 @project-structure.mdc 中 \`${module.name}\` 模块的目录结构，根据文件类型选择正确目录\n`;
+    guide += `2. **命名规范**: 参考 @code-style.mdc 和 @project-structure.mdc\n`;
+    guide += `3. **导入路径**: 遵循依赖引用规则（见下文）\n`;
+    guide += `4. **代码风格**: 参考 @code-style.mdc 保持一致性\n`;
+    
+    if (module.type === "shared") {
+      guide += `5. **模块边界**: 此模块为共享模块，代码必须保持通用性，避免特定业务逻辑\n\n`;
+    } else {
+      guide += `5. **模块边界**: 此模块为 ${this.getModuleTypeName(module.type)} 类型，代码需符合该类型职责范围\n\n`;
+    }
+
+    // 文件存放规则（从 project-structure 获取）
     guide += `### 文件存放规则\n\n`;
+    guide += `**MUST**: 参考 @project-structure.mdc 中 \`${module.name}\` 模块的目录结构和文件夹职能说明。\n\n`;
     
     if (structureAnalysis && structureAnalysis.mainDirectories.length > 0) {
-      const dirs = structureAnalysis.mainDirectories;
+      const dirs = structureAnalysis.mainDirectories
+        .filter((d: any) => d.fileCount > 0 && d.purpose && d.purpose !== "其他" && d.purpose !== "")
+        .slice(0, 8);
       
-      // 根据目录类型生成规则
-      const componentDirs = dirs.filter((d: any) => 
-        d.category === "组件" || d.purpose.includes("组件") || 
-        path.basename(d.path).toLowerCase().includes("component")
-      );
-      const utilDirs = dirs.filter((d: any) => 
-        d.category === "工具" || d.purpose.includes("工具") || 
-        path.basename(d.path).toLowerCase().includes("util")
-      );
-      const typeDirs = dirs.filter((d: any) => 
-        d.category === "类型" || d.purpose.includes("类型") || 
-        path.basename(d.path).toLowerCase().includes("type")
-      );
-      const pageDirs = dirs.filter((d: any) => 
-        d.category === "页面" || d.purpose.includes("页面") || 
-        path.basename(d.path).toLowerCase().includes("page")
-      );
-
-      if (componentDirs.length > 0) {
-        const dir = componentDirs[0];
-        guide += `- **组件文件**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
+      if (dirs.length > 0) {
+        guide += `主要目录（完整信息见 @project-structure.mdc）：\n\n`;
+        for (const dir of dirs) {
+          const dirPath = dir.path;
+          // 计算相对于模块路径的相对路径
+          let relativePath: string;
+          try {
+            relativePath = path.relative(module.path, dirPath);
+            // 如果路径相同，使用目录名
+            if (!relativePath || relativePath === ".") {
+              relativePath = path.basename(dirPath);
+            }
+          } catch {
+            relativePath = path.basename(dirPath);
+          }
+          
+          guide += `- \`${relativePath}/\`: ${dir.purpose}`;
+          if (dir.namingPattern && dir.namingPattern !== "mixed") {
+            guide += ` (${dir.namingPattern})`;
+          }
+          guide += `\n`;
+        }
+        guide += `\n`;
       }
-      if (utilDirs.length > 0) {
-        const dir = utilDirs[0];
-        guide += `- **工具函数**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
-      }
-      if (typeDirs.length > 0) {
-        const dir = typeDirs[0];
-        guide += `- **类型定义**: 放在 \`${path.basename(dir.path)}/\` 目录\n`;
-      } else if (structureAnalysis.fileOrganizationPattern.usesCoLocation) {
-        guide += `- **类型定义**: 与使用文件 co-location（放在同一目录）\n`;
-      }
-      if (pageDirs.length > 0) {
-        const dir = pageDirs[0];
-        guide += `- **页面组件**: 放在 \`${path.basename(dir.path)}/\` 目录，使用 ${dir.namingPattern} 命名\n`;
-      }
-    } else {
-      // 默认规则
-      guide += `- **组件文件**: 放在 \`components/\` 目录，使用 PascalCase 命名\n`;
-      guide += `- **工具函数**: 放在 \`utils/\` 目录，使用 camelCase 命名\n`;
-      guide += `- **类型定义**: 与使用文件 co-location 或放在 \`types/\` 目录\n`;
     }
 
-    guide += `\n`;
-
-    // 依赖引用规则
+    // 依赖引用规则（使用明确的指令格式）
     guide += `### 依赖引用规则\n\n`;
     
+    guide += `**模块内部引用** (SHOULD):\n`;
+    guide += `\`\`\`typescript\n`;
+    guide += `import { X } from '../utils/helper';\n`;
+    guide += `import { X } from '@/utils/helper'; // 如果配置了别名\n`;
+    guide += `\`\`\`\n\n`;
+    
+    // 引用其他内部模块
     if (businessAnalysis && businessAnalysis.internalDependencies.length > 0) {
-      guide += `- **内部模块依赖**: 使用包名导入，例如：\n`;
-      guide += `  \`\`\`typescript\n`;
-      guide += `  import { something } from '@packages/${businessAnalysis.internalDependencies[0]}';\n`;
-      guide += `  \`\`\`\n\n`;
-    }
-    
-    if (module.type === "shared" || module.type === "package") {
-      guide += `- **模块内部依赖**: 使用相对路径 \`../\` 或别名（如 \`@/\`）\n`;
-    } else {
-      guide += `- **模块内部依赖**: 使用相对路径 \`../\` 或别名（如 \`@/\`）\n`;
-    }
-    
-    guide += `- **外部依赖**: 从 \`node_modules\` 导入，使用包名\n`;
-    
-    if (businessAnalysis && businessAnalysis.dependentModules.length > 0) {
-      guide += `- **共享模块**: 从 \`@packages/${module.name}\` 导入（供其他模块使用）\n`;
-    }
-
-    guide += `\n`;
-
-    // 命名规范
-    guide += `### 命名规范\n\n`;
-    if (structureAnalysis) {
-      const pattern = structureAnalysis.fileOrganizationPattern.primaryNamingPattern;
-      guide += `- **主要命名模式**: ${pattern}\n`;
-      
-      if (pattern === "PascalCase") {
-        guide += `  - 组件、类、类型使用 PascalCase：\`UserProfile.tsx\`, \`ApiClient.ts\`\n`;
-      } else if (pattern === "camelCase") {
-        guide += `  - 函数、变量使用 camelCase：\`getUserData.ts\`, \`apiClient.ts\`\n`;
-      } else if (pattern === "kebab-case") {
-        guide += `  - 文件使用 kebab-case：\`user-profile.tsx\`, \`api-client.ts\`\n`;
+      guide += `**引用其他内部模块** (SHOULD):\n`;
+      guide += `\`\`\`typescript\n`;
+      for (const dep of businessAnalysis.internalDependencies.slice(0, 3)) {
+        guide += `import { X } from '${dep}';\n`;
       }
-    } else {
-      guide += `- 遵循项目全局命名规范（参考 @code-style.mdc）\n`;
+      guide += `\`\`\`\n\n`;
+    }
+    
+    // 被其他模块引用
+    if (businessAnalysis && businessAnalysis.dependentModules.length > 0) {
+      guide += `**被其他模块引用** (参考):\n`;
+      guide += `其他模块可通过包名引用：\`import { X } from '${packageName}'\`\n\n`;
+    }
+    
+    // 外部依赖
+    guide += `**外部依赖** (SHOULD):\n`;
+    guide += `\`\`\`typescript\n`;
+    guide += `import { X } from 'package-name';\n`;
+    guide += `\`\`\`\n\n`;
+
+    // 命名规范（仅在有明确模式时显示）
+    if (structureAnalysis && structureAnalysis.fileOrganizationPattern.primaryNamingPattern !== "mixed") {
+      guide += `### 命名规范\n\n`;
+      const pattern = structureAnalysis.fileOrganizationPattern.primaryNamingPattern;
+      guide += `主要命名模式: **${pattern}**\n\n`;
+      guide += `示例：\n`;
+      if (pattern === "PascalCase") {
+        guide += `- \`UserProfile.tsx\`, \`ApiClient.ts\`, \`UserType.ts\`\n`;
+      } else if (pattern === "camelCase") {
+        guide += `- \`getUserData.ts\`, \`apiClient.ts\`, \`userHelper.ts\`\n`;
+      } else if (pattern === "kebab-case") {
+        guide += `- \`user-profile.tsx\`, \`api-client.ts\`, \`user-helper.ts\`\n`;
+      }
+      guide += `\n`;
+      guide += `完整规范见 @code-style.mdc\n\n`;
     }
 
-    guide += `\n`;
-
-    // 导入导出模式
-    guide += `### 导入导出模式\n\n`;
+    // 导入导出模式（仅在有明确模式时显示）
     if (structureAnalysis && structureAnalysis.fileOrganizationPattern.usesIndexFiles) {
-      guide += `- **使用 index 文件**: 是\n`;
-      guide += `  - 目录应包含 \`index.ts\` 或 \`index.tsx\` 作为入口文件\n`;
-      guide += `  - 从目录导入时使用：\`import { Component } from './components'\`\n`;
-    } else {
-      guide += `- **直接导入**: 从具体文件导入：\`import { Component } from './components/Button'\`\n`;
+      guide += `### 导入导出模式\n\n`;
+      guide += `使用 \`index.ts\` 作为目录入口：\n`;
+      guide += `\`\`\`typescript\n`;
+      guide += `// 从目录导入\n`;
+      guide += `import { Component } from './components';\n`;
+      guide += `\`\`\`\n\n`;
     }
-
-    guide += `\n`;
 
     return guide;
   }
@@ -4060,143 +4091,43 @@ ${this.generateKeyFileReferences(context)}
 
     let content = metadata + `\n# ${module.name} 模块\n\n`;
 
-    // 1. 模块概览
-    content += `## 📋 模块概览\n\n`;
-    content += `**类型**: ${this.getModuleTypeName(module.type)}\n\n`;
-    content += `**路径**: \`${module.path}\`\n\n`;
-    if (module.version) {
-      content += `**版本**: ${module.version}\n\n`;
+    // 1. 模块标识（关键信息，用于代码生成时识别目标模块）
+    const packageName = module.packageName || module.name;
+    const packageInfo = await this.getModulePackageInfo(module.path);
+    const effectivePackageName = packageInfo?.name || packageName;
+    
+    content += `## 📦 模块标识\n\n`;
+    content += `- **包名称**: \`${effectivePackageName}\`\n`;
+    content += `- **模块名称**: \`${module.name}\`\n`;
+    content += `- **模块类型**: ${this.getModuleTypeName(module.type)}\n`;
+    if (packageInfo?.description) {
+      content += `- **描述**: ${packageInfo.description}\n`;
     }
-    if (module.entryPoint) {
-      content += `**入口文件**: \`${module.entryPoint}\`\n\n`;
-    }
-    if (module.buildConfig) {
-      content += `**构建工具**: ${module.buildConfig}\n\n`;
-    }
-    if (module.description) {
-      content += `**描述**: ${module.description}\n\n`;
-    }
-    if (businessAnalysis?.businessDomain) {
-      content += `**业务领域**: ${businessAnalysis.businessDomain}\n\n`;
-    }
+    content += `\n`;
 
     // 2. 模块职责
     content += `## 🎯 模块职责\n\n`;
     content += `${this.generateModuleResponsibilities(module, businessAnalysis)}\n\n`;
 
-    // 3. 目录结构
-    if (structureAnalysis && structureAnalysis.directoryTree) {
-      content += `## 📁 目录结构\n\n`;
-      content += structureAnalysis.directoryTree;
-    }
+    // 3. 目录结构（引用 project-structure）
+    content += `## 📁 目录结构\n\n`;
+    content += `**MUST**: 在生成代码前，查看 @project-structure.mdc 中 \`${module.name}\` 模块的目录结构和文件夹职能说明。\n\n`;
+    content += `目录结构信息位于 @project-structure.mdc，包含：\n`;
+    content += `- 完整的目录树结构\n`;
+    content += `- 每个目录的职能说明\n`;
+    content += `- 文件组织模式和命名规范\n\n`;
 
-    // 4. 主要目录说明
-    if (structureAnalysis && structureAnalysis.mainDirectories.length > 0) {
-      content += `## 📂 主要目录说明\n\n`;
-      for (const dir of structureAnalysis.mainDirectories.slice(0, 10)) {
-        content += `### \`${path.basename(dir.path)}/\`\n\n`;
-        content += `- **职能**: ${dir.purpose}\n`;
-        content += `- **分类**: ${dir.category}\n`;
-        content += `- **文件数**: ${dir.fileCount}\n`;
-        if (dir.fileTypes.length > 0) {
-          content += `- **主要文件类型**: ${dir.fileTypes.join(", ")}\n`;
-        }
-        content += `- **命名规范**: ${dir.namingPattern}\n`;
-        if (dir.hasIndexFiles) {
-          content += `- **使用 index 文件**: 是\n`;
-        }
-        if (dir.coLocationPattern) {
-          const coLocationFeatures: string[] = [];
-          if (dir.coLocationPattern.styles) coLocationFeatures.push("样式");
-          if (dir.coLocationPattern.tests) coLocationFeatures.push("测试");
-          if (dir.coLocationPattern.types) coLocationFeatures.push("类型");
-          if (coLocationFeatures.length > 0) {
-            content += `- **Co-location**: ${coLocationFeatures.join(", ")}\n`;
-          }
-        }
-        content += `\n`;
-      }
-    }
-
-    // 5. 业务领域和功能
-    if (businessAnalysis) {
-      if (businessAnalysis.mainFeatures.length > 0) {
-        content += `## 🚀 主要功能\n\n`;
-        content += businessAnalysis.mainFeatures.map(f => `- ${f}`).join("\n") + `\n\n`;
-      }
-
-      if (businessAnalysis.businessPattern) {
-        content += `## 🏗️ 业务架构模式\n\n`;
-        content += `本模块采用 **${businessAnalysis.businessPattern}** 架构模式。\n\n`;
-      }
-    }
-
-    // 6. 代码组织模式
-    if (structureAnalysis) {
-      content += `## 📦 代码组织模式\n\n`;
-      const pattern = structureAnalysis.fileOrganizationPattern;
-      if (pattern.usesCoLocation) {
-        content += `- **Co-location 模式**: 支持（相关文件放在同一目录）\n`;
-      }
-      if (pattern.usesIndexFiles) {
-        content += `- **Index 文件**: 使用 index 文件作为入口\n`;
-      }
-      content += `- **命名规范**: ${pattern.primaryNamingPattern}\n\n`;
-    }
-
-    // 7. 依赖管理
-    content += `## 🔗 依赖管理\n\n`;
-    if (module.dependencies.length > 0) {
-      content += `### 外部依赖\n\n`;
-      content += `此模块依赖以下外部包：\n\n`;
-      content += module.dependencies
-        .slice(0, 15)
-        .map((d) => `- \`${d}\``)
-        .join("\n");
-      if (module.dependencies.length > 15) {
-        content += `\n\n...以及其他 ${module.dependencies.length - 15} 个依赖`;
-      }
-      content += `\n\n`;
-    }
-
-    if (businessAnalysis) {
-      if (businessAnalysis.internalDependencies.length > 0) {
-        content += `### 内部依赖\n\n`;
-        content += `此模块依赖以下内部模块：\n\n`;
-        content += businessAnalysis.internalDependencies
-          .map((d) => `- \`${d}\``)
-          .join("\n");
-        content += `\n\n`;
-      }
-
-      if (businessAnalysis.dependentModules.length > 0) {
-        content += `### 被依赖关系\n\n`;
-        content += `以下模块依赖此模块：\n\n`;
-        content += businessAnalysis.dependentModules
-          .map((d) => `- \`${d}\``)
-          .join("\n");
-        content += `\n\n`;
-      }
-    }
-
-    // 8. 代码生成指南
+    // 4. 代码生成指南
     content += `## 💻 代码生成指南\n\n`;
-    content += this.generateModuleCodeGenerationGuide(module, context, structureAnalysis, businessAnalysis);
+    content += this.generateModuleCodeGenerationGuide(module, context, structureAnalysis, businessAnalysis, effectivePackageName);
 
-    // 9. 相关规则
+    // 5. 相关规则
     content += `## 📚 相关规则\n\n`;
-    content += `本模块遵循全局规则，并有以下特定要求：\n\n`;
-    content += `- 参考: @../global-rules.mdc\n`;
-    content += `- 参考: @../code-style.mdc\n`;
-    content += `- 参考: @../architecture.mdc\n\n`;
-
-    // 10. 开发指南
-    content += `## 🛠️ 开发指南\n\n`;
-    content += `${this.generateModuleGuidelines(context, module, structureAnalysis, businessAnalysis)}\n\n`;
-
-    // 11. 注意事项
-    content += `## ⚠️ 注意事项\n\n`;
-    content += `${this.generateModuleCautions(module)}\n\n`;
+    content += `参考以下全局规则：\n\n`;
+    content += `- @../global-rules.mdc\n`;
+    content += `- @../code-style.mdc\n`;
+    content += `- @../architecture.mdc\n`;
+    content += `- @../project-structure.mdc\n\n`;
 
     return {
       scope: "module",

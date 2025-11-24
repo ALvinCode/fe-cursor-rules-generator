@@ -34,6 +34,7 @@ export interface Module {
   entryPoint?: string;
   keywords?: string[];
   buildConfig?: string; // vite, webpack, rollup 等
+  packageName?: string; // package.json 中的 name 字段（用于代码生成时的包名引用）
 }
 
 export interface CodeFeature {

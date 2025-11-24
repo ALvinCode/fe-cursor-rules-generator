@@ -90,23 +90,25 @@ export class ModuleStructureAnalyzer {
     projectPath: string
   ): DeepDirectoryAnalysis[] {
     const modulePath = path.resolve(module.path);
-    const normalizedModulePath = modulePath.replace(/\\/g, "/");
+    const normalizedModulePath = modulePath.replace(/\\/g, "/").toLowerCase();
 
     return deepAnalysis.filter((analysis) => {
-      const analysisPath = path.resolve(analysis.path).replace(/\\/g, "/");
+      const analysisPath = path.resolve(analysis.path).replace(/\\/g, "/").toLowerCase();
       
-      // 检查路径是否在模块路径下
-      if (!analysisPath.startsWith(normalizedModulePath)) {
-        return false;
-      }
-
-      // 如果 analysis 有 module 字段，直接匹配
+      // 方法1: 如果 analysis 有 module 字段，直接匹配
       if (analysis.module) {
-        return analysis.module === module.name;
+        return analysis.module === module.name || analysis.module === path.basename(module.path);
       }
 
-      // 否则检查路径是否在模块目录下
-      return true;
+      // 方法2: 检查路径是否在模块路径下
+      if (analysisPath.startsWith(normalizedModulePath)) {
+        // 确保是模块目录或其子目录，而不是父目录
+        const relativePath = analysisPath.slice(normalizedModulePath.length);
+        // 排除空字符串（模块本身）或不是以 / 开头的路径（可能是父目录）
+        return relativePath === "" || relativePath.startsWith("/");
+      }
+
+      return false;
     });
   }
 
