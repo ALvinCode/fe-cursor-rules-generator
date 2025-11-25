@@ -451,7 +451,7 @@ Contributions are welcome! Please feel free to submit Issues and Pull Requests.
 
 ```bash
 # Clone the repository
-git clone https://github.com/ALvinCode/fe-cursor-rules-generators.git
+git clone https://github.com/ALvinCode/cursor-rules-generators.git
 cd cursor-rules-generators
 
 # Install dependencies
@@ -469,8 +469,8 @@ pnpm test
 
 ## 📮 Feedback & Support
 
-- **GitHub Issues**: [Report Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues)
-- **Repository**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generators)
+- **GitHub Issues**: [Report Issues](https://github.com/ALvinCode/cursor-rules-generators/issues)
+- **Repository**: [GitHub Repository](https://github.com/ALvinCode/cursor-rules-generators)
 
 ---
 

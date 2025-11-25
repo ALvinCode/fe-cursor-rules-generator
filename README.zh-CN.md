@@ -7,12 +7,14 @@
 ## 🌟 核心功能
 
 ### 自动化分析
+
 - **智能文件扫描**：递归扫描项目目录（最多10层），自动排除无关文件
 - **技术栈识别**：准确识别 20+ 种主流技术栈和框架
 - **依赖分析**：解析 package.json、requirements.txt 等配置文件
 - **模块检测**：支持 monorepo、微服务、前后端分离等架构
 
 ### 代码特征分析
+
 - **组件结构识别**：自动发现自定义组件和复用模式
 - **API 路由分析**：识别 RESTful API 和路由结构（支持从依赖和文件结构双重检测）
 - **状态管理检测**：识别 Redux、Vuex、Pinia、Zustand 等状态管理方案
@@ -21,6 +23,7 @@
 - **数据库集成检测**：识别 Prisma、TypeORM、Mongoose 等 ORM
 
 ### 智能规则生成
+
 - **全局规则**：基于整体技术栈生成通用开发规范
 - **模块规则**：为不同模块生成专属规则（前端、后端、共享等）
 - **最佳实践集成**：整合框架官方推荐和社区最佳实践
@@ -29,6 +32,7 @@
 - **生成位置确认**：自动检测规则文件生成位置，确保符合项目结构
 
 ### 一致性保障
+
 - **文档对比**：检查 README 与实际代码的一致性
 - **差异提示**：友好地提示发现的不一致
 - **自动更新**：可选的自动更新描述文档功能（需要用户确认）
@@ -79,6 +83,7 @@
 ```
 
 就这么简单！工具会自动：
+
 1. 扫描项目文件
 2. 检测技术栈
 3. 分析代码特征
@@ -139,11 +144,13 @@ npm install cursor-rules-generators
 **功能**：完整分析项目并生成 Cursor Rules
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 - `updateDescription` (可选): 是否自动更新描述文件，默认 `false`
 - `includeModuleRules` (可选): 是否生成模块规则，默认 `true`
 
 **使用示例**：
+
 ```
 请为当前项目生成 Cursor Rules
 ```
@@ -153,15 +160,18 @@ npm install cursor-rules-generators
 **功能**：仅分析项目，不生成规则文件，返回详细的项目信息
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 
 **返回信息**：
+
 - 文件统计（总数、类型分布）
 - 技术栈详情（语言、框架、依赖）
 - 模块结构（类型、路径、职责）
 - 代码特征（组件、API、状态管理等）
 
 **使用示例**：
+
 ```
 请分析当前项目的结构和技术栈
 ```
@@ -171,15 +181,18 @@ npm install cursor-rules-generators
 **功能**：检查项目描述文档与实际代码的一致性
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 
 **检查内容**：
+
 - README 中的技术栈描述是否准确
 - 重要功能是否有文档说明
 - 是否存在过时的技术栈描述
 - package.json 中的描述是否完整
 
 **使用示例**：
+
 ```
 请检查项目文档与代码的一致性
 ```
@@ -189,10 +202,12 @@ npm install cursor-rules-generators
 **功能**：根据实际代码自动更新项目描述文档
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 - `descriptionFile` (可选): 要更新的文件，默认 `README.md`
 
 **使用示例**：
+
 ```
 请根据实际代码更新 README
 ```
@@ -202,10 +217,12 @@ npm install cursor-rules-generators
 **功能**：验证 Cursor Rules 文件的格式和内容是否正确
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 - `validateModules` (可选): 是否验证模块目录中的规则文件，默认 `true`
 
 **使用示例**：
+
 ```
 请验证当前项目的 Cursor Rules 文件
 ```
@@ -215,9 +232,11 @@ npm install cursor-rules-generators
 **功能**：预览规则生成过程，列出所有任务、分析结果和需要确认的决策点，不实际生成文件
 
 **参数**：
+
 - `projectPath` (必需): 项目根目录的绝对路径
 
 **使用示例**：
+
 ```
 请预览规则生成过程
 ```
@@ -229,6 +248,7 @@ npm install cursor-rules-generators
 **参数**：无
 
 **使用示例**：
+
 ```
 显示工具信息
 ```
@@ -304,6 +324,7 @@ npm install cursor-rules-generators
 ```
 
 **智能特性**：
+
 - ✅ 全局规则放在项目根目录，影响整个项目
 - ✅ 模块规则放在各自模块目录，只影响该模块
 - ✅ Cursor 根据当前文件位置自动加载相应规则
@@ -312,25 +333,30 @@ npm install cursor-rules-generators
 ## 🎯 支持的技术栈
 
 ### 前端框架
+
 - React, Vue, Angular, Svelte
 - Next.js, Nuxt, SvelteKit
 
 ### 后端框架
+
 - Express, Fastify, NestJS, Koa, Hapi
 - Django, Flask, FastAPI
 
 ### 编程语言
+
 - JavaScript, TypeScript
 - Python, Go, Rust, Java
 - PHP, Ruby
 
 ### 状态管理
+
 - Redux / Redux Toolkit
 - MobX, Zustand
 - Pinia, Vuex
 - Recoil, Jotai
 
 ### UI 库
+
 - Material-UI (@mui)
 - Ant Design
 - Chakra UI
@@ -339,6 +365,7 @@ npm install cursor-rules-generators
 - Emotion
 
 ### 测试框架
+
 - Jest, Vitest
 - Mocha, Chai
 - Cypress, Playwright
@@ -351,6 +378,7 @@ npm install cursor-rules-generators
 如果您配置了 Context7 MCP Server，本工具会自动获取最新的官方文档和最佳实践。
 
 **配置方法**：
+
 1. 安装并配置 [Context7 MCP Server](https://context7.ai/)
 2. 在 Cursor 的 MCP 配置中添加 Context7
 3. 重启 Cursor
@@ -398,6 +426,7 @@ export CURSOR_RULES_GENERATOR_DEBUG=true
 ```
 
 **日志级别说明**：
+
 - `DEBUG`: 输出所有日志，包括详细的调试信息
 - `INFO`: 输出信息性日志（默认）
 - `WARN`: 仅输出警告和错误
@@ -409,6 +438,7 @@ export CURSOR_RULES_GENERATOR_DEBUG=true
 日志会写入文件（不使用 stdout/stderr），以避免干扰 MCP 协议通信。
 
 **默认日志位置**：
+
 - **macOS**: `~/Library/Logs/cursor-rules-generators.log`
 - **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generators.log`
 - **Linux/Unix**: `~/.local/log/cursor-rules-generators.log`
@@ -427,6 +457,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ```
 
 或使用 `info` 工具查看日志文件路径：
+
 ```
 显示工具信息
 ```
@@ -449,11 +480,13 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ### 1. 为什么检测不到某个框架？
 
 **可能原因**：
+
 - 框架依赖未在 package.json 中声明
 - 使用了非标准的项目结构
 - 框架名称不在支持列表中
 
 **解决方法**：
+
 - 确保依赖正确安装
 - 手动编辑生成的规则文件
 - 提交 Issue 请求支持新框架
@@ -461,10 +494,12 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ### 2. 生成的规则不符合项目实际情况？
 
 **可能原因**：
+
 - 项目使用了非常规的架构
 - 某些代码特征未被识别
 
 **解决方法**：
+
 - 使用 `analyze_project` 查看分析结果
 - 手动创建自定义规则文件补充
 - 提供反馈帮助改进检测算法
@@ -472,6 +507,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ### 3. 如何处理一致性检查的提示？
 
 **建议流程**：
+
 1. 先运行 `check_consistency` 查看具体问题
 2. 评估是否真的需要更新文档
 3. 如果需要更新，运行 `update_project_description`
@@ -480,9 +516,11 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ### 4. 规则文件可以提交到版本控制吗？
 
 **建议**：
+
 - ✅ 提交自定义规则文件
 - ❌ 不要提交自动生成的文件
 - 在 `.gitignore` 中添加：
+
   ```
   .cursor/rules/*-rules.mdc
   !.cursor/rules/99-custom-rules.mdc
@@ -491,6 +529,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ### 5. 如何查看日志文件？
 
 使用 `info` 工具可以查看日志文件路径和状态：
+
 ```
 显示工具信息
 ```
@@ -512,7 +551,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 
 ### 报告问题
 
-- 使用 [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues) 报告问题
+- 使用 [GitHub Issues](https://github.com/ALvinCode/cursor-rules-generators/issues) 报告问题
 - 提供详细的复现步骤
 - 附上项目的 package.json（脱敏后）
 
@@ -528,7 +567,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ALvinCode/fe-cursor-rules-generators.git
+git clone https://github.com/ALvinCode/cursor-rules-generators.git
 cd cursor-rules-generators
 
 # 安装依赖
@@ -553,8 +592,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ## 📮 联系方式
 
-- **Issues**: [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues)
-- **仓库**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generators)
+- **Issues**: [GitHub Issues](https://github.com/ALvinCode/cursor-rules-generators/issues)
+- **仓库**: [GitHub Repository](https://github.com/ALvinCode/cursor-rules-generators)
 
 ---
 
