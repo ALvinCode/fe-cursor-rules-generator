@@ -600,15 +600,15 @@ export class DeepDirectoryAnalyzer {
         }
       }
       
-      // 只有在确实检测到工具函数文件时才使用"工具函数"
+      // 只有在确实检测到工具文件时才使用"工具"
       // 否则使用目录名本身
       if (primaryTypes.includes("utility") && distribution.utility > 0) {
-        return `${dirName} 工具函数`;
+        return `${dirName} 工具`;
       }
       
-      // 根据主要文件类型确定职能强化词（但不默认使用工具函数）
+      // 根据主要文件类型确定职能强化词（但不默认使用“工具”标签）
       const functionWord = this.getFunctionWordByFileTypes(primaryTypes);
-      if (functionWord && functionWord !== "工具函数") {
+      if (functionWord && functionWord !== "工具") {
         return `${dirName} ${functionWord}`;
       }
       
@@ -675,10 +675,12 @@ export class DeepDirectoryAnalyzer {
       page: "页面",
       views: "页面",
       view: "页面",
-      utils: "工具函数",
-      utilities: "工具函数",
-      helpers: "工具函数",
-      helper: "工具函数",
+      utils: "工具",
+      utilities: "工具",
+      helpers: "工具",
+      helper: "工具",
+      scripts: "脚本",
+      script: "脚本",
       api: "API",
       apis: "API",
       services: "API 服务",
@@ -764,6 +766,7 @@ export class DeepDirectoryAnalyzer {
       "components", "component", "cmp",
       "pages", "page", "views", "view",
       "utils", "utilities", "helpers", "helper",
+      "scripts", "script",
       "api", "apis", "services", "service",
       "hooks", "hook",
       "style", "styles", "css", "scss",
@@ -799,9 +802,12 @@ export class DeepDirectoryAnalyzer {
       pages: "页面",
       page: "页面",
       views: "页面",
-      utils: "工具函数",
-      utilities: "工具函数",
-      helpers: "工具函数",
+      utils: "工具",
+      utilities: "工具",
+      helpers: "工具",
+      helper: "工具",
+      scripts: "脚本",
+      script: "脚本",
       api: "API",
       apis: "API",
       services: "API 服务",
@@ -974,7 +980,7 @@ export class DeepDirectoryAnalyzer {
       } else if (primaryTypes.includes("service")) {
         functionWord = "API 服务";
       } else if (primaryTypes.includes("utility")) {
-        functionWord = "工具函数";
+        functionWord = "工具";
       } else if (primaryTypes.includes("hook")) {
         functionWord = "Hooks";
       } else if (primaryTypes.includes("model")) {
@@ -985,8 +991,8 @@ export class DeepDirectoryAnalyzer {
           functionWord = "组件";
         } else if (parentCategory === "API 服务" || parentCategory === "API") {
           functionWord = "API 服务";
-        } else if (parentCategory === "工具函数") {
-          functionWord = "工具函数";
+        } else if (parentCategory === "工具") {
+          functionWord = "工具";
         } else if (parentCategory === "库") {
           // lib 的子目录应该显示业务词 + "库"
           functionWord = "库";
@@ -1045,7 +1051,7 @@ export class DeepDirectoryAnalyzer {
       component: dirName !== "components" ? `${dirName} 组件` : "组件",
       page: dirName !== "pages" ? `${dirName} 页面` : "页面",
       hook: dirName !== "hooks" ? `${dirName} Hooks` : "Hooks",
-      utility: dirName !== "utils" ? `${dirName} 工具函数` : "工具函数",
+      utility: dirName !== "utils" ? `${dirName} 工具` : "工具",
       service: dirName !== "services" ? `${dirName} API 服务` : "API 服务",
       type: "类型定义",
       enum: "枚举",
@@ -1078,7 +1084,7 @@ export class DeepDirectoryAnalyzer {
     } else if (primaryTypes.includes("service")) {
       return "API 服务";
     } else if (primaryTypes.includes("utility")) {
-      return "工具函数";
+      return "工具";
     } else if (primaryTypes.includes("hook")) {
       return "Hooks";
     } else if (primaryTypes.includes("model")) {

@@ -134,6 +134,7 @@ export class FileStructureLearner {
     if (dirName.includes("feature")) return "功能模块";
     if (dirName.includes("shared") || dirName.includes("common")) return "共享";
     if (dirName.includes("config")) return "配置";
+    if (dirName.includes("script")) return "脚本";
     if (dirName.includes("test") || dirName.includes("__tests__")) return "测试";
 
     // 根据文件内容判断
