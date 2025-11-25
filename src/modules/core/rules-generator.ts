@@ -488,8 +488,8 @@ export class RulesGenerator {
     }
 
     // 13. 自定义规则模板（可选，供用户填写）
-    const customRuleFile = this.generateCustomRulesFile(context);
-    rules.push(customRuleFile);
+    const customRuleTemplate = this.generateCustomRuleTemplate(context);
+    rules.push(customRuleTemplate);
 
     return rules;
   }
@@ -5177,7 +5177,7 @@ ${this.generateKeyFileReferences(context)}
    * 生成自定义规则模板（可选文件）
    * 提供完整的模板和编写指导，用户可以根据需要填写
    */
-  private generateCustomRulesFile(
+  private generateCustomRuleTemplate(
     context: RuleGenerationContext
   ): CursorRule {
     const metadata = this.generateRuleMetadata(

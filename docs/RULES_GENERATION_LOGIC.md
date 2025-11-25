@@ -108,16 +108,9 @@
 - 文件位置在模块目录下的 `.cursor/rules/` 目录
 - 如果某个模块生成失败，不影响其他模块
 
-### 自定义规则（Custom Rules）
+### 自定义规则占位（Optional）
 
-| 序号 | 规则文件 | 生成方法 | 优先级 | 类型 | 说明 |
-|------|---------|---------|--------|------|------|
-| 12 | `custom-rules.mdc` | `generateCustomRulesFile()` | 60 | guideline | 用户可在此文件补充项目特定规则 |
-
-**说明**：
-
-- 总是生成，作为团队维护私有约束的入口
-- 默认内容只包含依赖声明与编写提示，实际规则由团队自行填写
+- `custom-rules.mdc`：始终生成的占位文件，提供依赖与引用示例，方便团队按需补充项目特定规则。内容为空时不会影响其他规则。
 
 ---
 
@@ -132,7 +125,6 @@
 | `reference` | 参考性规则 | 项目结构、自定义工具等参考信息 |
 | `practice` | 实践性规则 | 错误处理、路由、状态管理等具体实践 |
 | `suggestion` | 建议性规则 | 测试等可选建议 |
-| `specialized` | 专题/自定义规则 | `custom-rules.mdc` 等项目特定约束 |
 
 ### 依赖关系图
 
@@ -263,7 +255,7 @@ isFrontendProject():
         ├── frontend-routing.mdc (如果生成)
         ├── api-routing.mdc (如果生成)
         ├── testing.mdc (如果生成)
-        └── custom-rules.mdc
+        └── custom-rules.mdc (可选，占位文件)
 ```
 
 #### 模块规则（Module Rules）存放位置
@@ -401,10 +393,6 @@ if (context.includeModuleRules && context.modules.length > 1) {
   │       ├─> generateModuleOverviewRule() [try]
   │       └─> 错误处理: 单个模块失败不影响其他模块
   │
-  ├─> [自定义规则生成] (无条件)
-  │   └─> 13. custom-rules.mdc ✓
-  │       └─> generateCustomRulesFile()
-  │
   ├─> [返回规则数组]
   │   └─> return rules[]
   │
@@ -476,7 +464,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 10. **api-routing.mdc** (条件) - 后端路由
 11. **testing.mdc** (条件) - 测试规范
 12. **{module}-rules.mdc** (条件，循环生成) - 模块规则
-13. **custom-rules.mdc** (必需) - 自定义规则占位
+13. **custom-rules.mdc** (可选，占位) - 供团队补充自定义规则
 
 **注意**: `instructions.md` 在规则文件写入后单独生成，不在 rules 数组中。
 
@@ -489,7 +477,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 5. error-handling.mdc (80)
 6. ui-ux.mdc (75)
 7. testing.mdc (70)
-8. custom-rules.mdc (60)
+8. custom-rules.mdc (60，可选占位)
 9. {module}-rules.mdc (50)
 
 **注意**: 写入顺序按生成顺序，不按优先级。优先级主要用于 Cursor 加载规则时的顺序。
@@ -503,7 +491,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 1. **首次生成**: 运行 `generate_cursor_rules`，会生成所有适用的规则文件
 2. **查看规则**: 从 `global-rules.mdc` 开始，了解项目概述
 3. **开发时**: 根据任务类型查看对应的规则文件
-4. **自定义规则**: 在 `custom-rules.mdc` 中添加项目特定规则
+4. **自定义规则**: 在 `custom-rules.mdc` 中补充项目特定规则（可选）
 
 ### 对于 AI Agent
 
@@ -541,7 +529,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 | 10 | `api-routing.mdc` | ⚠️ 条件 | `generateBackendRoutingRule()` | 85 | practice |
 | 11 | `testing.mdc` | ⚠️ 条件 | `generateTestingRule()` | 70 | practice |
 | 12 | `{module}-rules.mdc` | ⚠️ 条件 | `generateModuleOverviewRule()` | 50 | overview |
-| 13 | `custom-rules.mdc` | ✅ 必需 | `generateCustomRulesFile()` | 60 | guideline |
+| 13 | `custom-rules.mdc` | ✅ 生成（可选内容） | `generateCustomRuleTemplate()` | 60 | guideline |
 | - | `instructions.md` | ✅ 必需 | `generateInstructions()` | - | - |
 
 ### 条件判断快速参考
