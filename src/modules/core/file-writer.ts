@@ -38,6 +38,16 @@ export class FileWriter {
 
     // 写入每个规则文件
     for (const rule of rules) {
+      try {
+        // 验证规则对象完整性
+        if (!rule.fileName || !rule.content) {
+          logger.error(`规则对象不完整，跳过: ${rule.fileName || "未知文件名"}`, {
+            hasFileName: !!rule.fileName,
+            hasContent: !!rule.content,
+          });
+          continue;
+        }
+
       // 确认生成位置
       const confirmation = await this.coordinator.confirmGenerationLocation(
         projectPath,
@@ -89,6 +99,11 @@ export class FileWriter {
             (e) => `${e.rule}: ${e.description} (line ${e.line})`
           ),
         });
+        }
+      } catch (error) {
+        logger.error(`写入规则文件失败: ${rule.fileName || "未知文件"}`, error);
+        // 继续处理下一个文件，不中断整个流程
+        // 记录错误但继续执行
       }
     }
 

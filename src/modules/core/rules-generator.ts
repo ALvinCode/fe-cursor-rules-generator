@@ -267,7 +267,14 @@ export class RulesGenerator {
     rules.push(codeStyleRule);
 
     // 3. 项目结构规则（v1.8 新增，必需，约 300 行）
-    const projectStructureRule = await this.generateProjectStructureRule(context);
+    let projectStructureRule: CursorRule;
+    try {
+      projectStructureRule = await this.generateProjectStructureRule(context);
+    } catch (error) {
+      logger.error("生成项目结构规则失败，使用简化版本", error);
+      // 生成一个最小化的项目结构规则，确保文件总是被创建
+      projectStructureRule = this.generateFallbackProjectStructureRule(context);
+    }
     rules.push(projectStructureRule);
 
     // 4. 项目架构规则（必需，约 200 行，已移除结构相关内容）
@@ -470,8 +477,13 @@ export class RulesGenerator {
     // 12. 模块规则（如果是多模块项目）
     if (context.includeModuleRules && context.modules.length > 1) {
       for (const module of context.modules) {
+        try {
         const moduleRule = await this.generateModuleOverviewRule(context, module);
         rules.push(moduleRule);
+        } catch (error) {
+          logger.error(`生成模块规则失败: ${module.name}`, error);
+          // 继续处理下一个模块，不中断整个流程
+        }
       }
     }
 
@@ -802,6 +814,72 @@ ${this.generateDetailedStructureContent(context)}
   }
 
   /**
+   * 生成备用项目结构规则（当主生成方法失败时使用）
+   * 确保 project-structure.mdc 文件总是被创建
+   */
+  private generateFallbackProjectStructureRule(
+    context: RuleGenerationContext
+  ): CursorRule {
+    const metadata = this.generateRuleMetadata(
+      "项目结构",
+      "目录结构和职能说明，用于指导文件创建位置",
+      85,
+      context.techStack.primary,
+      ["structure", "directory", "file-organization"],
+      "reference",
+      ["global-rules"]
+    );
+
+    let content = metadata + `
+# 项目结构
+
+参考: @global-rules.mdc
+
+> ⚠️ **注意**: 由于分析过程中遇到问题，以下为简化版项目结构说明。建议重新运行 \`generate_cursor_rules\` 以获取完整的目录树和职能说明。
+
+## 📁 目录结构树
+
+项目目录结构分析暂时不可用。请参考项目的实际目录结构。
+
+`;
+
+    // 尝试使用 fileOrganization 生成简化结构
+    if (context.fileOrganization && context.fileOrganization.structure.length > 0) {
+      content += `## 🎯 文件组织规范（快速参考）\n\n`;
+      content += `以下是常见文件类型的存放位置：\n\n`;
+      content += this.generateFileOrganizationRules(context);
+      content += `\n`;
+    } else {
+      // 如果连 fileOrganization 都没有，生成最基础的指南
+      content += `## 🎯 文件组织规范\n\n`;
+      content += `项目文件组织规范待补充。建议：\n\n`;
+      content += `- 组件文件放在 \`src/components/\` 或类似目录\n`;
+      content += `- 工具函数放在 \`src/utils/\` 或类似目录\n`;
+      content += `- 类型定义放在 \`src/types/\` 或类似目录\n`;
+      content += `- API 相关文件放在 \`src/api/\` 或类似目录\n\n`;
+    }
+
+    // 添加新建文件指南
+    content += `## ✨ 新建文件指南\n\n`;
+    content += this.generateNewFileGuidelines(context);
+    content += `\n`;
+
+    content += `---
+*新建文件前，请参考此文件确定正确的目录位置和命名规范。*
+`;
+
+    return {
+      scope: "specialized",
+      modulePath: context.projectPath,
+      content,
+      fileName: "project-structure.mdc",
+      priority: 85,
+      type: "reference",
+      depends: ["global-rules"],
+    };
+  }
+
+  /**
    * 确保有完整的深度分析数据
    * 如果数据缺失或不完整，尝试重新获取
    */
@@ -901,9 +979,10 @@ ${this.generateDetailedStructureContent(context)}
   ): string {
     let content = "";
 
-    // 检查深度分析数据的完整性
-    const hasDeepAnalysis = context.deepAnalysis && context.deepAnalysis.length > 0;
-    const deepAnalysisQuality = this.assessDeepAnalysisQuality(context.deepAnalysis);
+    // 检查深度分析数据的完整性（安全处理 undefined）
+    const deepAnalysis = context.deepAnalysis || [];
+    const hasDeepAnalysis = deepAnalysis.length > 0;
+    const deepAnalysisQuality = this.assessDeepAnalysisQuality(deepAnalysis);
 
     // 1. 目录结构树（完整树形结构，优先显示）
     // 使用与 test-report 相同的生成逻辑，确保完整性和一致性
@@ -916,7 +995,7 @@ ${this.generateDetailedStructureContent(context)}
       }
       
       content += `项目主要目录结构：\n\n`;
-      content += this.generateDirectoryTree(context.deepAnalysis!);
+      content += this.generateDirectoryTree(deepAnalysis);
       content += `\n`;
     } else {
       // 如果没有深度分析结果，使用 fileOrganization 生成简化结构
@@ -936,7 +1015,7 @@ ${this.generateDetailedStructureContent(context)}
     if (hasDeepAnalysis) {
       content += `## 📋 主要目录职能说明\n\n`;
       content += `以下是重要目录的详细职能说明，包含文件类型、命名规范等信息：\n\n`;
-      content += this.generateDirectoryPurposes(context.deepAnalysis!);
+      content += this.generateDirectoryPurposes(deepAnalysis);
       content += `\n`;
     } else {
       // 如果没有深度分析，跳过职能说明章节
@@ -4633,8 +4712,8 @@ ${this.generateKeyFileReferences(context)}
   generateCustomToolsRules(context: RuleGenerationContext): string {
     if (
       !context.customPatterns ||
-      (context.customPatterns.customHooks.length === 0 &&
-        context.customPatterns.customUtils.length === 0)
+      ((!context.customPatterns.customHooks || context.customPatterns.customHooks.length === 0) &&
+        (!context.customPatterns.customUtils || context.customPatterns.customUtils.length === 0))
     ) {
       return "";
     }
@@ -4642,7 +4721,7 @@ ${this.generateKeyFileReferences(context)}
     let rules = `## 项目自定义工具（优先使用）\n\n`;
 
     // 自定义 Hooks
-    if (context.customPatterns.customHooks.length > 0) {
+    if (context.customPatterns.customHooks && context.customPatterns.customHooks.length > 0) {
       rules += `### 自定义 Hooks\n\n`;
       rules += `项目定义了以下自定义 hooks，**生成代码时必须优先使用**：\n\n`;
 
@@ -4666,7 +4745,7 @@ ${this.generateKeyFileReferences(context)}
     }
 
     // 自定义工具函数
-    if (context.customPatterns.customUtils.length > 0) {
+    if (context.customPatterns.customUtils && context.customPatterns.customUtils.length > 0) {
       rules += `### 自定义工具函数\n\n`;
       rules += `项目定义了以下工具函数，**生成代码时必须优先使用**：\n\n`;
 
@@ -4917,7 +4996,7 @@ ${this.generateKeyFileReferences(context)}
   private generateModuleStructureFromDeepAnalysis(
     context: RuleGenerationContext
   ): string {
-    const deepAnalysis = context.deepAnalysis!;
+    const deepAnalysis = context.deepAnalysis || [];
 
     // 找到顶级目录（depth === 1 或没有父目录的）
     const pathMap = new Set(deepAnalysis.map((d) => d.path));
