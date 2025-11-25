@@ -96,7 +96,7 @@
 ## 技术实现
 
 ### 代码位置
-- 生成方法：`src/modules/rules-generator.ts` 中的 `generateCustomRuleTemplate()`
+- 生成方法：`src/modules/core/rules-generator.ts` 中的 `generateCustomRulesFile()`
 - 调用位置：`generate()` 方法的最后，在返回规则列表之前
 
 ### 文件特性

@@ -66,7 +66,7 @@ Cursor Rules Generator 针对这些痛点，把“分析 + 生成 + 校验”变
 | **全局规则** | 所有项目必出，涵盖概述、风格、结构、架构 | `global-rules.mdc`、`code-style.mdc`、`project-structure.mdc`、`architecture.mdc` |
 | **条件规则** | 根据依赖/特征自动触发 | `custom-tools.mdc`、`error-handling.mdc`、`state-management.mdc`、`ui-ux.mdc`、`frontend-routing.mdc`、`api-routing.mdc`、`testing.mdc` |
 | **模块规则** | Monorepo / 微服务 / 前后端分离时为每个模块生成 | `{module}/.cursor/rules/{module}-rules.mdc` |
-| **模板 & 指南** | 提供团队自己的补充规范 | `custom-rules-template.mdc`、`.cursor/instructions.md` |
+| **模板 & 指南** | 提供团队自己的补充规范 | `custom-rules.mdc`、`.cursor/instructions.md` |
 
 - **RuleRequirementsAnalyzer** 会解释“为什么要生成”某个规则，并在输出中列出触发原因（依赖、文件结构或配置）。
 - **FileWriter** 会在写入前校验 `fileName` & `content`，写入失败时记录日志但不中断整体任务。
@@ -99,7 +99,7 @@ Cursor Rules Generator 针对这些痛点，把“分析 + 生成 + 校验”变
 ## 7. 最佳实践 & 团队协作建议
 
 1. **把规则生成纳入 CI**：在 PR 中运行 `preview_rules_generation`，审查影响再决定是否落盘。
-2. **为不同模块建立守护人**：模块规则生成后，由对应的负责人在模板（`custom-rules-template.mdc`）里补充业务约束。
+2. **为不同模块建立守护人**：模块规则生成后，由对应的负责人在 `custom-rules.mdc` 里补充业务约束。
 3. **定期更新 Context7 Token**：确保最佳实践引用的是最新官方文档，尤其是 Next.js、NestJS 等更新频繁的框架。
 4. **清理无用文档**：保持 `docs/` 目录只有“当前实现需要的设计产物”。（本次已移除过时的质量保障说明与旧示例文件。）
 5. **同步 instructions.md**：把 `.cursor/instructions.md` 作为团队的“AI 使用手册”，要求新人先读后用。
