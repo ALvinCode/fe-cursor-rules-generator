@@ -160,7 +160,7 @@ The user needs to see the original output format.
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "node",
       "args": ["/path/to/dist/index.js"],
       "env": {

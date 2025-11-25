@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "node",
       "args": ["/绝对路径/cursor-rules-generators/dist/index.js"],
       "disabled": false,

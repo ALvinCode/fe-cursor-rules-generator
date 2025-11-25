@@ -1,6 +1,6 @@
 # 文件夹职能判断逻辑完整说明
 
-本文档详细说明 cursor-rules-generator 如何判断一个文件夹的职能和作用。
+本文档详细说明 cursor-rules-generators 如何判断一个文件夹的职能和作用。
 
 ## 🎯 核心目标
 

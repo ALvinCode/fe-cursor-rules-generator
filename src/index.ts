@@ -1112,7 +1112,7 @@ class CursorRulesGeneratorsServer {
     // 任务 10：写入规则文件与说明
     startTask(
       10,
-      "cursor-rules-generator 正在写入规则文件与 instructions.md。"
+      "cursor-rules-generators 正在写入规则文件与 instructions.md。"
     );
     const writeResult = await this.fileWriter.writeRules(
       projectPath,
@@ -1191,20 +1191,20 @@ class CursorRulesGeneratorsServer {
 
     const analysisLines: string[] = [];
     analysisLines.push(
-      `- cursor-rules-generator 识别主要技术栈：${
+      `- cursor-rules-generators 识别主要技术栈：${
         techStack.primary.length > 0 ? techStack.primary.join("，") : "未检测"
       }`
     );
     analysisLines.push(
-      `- cursor-rules-generator 统计项目文件数量：${files.length} 个，涉及 ${
+      `- cursor-rules-generators 统计项目文件数量：${files.length} 个，涉及 ${
         Object.keys(fileTypeStats).length
       } 种文件类型`
     );
     analysisLines.push(
-      `- cursor-rules-generator 检测模块数量：${modules.length} 个`
+      `- cursor-rules-generators 检测模块数量：${modules.length} 个`
     );
     analysisLines.push(
-      `- cursor-rules-generator 记录自定义工具：Hooks ${
+      `- cursor-rules-generators 记录自定义工具：Hooks ${
         customPatterns.customHooks.length
       } 个，工具函数 ${customPatterns.customUtils.length} 个${
         customPatterns.apiClient?.exists ? "，API 客户端 1 个" : ""
@@ -1215,7 +1215,7 @@ class CursorRulesGeneratorsServer {
     const frameworkMatch = this.rulesGenerator.getFrameworkMatch();
     if (frameworkMatch) {
       analysisLines.push(
-        `- cursor-rules-generator 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${
+        `- cursor-rules-generators 框架格式匹配：参考了 [awesome-cursorrules](https://github.com/PatrickJS/awesome-cursorrules) 中的 **${
           frameworkMatch.framework
         }** 格式（相似度: ${Math.round(
           frameworkMatch.similarity * 100
@@ -1245,7 +1245,7 @@ class CursorRulesGeneratorsServer {
         .join("、");
 
       analysisLines.push(
-        `- cursor-rules-generator 多类别技术栈匹配：找到 ${multiCategoryMatch.matches.length} 个匹配规则，涵盖 ${categoryList} 等 ${multiCategoryMatch.categories.length} 个类别`
+        `- cursor-rules-generators 多类别技术栈匹配：找到 ${multiCategoryMatch.matches.length} 个匹配规则，涵盖 ${categoryList} 等 ${multiCategoryMatch.categories.length} 个类别`
       );
 
       if (multiCategoryMatch.primaryMatch) {
@@ -1264,16 +1264,16 @@ class CursorRulesGeneratorsServer {
 
     if (frontendRouter) {
       analysisLines.push(
-        `- cursor-rules-generator 识别前端路由：${frontendRouter.info.framework}（${frontendRouter.info.type}）`
+        `- cursor-rules-generators 识别前端路由：${frontendRouter.info.framework}（${frontendRouter.info.type}）`
       );
     }
     if (backendRouter) {
       analysisLines.push(
-        `- cursor-rules-generator 识别后端路由：${backendRouter.info.framework}（${backendRouter.info.type}）`
+        `- cursor-rules-generators 识别后端路由：${backendRouter.info.framework}（${backendRouter.info.type}）`
       );
     }
     analysisLines.push(
-      `- cursor-rules-generator 识别项目特定规范：错误处理 ${
+      `- cursor-rules-generators 识别项目特定规范：错误处理 ${
         projectPractice?.errorHandling?.type ?? "未检测"
       }，变量声明 ${
         projectPractice?.codeStyle?.variableDeclaration ?? "未检测"
@@ -1284,7 +1284,7 @@ class CursorRulesGeneratorsServer {
       (projectConfig.commands.format || projectConfig.commands.lintFix)
     ) {
       analysisLines.push(
-        `- cursor-rules-generator 检测到格式化/校验命令：${[
+        `- cursor-rules-generators 检测到格式化/校验命令：${[
           projectConfig.commands.format,
           projectConfig.commands.lintFix,
           projectConfig.commands.lint,
@@ -1299,22 +1299,22 @@ class CursorRulesGeneratorsServer {
       const structureNotes: string[] = [];
       if (fileOrganization.componentLocation?.length > 0) {
         structureNotes.push(
-          `cursor-rules-generator 将组件目录定位为 \`${fileOrganization.componentLocation[0]}\``
+          `cursor-rules-generators 将组件目录定位为 \`${fileOrganization.componentLocation[0]}\``
         );
       }
       if (fileOrganization.utilsLocation?.length > 0) {
         structureNotes.push(
-          `cursor-rules-generator 将工具函数目录定位为 \`${fileOrganization.utilsLocation[0]}\``
+          `cursor-rules-generators 将工具函数目录定位为 \`${fileOrganization.utilsLocation[0]}\``
         );
       }
       if (fileOrganization.hooksLocation?.length > 0) {
         structureNotes.push(
-          `cursor-rules-generator 将 Hooks 目录定位为 \`${fileOrganization.hooksLocation[0]}\``
+          `cursor-rules-generators 将 Hooks 目录定位为 \`${fileOrganization.hooksLocation[0]}\``
         );
       }
       if (fileOrganization.apiLocation?.length > 0) {
         structureNotes.push(
-          `cursor-rules-generator 将 API 服务目录定位为 \`${fileOrganization.apiLocation[0]}\``
+          `cursor-rules-generators 将 API 服务目录定位为 \`${fileOrganization.apiLocation[0]}\``
         );
       }
       const structureNotesText =
@@ -1329,10 +1329,10 @@ class CursorRulesGeneratorsServer {
 
     const instructionsTips: string[] = [];
     instructionsTips.push(
-      `cursor-rules-generator 已写入 \`.cursor/instructions.md\`，请先阅读“执行流程”章节。`
+      `cursor-rules-generators 已写入 \`.cursor/instructions.md\`，请先阅读“执行流程”章节。`
     );
     instructionsTips.push(
-      `cursor-rules-generator 建议在任务开始前加载对应规则文件，例如在编写路由时参考 \`.cursor/rules/frontend-routing.mdc\`。`
+      `cursor-rules-generators 建议在任务开始前加载对应规则文件，例如在编写路由时参考 \`.cursor/rules/frontend-routing.mdc\`。`
     );
     if (
       projectConfig?.commands &&
@@ -1348,7 +1348,7 @@ class CursorRulesGeneratorsServer {
         cmdTips.push(projectConfig.commands.lint);
       }
       instructionsTips.push(
-        `cursor-rules-generator 建议在生成代码后执行：${cmdTips.join("，")}`
+        `cursor-rules-generators 建议在生成代码后执行：${cmdTips.join("，")}`
       );
     }
 
@@ -1378,7 +1378,7 @@ class CursorRulesGeneratorsServer {
         }
       );
       notes.push(
-        `cursor-rules-generator 检测到 ${
+        `cursor-rules-generators 检测到 ${
           consistencyReport.inconsistencies.length
         } 处描述不一致：\n${issueLines.join("\n")}`
       );
@@ -1386,7 +1386,7 @@ class CursorRulesGeneratorsServer {
         notes.push("cursor-rules-generators 已根据请求更新描述文件。");
       } else {
         notes.push(
-          "cursor-rules-generator 未自动更新描述文件，可执行 `update_project_description` 进行同步。"
+          "cursor-rules-generators 未自动更新描述文件，可执行 `update_project_description` 进行同步。"
         );
       }
     } else {
@@ -1400,7 +1400,7 @@ class CursorRulesGeneratorsServer {
         }"，确定性：${item.certainty}`;
       });
       notes.push(
-        `cursor-rules-generator 记录了 ${
+        `cursor-rules-generators 记录了 ${
           uncertainties.length
         } 个待确认决策：\n${uncertaintyLines.join("\n")}`
       );

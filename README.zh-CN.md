@@ -50,7 +50,7 @@
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "npx",
       "args": ["-y", "cursor-rules-generators"],
       "disabled": false,
@@ -100,8 +100,8 @@ npm install -g cursor-rules-generators
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "cursor-rules-generator",
+    "cursor-rules-generators": {
+      "command": "cursor-rules-generators",
       "disabled": false,
       "alwaysAllow": []
     }
@@ -122,7 +122,7 @@ npm install cursor-rules-generators
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "node",
       "args": ["/项目路径/node_modules/cursor-rules-generators/dist/index.js"],
       "disabled": false,
@@ -373,7 +373,7 @@ export CURSOR_RULES_GENERATOR_LOG_LEVEL=DEBUG
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "npx",
       "args": ["-y", "cursor-rules-generators"],
       "env": {
@@ -512,7 +512,7 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 
 ### 报告问题
 
-- 使用 [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues) 报告问题
+- 使用 [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues) 报告问题
 - 提供详细的复现步骤
 - 附上项目的 package.json（脱敏后）
 
@@ -528,8 +528,8 @@ Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
-cd cursor-rules-generator
+git clone https://github.com/ALvinCode/fe-cursor-rules-generators.git
+cd cursor-rules-generators
 
 # 安装依赖
 pnpm install
@@ -553,8 +553,8 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 
 ## 📮 联系方式
 
-- **Issues**: [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)
-- **仓库**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generator)
+- **Issues**: [GitHub Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues)
+- **仓库**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generators)
 
 ---
 

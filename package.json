@@ -1,11 +1,10 @@
 {
   "name": "cursor-rules-generators",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "根据项目实际情况自动生成 Cursor Rules 的 MCP Server",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "cursor-rules-generator": "dist/index.js",
     "cursor-rules-generators": "dist/index.js"
   },
   "engines": {
@@ -52,12 +51,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ALvinCode/fe-cursor-rules-generator.git"
+    "url": "https://github.com/ALvinCode/fe-cursor-rules-generators.git"
   },
   "bugs": {
-    "url": "https://github.com/ALvinCode/fe-cursor-rules-generator/issues"
+    "url": "https://github.com/ALvinCode/fe-cursor-rules-generators/issues"
   },
-  "homepage": "https://github.com/ALvinCode/fe-cursor-rules-generator#readme",
+  "homepage": "https://github.com/ALvinCode/fe-cursor-rules-generators#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "glob": "^11.0.0",

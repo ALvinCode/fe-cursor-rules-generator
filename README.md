@@ -33,7 +33,7 @@ Add this configuration:
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "npx",
       "args": ["-y", "cursor-rules-generators"],
       "disabled": false,
@@ -84,8 +84,8 @@ Then configure:
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
-      "command": "cursor-rules-generator",
+    "cursor-rules-generators": {
+      "command": "cursor-rules-generators",
       "disabled": false,
       "alwaysAllow": []
     }
@@ -106,7 +106,7 @@ Then configure with the full path:
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "node",
       "args": ["/project/path/node_modules/cursor-rules-generators/dist/index.js"],
       "disabled": false,
@@ -372,7 +372,7 @@ Or in Cursor configuration:
 ```json
 {
   "mcpServers": {
-    "cursor-rules-generator": {
+    "cursor-rules-generators": {
       "command": "npx",
       "args": ["-y", "cursor-rules-generators"],
       "env": {
@@ -451,8 +451,8 @@ Contributions are welcome! Please feel free to submit Issues and Pull Requests.
 
 ```bash
 # Clone the repository
-git clone https://github.com/ALvinCode/fe-cursor-rules-generator.git
-cd cursor-rules-generator
+git clone https://github.com/ALvinCode/fe-cursor-rules-generators.git
+cd cursor-rules-generators
 
 # Install dependencies
 pnpm install
@@ -469,8 +469,8 @@ pnpm test
 
 ## 📮 Feedback & Support
 
-- **GitHub Issues**: [Report Issues](https://github.com/ALvinCode/fe-cursor-rules-generator/issues)
-- **Repository**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generator)
+- **GitHub Issues**: [Report Issues](https://github.com/ALvinCode/fe-cursor-rules-generators/issues)
+- **Repository**: [GitHub Repository](https://github.com/ALvinCode/fe-cursor-rules-generators)
 
 ---
 
