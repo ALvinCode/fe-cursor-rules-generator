@@ -51,7 +51,7 @@ function getVersion(): string {
  * Cursor Rules Generator MCP Server
  * 智能分析项目并生成符合项目特点的 Cursor Rules
  */
-class CursorRulesGeneratorServer {
+class CursorRulesGeneratorsServer {
   private server: Server;
   private projectAnalyzer: ProjectAnalyzer;
   private techStackDetector: TechStackDetector;
@@ -83,7 +83,7 @@ class CursorRulesGeneratorServer {
     this.version = getVersion();
     this.server = new Server(
       {
-        name: "cursor-rules-generator",
+        name: "cursor-rules-generators",
         version: this.version,
       },
       {
@@ -709,7 +709,7 @@ class CursorRulesGeneratorServer {
     };
 
     // 任务 1：收集项目文件
-    startTask(1, `cursor-rules-generator 正在扫描项目路径：${projectPath}`);
+    startTask(1, `cursor-rules-generators 正在扫描项目路径：${projectPath}`);
     files = await this.projectAnalyzer.collectFiles(projectPath);
     fileTypeStats = this.groupFilesByType(files);
     const topFileTypes = Object.entries(fileTypeStats)
@@ -723,7 +723,7 @@ class CursorRulesGeneratorServer {
     completeTask(1);
 
     // 任务 2：分析技术栈与模块架构
-    startTask(2, "cursor-rules-generator 正在识别技术栈与模块结构。");
+    startTask(2, "cursor-rules-generators 正在识别技术栈与模块结构。");
     techStack = await this.techStackDetector.detect(projectPath, files);
     modules = await this.moduleDetector.detectModules(projectPath, files);
     codeFeatures = await this.codeAnalyzer.analyzeFeatures(
@@ -748,7 +748,7 @@ class CursorRulesGeneratorServer {
     completeTask(2);
 
     // 任务 3：检查项目配置
-    startTask(3, "cursor-rules-generator 正在检查项目配置文件。");
+    startTask(3, "cursor-rules-generators 正在检查项目配置文件。");
     projectConfig = await this.configParser.parseProjectConfig(projectPath);
     const configSummary: string[] = [];
     if (projectConfig?.prettier) configSummary.push("Prettier");
@@ -773,7 +773,7 @@ class CursorRulesGeneratorServer {
     completeTask(3);
 
     // 任务 4：分析项目实践规范
-    startTask(4, "cursor-rules-generator 正在提取项目实践规范。");
+    startTask(4, "cursor-rules-generators 正在提取项目实践规范。");
     const errorHandling = await this.practiceAnalyzer.analyzeErrorHandling(
       projectPath,
       files
@@ -799,7 +799,7 @@ class CursorRulesGeneratorServer {
     completeTask(4);
 
     // 任务 5：检测自定义工具与模式
-    startTask(5, "cursor-rules-generator 正在收集自定义 Hooks 与工具函数。");
+    startTask(5, "cursor-rules-generators 正在收集自定义 Hooks 与工具函数。");
     const customHooks = await this.customPatternDetector.detectCustomHooks(
       projectPath,
       files
@@ -823,7 +823,7 @@ class CursorRulesGeneratorServer {
     completeTask(5);
 
     // 任务 6：学习文件组织结构
-    startTask(6, "cursor-rules-generator 正在分析目录结构与命名约定。");
+    startTask(6, "cursor-rules-generators 正在分析目录结构与命名约定。");
     fileOrganization = await this.fileStructureLearner.learnStructure(
       projectPath,
       files
@@ -844,7 +844,7 @@ class CursorRulesGeneratorServer {
     completeTask(6);
 
     // 任务 6.5：深度目录分析（v1.8 新增）
-    startTask(6.5, "cursor-rules-generator 正在深度分析目录结构和职能。");
+    startTask(6.5, "cursor-rules-generators 正在深度分析目录结构和职能。");
     const deepAnalyzer = new DeepDirectoryAnalyzer();
     const dependenciesForAnalysis = techStack.dependencies.map((d: Dependency) => ({
       name: d.name,
@@ -874,7 +874,7 @@ class CursorRulesGeneratorServer {
     completeTask(6.5);
 
     // 任务 7：识别路由系统（增强版：同时检查依赖和文件结构）
-    startTask(7, "cursor-rules-generator 正在识别路由框架。");
+    startTask(7, "cursor-rules-generators 正在识别路由框架。");
     const dependencies = techStack.dependencies.map((d: Dependency) => ({
       name: d.name,
       version: d.version,
@@ -937,7 +937,7 @@ class CursorRulesGeneratorServer {
 
     // 任务 8：评估动态路由生成方式
     if (frontendRouter) {
-      startTask(8, "cursor-rules-generator 正在评估动态路由生成方式。");
+      startTask(8, "cursor-rules-generators 正在评估动态路由生成方式。");
       const dynamicAnalysis = await this.routerDetector.analyzeDynamicRouting(
         projectPath,
         files,
@@ -973,7 +973,7 @@ class CursorRulesGeneratorServer {
     }
 
     // 任务 9：生成规则与一致性检查
-    startTask(9, "cursor-rules-generator 正在汇总最佳实践并检查文档一致性。");
+    startTask(9, "cursor-rules-generators 正在汇总最佳实践并检查文档一致性。");
     bestPractices = await this.context7Integration.getBestPractices(
       techStack.dependencies
     );
@@ -1320,7 +1320,7 @@ class CursorRulesGeneratorServer {
       const structureNotesText =
         structureNotes.length > 0
           ? `${structureNotes.join("；")}。`
-          : "cursor-rules-generator 未检测到特定目录角色。";
+          : "cursor-rules-generators 未检测到特定目录角色。";
       structureTreeSection = `${this.generateProjectStructureTree(
         fileOrganization,
         projectPath
@@ -1383,14 +1383,14 @@ class CursorRulesGeneratorServer {
         } 处描述不一致：\n${issueLines.join("\n")}`
       );
       if (descriptionUpdated) {
-        notes.push("cursor-rules-generator 已根据请求更新描述文件。");
+        notes.push("cursor-rules-generators 已根据请求更新描述文件。");
       } else {
         notes.push(
           "cursor-rules-generator 未自动更新描述文件，可执行 `update_project_description` 进行同步。"
         );
       }
     } else {
-      notes.push("cursor-rules-generator 未发现文档与实现不一致的问题。");
+      notes.push("cursor-rules-generators 未发现文档与实现不一致的问题。");
     }
 
     if (uncertainties.length > 0) {
@@ -1418,7 +1418,7 @@ class CursorRulesGeneratorServer {
       });
     }
 
-    let outputMessage = `cursor-rules-generator 已被调用，开始处理项目：${projectPath}\n\n`;
+    let outputMessage = `cursor-rules-generators 已被调用，开始处理项目：${projectPath}\n\n`;
     outputMessage += `## 任务执行列表\n\n`;
     outputMessage += `${plannedTodoList}\n\n`;
     outputMessage += `执行完成后的状态：\n\n${completedTodoList}\n\n`;
@@ -1440,7 +1440,7 @@ class CursorRulesGeneratorServer {
           outputMessage += `${detail}\n`;
         });
       } else {
-        outputMessage += `cursor-rules-generator 已完成该任务，无额外说明。\n`;
+        outputMessage += `cursor-rules-generators 已完成该任务，无额外说明。\n`;
       }
       outputMessage += `\n`;
     });
@@ -1897,17 +1897,17 @@ class CursorRulesGeneratorServer {
         os.homedir(),
         "Library",
         "Logs",
-        "cursor-rules-generator.log"
+        "cursor-rules-generators.log"
       );
     } else if (platform === "win32") {
       return join(
         os.homedir(),
         "AppData",
         "Local",
-        "cursor-rules-generator.log"
+        "cursor-rules-generators.log"
       );
     } else {
-      return join(os.homedir(), ".local", "log", "cursor-rules-generator.log");
+      return join(os.homedir(), ".local", "log", "cursor-rules-generators.log");
     }
   }
 
@@ -1998,7 +1998,7 @@ class CursorRulesGeneratorServer {
 }
 
 // 启动服务器
-const server = new CursorRulesGeneratorServer();
+const server = new CursorRulesGeneratorsServer();
 server.run().catch((error) => {
   logger.error("服务器启动失败", error);
   process.exit(1);

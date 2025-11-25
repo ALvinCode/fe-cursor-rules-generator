@@ -3521,7 +3521,7 @@ ${p.content}
     };
 
     const lines: string[] = [];
-    lines.push("cursor-rules-generator 输出以下规则文件：");
+    lines.push("cursor-rules-generators 输出以下规则文件：");
 
     for (const rule of rules) {
       const relativePath =
@@ -3587,7 +3587,7 @@ priority: ${priority}
 version: ${version}
 generatedAt: ${now.toISOString().split("T")[0]}
 techStack: ${JSON.stringify(techStack)}
-generator: cursor-rules-generator
+generator: cursor-rules-generators
 tags: ${JSON.stringify(tags)}`;
 
     if (type) {

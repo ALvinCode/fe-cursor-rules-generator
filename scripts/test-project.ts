@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 简化版测试脚本
- * 用于测试 cursor-rules-generator 在真实项目中的表现
+ * 用于测试 cursor-rules-generators 在真实项目中的表现
  */
 
 import * as path from "path";

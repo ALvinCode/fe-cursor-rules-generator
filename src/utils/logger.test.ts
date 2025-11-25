@@ -23,7 +23,7 @@ async function waitForFileWrite(filePath: string, timeout = 1000): Promise<void>
 }
 
 describe('Logger', () => {
-  const testLogFile = join(os.tmpdir(), 'test-cursor-rules-generator.log');
+  const testLogFile = join(os.tmpdir(), 'test-cursor-rules-generators.log');
 
   beforeEach(async () => {
     // 清理测试日志文件

@@ -2,7 +2,7 @@
   "mcpServers": {
     "cursor-rules-generator": {
       "command": "node",
-      "args": ["/绝对路径/cursor-rules-generator/dist/index.js"],
+      "args": ["/绝对路径/cursor-rules-generators/dist/index.js"],
       "disabled": false,
       "alwaysAllow": []
     }

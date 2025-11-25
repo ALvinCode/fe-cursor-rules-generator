@@ -409,21 +409,21 @@ export CURSOR_RULES_GENERATOR_DEBUG=true
 日志会写入文件（不使用 stdout/stderr），以避免干扰 MCP 协议通信。
 
 **默认日志位置**：
-- **macOS**: `~/Library/Logs/cursor-rules-generator.log`
-- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generator.log`
-- **Linux/Unix**: `~/.local/log/cursor-rules-generator.log`
+- **macOS**: `~/Library/Logs/cursor-rules-generators.log`
+- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generators.log`
+- **Linux/Unix**: `~/.local/log/cursor-rules-generators.log`
 
 **查看日志**：
 
 ```bash
 # macOS/Linux
-tail -f ~/Library/Logs/cursor-rules-generator.log
+tail -f ~/Library/Logs/cursor-rules-generators.log
 
 # 查看最后 100 行
-tail -n 100 ~/Library/Logs/cursor-rules-generator.log
+tail -n 100 ~/Library/Logs/cursor-rules-generators.log
 
 # Windows
-Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generator.log -Tail 100
+Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ```
 
 或使用 `info` 工具查看日志文件路径：

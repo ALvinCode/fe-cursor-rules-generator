@@ -24,13 +24,13 @@ function getDefaultLogPath(): string {
   
   if (platform === 'darwin') {
     // macOS: ~/Library/Logs/
-    return path.join(os.homedir(), 'Library', 'Logs', 'cursor-rules-generator.log');
+    return path.join(os.homedir(), 'Library', 'Logs', 'cursor-rules-generators.log');
   } else if (platform === 'win32') {
     // Windows: %APPDATA%\Logs\
-    return path.join(os.homedir(), 'AppData', 'Local', 'cursor-rules-generator.log');
+    return path.join(os.homedir(), 'AppData', 'Local', 'cursor-rules-generators.log');
   } else {
     // Linux/Unix: ~/.local/log/
-    return path.join(os.homedir(), '.local', 'log', 'cursor-rules-generator.log');
+    return path.join(os.homedir(), '.local', 'log', 'cursor-rules-generators.log');
   }
 }
 
@@ -60,7 +60,7 @@ function getLogFilePath(): string {
       return envLogFile;
     } catch (error) {
       // 如果无法写入，回退到临时目录
-      return path.join(os.tmpdir(), 'cursor-rules-generator.log');
+      return path.join(os.tmpdir(), 'cursor-rules-generators.log');
     }
   }
   
@@ -71,7 +71,7 @@ function getLogFilePath(): string {
     return defaultPath;
   } catch (error) {
     // 如果默认路径也失败，使用临时目录
-    return path.join(os.tmpdir(), 'cursor-rules-generator.log');
+    return path.join(os.tmpdir(), 'cursor-rules-generators.log');
   }
 }
 

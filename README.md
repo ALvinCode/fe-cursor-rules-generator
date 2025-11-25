@@ -410,18 +410,18 @@ Logs are written to files (not stdout/stderr) to avoid interfering with MCP prot
 
 **Default log locations:**
 
-- **macOS**: `~/Library/Logs/cursor-rules-generator.log`
-- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generator.log`
-- **Linux/Unix**: `~/.local/log/cursor-rules-generator.log`
+- **macOS**: `~/Library/Logs/cursor-rules-generators.log`
+- **Windows**: `%USERPROFILE%\AppData\Local\cursor-rules-generators.log`
+- **Linux/Unix**: `~/.local/log/cursor-rules-generators.log`
 
 **View logs:**
 
 ```bash
 # macOS/Linux
-tail -f ~/Library/Logs/cursor-rules-generator.log
+tail -f ~/Library/Logs/cursor-rules-generators.log
 
 # Windows
-Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generator.log -Tail 100
+Get-Content $env:USERPROFILE\AppData\Local\cursor-rules-generators.log -Tail 100
 ```
 
 Or use the `info` tool to see the log file path:
