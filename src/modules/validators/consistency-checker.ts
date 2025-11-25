@@ -232,7 +232,7 @@ export class ConsistencyChecker {
 
 ## 📝 自动更新说明
 
-以下内容由 Cursor Rules Generator 自动添加：
+以下内容由 Cursor Rules Generators 自动添加：
 
 ${updates.map((u) => `- ${u}`).join("\n")}
 
@@ -259,7 +259,7 @@ ${updates.map((u) => `- ${u}`).join("\n")}
 
     // 如果缺少描述，添加一个基础描述
     if (!data.description || data.description.trim() === "") {
-      data.description = "A project generated with Cursor Rules Generator";
+      data.description = "A project generated with Cursor Rules Generators";
     }
 
     // 保存更新后的内容

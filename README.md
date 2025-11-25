@@ -1,4 +1,4 @@
-# Cursor Rules Generator
+# Cursor Rules Generators
 
 An intelligent MCP Server that automatically analyzes your project and generates Cursor Rules tailored to your project's characteristics.
 

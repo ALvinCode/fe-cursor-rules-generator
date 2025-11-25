@@ -1,4 +1,4 @@
-# 让 AI 更懂你的项目 —— Cursor Rules Generator 实战分享（2025）
+# 让 AI 更懂你的项目 —— Cursor Rules Generators 实战分享（2025）
 
 > **核心理念**：通过 MCP Server 将“项目分析 → 规则生成 → 结果落地”整成一条可观测、可复用的流水线，让 Cursor 真正理解你的工程背景，而不是停留在示例代码层面。
 
@@ -11,7 +11,7 @@
 3. **多模块场景复杂**：Monorepo / BFF / 微服务需要差异化的规则与目录映射。
 4. **最佳实践碎片化**：没有统一方式把官方文档、社区范式、安全约束整合进规则。
 
-Cursor Rules Generator 针对这些痛点，把“分析 + 生成 + 校验”变成一个可重复运行的流程，真正做到“让 AI 用你熟悉的方式写代码”。
+Cursor Rules Generators 针对这些痛点，把“分析 + 生成 + 校验”变成一个可重复运行的流程，真正做到“让 AI 用你熟悉的方式写代码”。
 
 ---
 
@@ -25,7 +25,7 @@ Cursor Rules Generator 针对这些痛点，把“分析 + 生成 + 校验”变
             │
             ▼
 ┌──────────────────────────────────────────────────────────┐
-│ Cursor Rules Generator (MCP Server)                      │
+│ Cursor Rules Generators (MCP Server)                      │
 │                                                          │
 │ 1. ProjectAnalyzer           → 文件收集 / 统计            │
 │ 2. TechStackDetector         → 语言 & 框架检测            │
@@ -114,4 +114,4 @@ Cursor Rules Generator 针对这些痛点，把“分析 + 生成 + 校验”变
 - `docs/guides/PREVENT_AI_MODIFICATION.md`：如何防止 AI 错误修改关键文件
 - `PROBLEM_ANALYSIS.md`：当前仓库的风险与后续优化建议（持续更新）
 
-让 Cursor Rules Generator 帮你把“项目上下文”变成“可维护的资产”，让 AI 真正成为团队的合作伙伴。EOF
+让 Cursor Rules Generators 帮你把“项目上下文”变成“可维护的资产”，让 AI 真正成为团队的合作伙伴。EOF

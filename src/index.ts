@@ -48,7 +48,7 @@ function getVersion(): string {
 }
 
 /**
- * Cursor Rules Generator MCP Server
+ * Cursor Rules Generators MCP Server
  * 智能分析项目并生成符合项目特点的 Cursor Rules
  */
 class CursorRulesGeneratorsServer {
@@ -1834,7 +1834,7 @@ class CursorRulesGeneratorsServer {
     }
 
     // 构建输出
-    let output = `# Cursor Rules Generator MCP Server 信息\n\n`;
+    let output = `# Cursor Rules Generators MCP Server 信息\n\n`;
     output += `## 版本信息\n\n`;
     output += `- **版本**: ${info.version}\n`;
     output += `- **包名**: ${info.packageName || "未知"}\n`;
@@ -1990,7 +1990,7 @@ class CursorRulesGeneratorsServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger.info("Cursor Rules Generator MCP Server 已启动", {
+    logger.info("Cursor Rules Generators MCP Server 已启动", {
       version: this.version,
       logLevel: logger.getLogLevel(),
     });

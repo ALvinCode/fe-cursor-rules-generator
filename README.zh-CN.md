@@ -1,4 +1,4 @@
-# Cursor Rules Generator
+# Cursor Rules Generators
 
 [English](./README.md) | 简体中文
 
