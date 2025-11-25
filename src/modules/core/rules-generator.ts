@@ -487,10 +487,6 @@ export class RulesGenerator {
       }
     }
 
-    // 13. 自定义规则模板（可选，供用户填写）
-    const customRuleTemplate = this.generateCustomRuleTemplate(context);
-    rules.push(customRuleTemplate);
-
     return rules;
   }
 
@@ -5173,59 +5169,4 @@ ${this.generateKeyFileReferences(context)}
     return rules;
   }
 
-  /**
-   * 生成自定义规则模板（可选文件）
-   * 提供完整的模板和编写指导，用户可以根据需要填写
-   */
-  private generateCustomRuleTemplate(
-    context: RuleGenerationContext
-  ): CursorRule {
-    const metadata = this.generateRuleMetadata(
-      "自定义规则",
-      "项目特定的自定义规则（可选，用户可自行填写）",
-      60, // 较低优先级，确保不影响核心规则
-      context.techStack.primary,
-      ["custom", "optional"],
-      "guideline",
-      ["global-rules"] // 依赖全局规则
-    );
-
-    const content =
-      metadata +
-      `
-# 自定义规则
-
-> ℹ️ **用途**：用于补充项目 / 团队特有的业务约束或流程。保持此文件存在即可在 Cursor 中引用 \`@custom-rules.mdc\`；若暂不需要，自由留空或删除，其他规则不会受影响。
-
-参考: @global-rules.mdc
-
----
-
-## ✏️ 快速填写指引
-
-- 保留顶部元数据（已预置依赖 \`global-rules\`）
-- 在下方正文中补充业务规则、团队约定或第三方库要求
-- 需要引用其他规则时直接写 \`@code-style.mdc\` 等
-
----
-
-# [在此填写您的规则标题]
-
-[在此填写规则内容……]
-
----
-
-*提示: 编写完成后可运行 \`validate_rules\` 工具检查格式。*
-`;
-
-    return {
-      scope: "specialized",
-      modulePath: context.projectPath,
-      content,
-      fileName: "custom-rules.mdc",
-      priority: 60,
-      type: "guideline",
-      depends: ["global-rules"],
-    };
-  }
 }

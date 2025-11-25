@@ -110,7 +110,7 @@
 
 ### 自定义规则占位（Optional）
 
-- `custom-rules.mdc`：始终生成的占位文件，提供依赖与引用示例，方便团队按需补充项目特定规则。内容为空时不会影响其他规则。
+- `custom-rules.mdc`：需要自定义规则时可手动维护的文件，建议放在 `.cursor/rules/` 目录，内容留空或缺失不会影响其他规则。
 
 ---
 
@@ -255,7 +255,7 @@ isFrontendProject():
         ├── frontend-routing.mdc (如果生成)
         ├── api-routing.mdc (如果生成)
         ├── testing.mdc (如果生成)
-        └── custom-rules.mdc (可选，占位文件)
+        └── custom-rules.mdc (如团队需要，可手动添加)
 ```
 
 #### 模块规则（Module Rules）存放位置
@@ -464,8 +464,6 @@ if (context.includeModuleRules && context.modules.length > 1) {
 10. **api-routing.mdc** (条件) - 后端路由
 11. **testing.mdc** (条件) - 测试规范
 12. **{module}-rules.mdc** (条件，循环生成) - 模块规则
-13. **custom-rules.mdc** (可选，占位) - 供团队补充自定义规则
-
 **注意**: `instructions.md` 在规则文件写入后单独生成，不在 rules 数组中。
 
 ### 优先级顺序（按 priority 字段）
@@ -477,8 +475,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 5. error-handling.mdc (80)
 6. ui-ux.mdc (75)
 7. testing.mdc (70)
-8. custom-rules.mdc (60，可选占位)
-9. {module}-rules.mdc (50)
+8. {module}-rules.mdc (50)
 
 **注意**: 写入顺序按生成顺序，不按优先级。优先级主要用于 Cursor 加载规则时的顺序。
 
@@ -491,7 +488,7 @@ if (context.includeModuleRules && context.modules.length > 1) {
 1. **首次生成**: 运行 `generate_cursor_rules`，会生成所有适用的规则文件
 2. **查看规则**: 从 `global-rules.mdc` 开始，了解项目概述
 3. **开发时**: 根据任务类型查看对应的规则文件
-4. **自定义规则**: 在 `custom-rules.mdc` 中补充项目特定规则（可选）
+4. **自定义规则**: 如需补充团队规范，可在 `.cursor/rules/` 下手动维护 `custom-rules.mdc`
 
 ### 对于 AI Agent
 
@@ -529,7 +526,6 @@ if (context.includeModuleRules && context.modules.length > 1) {
 | 10 | `api-routing.mdc` | ⚠️ 条件 | `generateBackendRoutingRule()` | 85 | practice |
 | 11 | `testing.mdc` | ⚠️ 条件 | `generateTestingRule()` | 70 | practice |
 | 12 | `{module}-rules.mdc` | ⚠️ 条件 | `generateModuleOverviewRule()` | 50 | overview |
-| 13 | `custom-rules.mdc` | ✅ 生成（可选内容） | `generateCustomRuleTemplate()` | 60 | guideline |
 | - | `instructions.md` | ✅ 必需 | `generateInstructions()` | - | - |
 
 ### 条件判断快速参考
