@@ -442,6 +442,12 @@ export class DeepDirectoryAnalyzer {
       return "资源文件";
     }
 
+    // 如果目录名本身就是明确的类别词，直接返回类别含义，避免被业务/依赖覆盖
+    const directCategory = this.getCategoryName(dirName);
+    if (directCategory) {
+      return directCategory;
+    }
+
     // ========== 第一阶段：依赖关联判断（最高优先级） ==========
     if (this.dependencies.length > 0) {
       // 先进行简单匹配（不需要文件内容分析）
