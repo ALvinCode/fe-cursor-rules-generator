@@ -20,7 +20,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/index.js",
     "watch": "tsc --watch",
     "dev": "npm run build && node dist/index.js",
     "prepare": "npm run build",
