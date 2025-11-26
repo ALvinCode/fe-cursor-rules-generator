@@ -1070,8 +1070,8 @@ ${this.generateDetailedStructureContent(context)}
   }
 
   /**
-   * 生成目录树结构（与 test-report 逻辑完全一致）
-   * 使用与 enhanced-test-reporter.ts 中 generateStructureTree 相同的逻辑
+   * 生成目录树结构（完整版，包含所有目录层级）
+   * 使用与 test-report 逻辑完全一致，但确保显示完整的目录树
    */
   private generateDirectoryTree(
     deepAnalysis: any[]
@@ -1101,13 +1101,13 @@ ${this.generateDetailedStructureContent(context)}
       const connector = isLast ? "└── " : "├── ";
       const dirName = path.basename(dir.path);
       // 保持与 test-report 完全一致的显示格式
-      const purpose = dir.purpose && dir.purpose !== "其他" 
+      const purpose = dir.purpose && dir.purpose !== "其他" && dir.purpose !== "" 
         ? ` # ${dir.purpose}` 
         : "";
 
       tree.push(`${prefix}${connector}${dirName}/${purpose}`);
 
-      // 找到所有子目录
+      // 找到所有子目录（确保包含所有子目录，不遗漏）
       const children = deepAnalysis.filter(
         (d) => d.parentDirectory === dir.path
       );
@@ -1119,7 +1119,7 @@ ${this.generateDetailedStructureContent(context)}
         return aName.localeCompare(bName);
       });
 
-      // 递归构建子树
+      // 递归构建子树（确保所有子目录都被包含）
       children.forEach((child, index) => {
         const isLastChild = index === children.length - 1;
         const childPrefix = prefix + (isLast ? "    " : "│   ");
@@ -1127,33 +1127,155 @@ ${this.generateDetailedStructureContent(context)}
       });
     };
 
-    // 构建所有根目录的树
+    // 构建所有根目录的树（确保所有根目录都被包含）
     rootDirs.forEach((dir, index) => {
       buildTree(dir, "", index === rootDirs.length - 1);
     });
+
+    // 检查是否有遗漏的目录（没有父目录且不是根目录）
+    const orphanDirs = deepAnalysis.filter(
+      (d) => d.depth > 1 && !deepAnalysis.some((parent) => parent.path === d.parentDirectory)
+    );
+    
+    if (orphanDirs.length > 0) {
+      tree.push("\n# 其他目录（未分类）");
+      orphanDirs.forEach((dir) => {
+        const dirName = path.basename(dir.path);
+        const purpose = dir.purpose && dir.purpose !== "其他" && dir.purpose !== "" 
+          ? ` # ${dir.purpose}` 
+          : "";
+        tree.push(`├── ${dirName}/${purpose}`);
+      });
+    }
 
     // 返回带代码块的格式（使用 text 类型以保持纯文本显示）
     return `\`\`\`text\n${tree.join("\n")}\n\`\`\`\n\n`;
   }
 
   /**
-   * 生成目录职能说明（精简版，移除冗余信息）
+   * 生成目录职能说明（精简版，只显示职能文件夹层，不显示详细的业务类页面和组件）
    */
   private generateDirectoryPurposes(deepAnalysis: any[]): string {
     if (deepAnalysis.length === 0) {
       return "目录职能说明分析中...\n\n";
     }
 
+    // 定义职能文件夹的关键词（这些目录需要显示，排除业务类页面和组件）
+    const functionalFolderKeywords = [
+      // 组件和页面容器（职能层）
+      'component', 'components', 'cmp',
+      'page', 'pages', 'view', 'views',
+      // Hooks 和工具
+      'hook', 'hooks',
+      'util', 'utils', 'utilities', 'helper', 'helpers',
+      // API 和服务
+      'api', 'apis', 'service', 'services',
+      // 类型和模型
+      'type', 'types', 'interface', 'interfaces',
+      'model', 'models', 'entity', 'entities',
+      'dto', 'dao', 'schema', 'schemas',
+      // 状态管理
+      'store', 'stores', 'state',
+      // 样式
+      'style', 'styles', 'css', 'scss', 'sass', 'less',
+      // 配置
+      'config', 'configs', 'configuration',
+      // 测试
+      'test', 'tests', '__tests__', '__mocks__', 'mock', 'mocks',
+      // 功能模块
+      'feature', 'features', 'module', 'modules',
+      // 共享和公共
+      'shared', 'common', 'lib', 'libs', 'library',
+      // 路由
+      'route', 'routes', 'router',
+      // 后端相关
+      'middleware', 'controller', 'controllers',
+      'repository', 'repositories',
+      'guard', 'guards', 'interceptor', 'interceptors',
+      'pipe', 'pipes', 'filter', 'filters',
+      'decorator', 'decorators',
+      // 布局
+      'layout', 'layouts',
+      // 常量
+      'constant', 'constants', 'enum', 'enums',
+      // 验证和格式化
+      'validator', 'validators', 'formatter', 'formatters',
+      // 适配器
+      'adapter', 'adapters',
+      // 提供者
+      'provider', 'providers', 'factory', 'factories',
+      // 策略
+      'strategy', 'strategies',
+      // 数据库相关
+      'migration', 'migrations', 'seed', 'seeds',
+      // 资源
+      'asset', 'assets', 'static', 'public',
+      // 国际化
+      'locale', 'locales', 'i18n',
+      // 主题
+      'theme', 'themes',
+      // 模板
+      'template', 'templates', 'partial', 'partials',
+      // 容器
+      'container', 'containers',
+      // 架构层
+      'presentation', 'presentations', 'domain', 'domains',
+      'infrastructure', 'infrastructures', 'application', 'applications',
+      // 核心
+      'core', 'kernel', 'base', 'bases',
+      // 内部和外部
+      'internal', 'internals', 'external', 'externals',
+      // 第三方
+      'vendor', 'vendors', 'third-party', 'thirdparties',
+      // 插件和扩展
+      'plugin', 'plugins', 'extension', 'extensions',
+      // 工具和脚本
+      'tool', 'tools', 'script', 'scripts',
+      // 构建输出
+      'bin', 'build', 'dist', 'out',
+      // 文档
+      'doc', 'docs', 'documentation',
+      // 示例
+      'example', 'examples', 'demo', 'demos', 'sample', 'samples',
+    ];
+
+    // 判断目录是否为职能文件夹（而非业务类页面/组件）
+    const isFunctionalFolder = (dir: any): boolean => {
+      const dirName = path.basename(dir.path).toLowerCase();
+      const dirPath = dir.path.toLowerCase();
+      
+      // 检查目录名是否包含职能关键词
+      const hasFunctionalKeyword = functionalFolderKeywords.some(keyword => 
+        dirName === keyword || dirName.includes(keyword)
+      );
+      
+      // 检查目录路径是否包含职能关键词
+      const pathHasFunctionalKeyword = functionalFolderKeywords.some(keyword => 
+        dirPath.includes(`/${keyword}/`) || dirPath.includes(`/${keyword}`)
+      );
+      
+      // 如果目录有明确的职能说明（非业务相关），也认为是职能文件夹
+      const hasFunctionalPurpose = dir.purpose && 
+        !dir.purpose.includes('页面') && 
+        !dir.purpose.includes('组件') &&
+        dir.purpose !== '其他' &&
+        dir.purpose !== '';
+      
+      return hasFunctionalKeyword || pathHasFunctionalKeyword || hasFunctionalPurpose;
+    };
+
     // 按重要性排序：文件数量多的、深度浅的优先
     const sorted = [...deepAnalysis]
       .filter((d) => {
+        // 只保留职能文件夹（过滤掉业务类页面和组件）
+        if (!isFunctionalFolder(d)) return false;
         // 过滤掉无意义的目录（空目录且无子目录）
         if (d.fileCount === 0 && (!d.childDirectories || d.childDirectories.length === 0)) return false;
         // 保留有文件或子目录的目录
         return true;
       })
       .sort((a, b) => {
-        // 先按深度排序（浅的优先）
+        // 先按深度排序（浅的优先，最多显示到第3层）
         if (a.depth !== b.depth) return a.depth - b.depth;
         // 再按文件数量排序（多的优先）
         if (b.fileCount !== a.fileCount) return b.fileCount - a.fileCount;
@@ -1161,17 +1283,18 @@ ${this.generateDetailedStructureContent(context)}
         return a.path.localeCompare(b.path);
       });
 
-    // 只显示关键目录（深度 <= 3 的目录）
+    // 只显示关键目录（深度 <= 3 的职能文件夹）
     const keyDirectories = sorted.filter((d) => d.depth <= 3);
     
     let content = "";
     
-    content += `项目共有 **${deepAnalysis.length}** 个目录，以下显示 **${keyDirectories.length}** 个关键目录的说明：\n\n`;
-    content += `> 💡 **提示**: 命名规范和代码风格请参考 @code-style.mdc\n\n`;
+    content += `项目共有 **${deepAnalysis.length}** 个目录，以下显示 **${keyDirectories.length}** 个职能文件夹的说明：\n\n`;
+    content += `> 💡 **提示**: 命名规范和代码风格请参考 @code-style.mdc\n`;
+    content += `> 📝 **说明**: 此处仅显示职能文件夹（如 components、utils、hooks 等），不包含具体的业务类页面和组件目录。详细目录结构请参考上方的目录结构树。\n\n`;
 
     for (const dir of keyDirectories) {
       content += `### \`${dir.path}/\`\n\n`;
-      content += `**职能**: ${dir.purpose}`;
+      content += `**职能**: ${dir.purpose || '未标识'}`;
       
       // 只显示文件数量（作为重要性指标）
       if (dir.fileCount > 0) {
@@ -1191,28 +1314,35 @@ ${this.generateDetailedStructureContent(context)}
         content += `- 架构模式: ${dir.architecturePattern}\n`;
       }
       
-      // 3. 子目录（帮助理解结构）
+      // 3. 子目录（只显示职能子目录，不显示业务子目录）
       if (dir.childDirectories && dir.childDirectories.length > 0) {
-        const childCount = dir.childDirectories.length;
-        const displayChildren = dir.childDirectories.slice(0, 5);
-        content += `- 子目录 (${childCount} 个): ${displayChildren.map((c: string) => {
-          const childName = c.split("/").pop() || c;
-          return `\`${childName}\``;
-        }).join(", ")}`;
-        if (childCount > 5) {
-          content += ` ...`;
+        const functionalChildren = dir.childDirectories.filter((c: string) => {
+          const childDir = deepAnalysis.find((d) => d.path === c);
+          return childDir && isFunctionalFolder(childDir);
+        });
+        
+        if (functionalChildren.length > 0) {
+          const childCount = functionalChildren.length;
+          const displayChildren = functionalChildren.slice(0, 5);
+          content += `- 职能子目录 (${childCount} 个): ${displayChildren.map((c: string) => {
+            const childName = c.split("/").pop() || c;
+            return `\`${childName}\``;
+          }).join(", ")}`;
+          if (childCount > 5) {
+            content += ` ...`;
+          }
+          content += `\n`;
         }
-        content += `\n`;
       }
       
       content += `\n`;
-      }
+    }
       
     // 添加深层目录的简要说明
     const deepDirectories = sorted.filter((d) => d.depth > 3);
     if (deepDirectories.length > 0) {
       content += `\n---\n\n`;
-      content += `**其他深层目录** (${deepDirectories.length} 个): 请参考上方目录树查看完整结构。\n\n`;
+      content += `**其他深层职能目录** (${deepDirectories.length} 个): 请参考上方目录树查看完整结构。\n\n`;
     }
 
     return content;

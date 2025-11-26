@@ -16,6 +16,12 @@ export default defineConfig({
     },
     // 禁用隔离，加快执行速度（对于简单的单元测试足够）
     isolate: false,
+    // 显示详细的错误信息和堆栈跟踪
+    reporters: ['verbose'],
+    // 输出错误详情
+    outputFile: {
+      json: './test-results.json',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

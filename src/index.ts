@@ -1134,9 +1134,19 @@ class CursorRulesGeneratorsServer {
       customPatterns,
       fileOrganization,
     });
-    await this.fileWriter.writeInstructions(instructions);
-    writtenFiles.push(".cursor/instructions.md");
-    addDetail(10, `已写入 ${writtenFiles.length} 个文件。`);
+    try {
+      await this.fileWriter.writeInstructions(instructions);
+      writtenFiles.push(".cursor/instructions.md");
+      addDetail(10, `已写入 ${writtenFiles.length} 个文件（包含 instructions.md）。`);
+    } catch (error) {
+      logger.error("写入 instructions.md 失败", error);
+      this.report.errors.push(
+        `无法写入 .cursor/instructions.md: ${error instanceof Error ? error.message : String(error)}`
+      );
+      addDetail(10, `⚠️ 警告：写入 instructions.md 失败，但规则文件已成功写入。`);
+      // 即使失败也记录到 writtenFiles，因为至少尝试了
+      writtenFiles.push(".cursor/instructions.md (写入失败)");
+    }
 
     // 检查是否有需要确认的位置
     const needsConfirmation = locationConfirmations.some(
