@@ -10,6 +10,8 @@ import { TechStackDetector } from "../src/modules/analyzers/tech-stack-detector.
 import { ModuleDetector } from "../src/modules/analyzers/module-detector.js";
 import { CodeAnalyzer } from "../src/modules/analyzers/code-analyzer.js";
 import { DeepDirectoryAnalyzer } from "../src/modules/analyzers/deep-directory-analyzer.js";
+import { PracticeAnalyzer } from "../src/modules/analyzers/practice-analyzer.js";
+import { CustomPatternDetector } from "../src/modules/analyzers/custom-pattern-detector.js";
 import { RulesGenerator } from "../src/modules/core/rules-generator.js";
 import { FileWriter } from "../src/modules/core/file-writer.js";
 import { logger } from "../src/utils/logger.js";
@@ -37,7 +39,9 @@ async function main() {
       const techStackDetector = new TechStackDetector();
       const moduleDetector = new ModuleDetector();
       const codeAnalyzer = new CodeAnalyzer();
-    const deepAnalyzer = new DeepDirectoryAnalyzer();
+      const practiceAnalyzer = new PracticeAnalyzer();
+      const customPatternDetector = new CustomPatternDetector();
+      const deepAnalyzer = new DeepDirectoryAnalyzer();
       const rulesGenerator = new RulesGenerator();
       const fileWriter = new FileWriter();
 
@@ -67,6 +71,22 @@ async function main() {
     const codeFeatures = await codeAnalyzer.analyzeFeatures(resolvedPath, files, techStack);
     console.log(`✅ 分析完成，发现 ${Object.keys(codeFeatures).length} 个代码特征\n`);
 
+    // 分析项目实践
+    console.log("🔍 分析项目实践...");
+    const errorHandling = await practiceAnalyzer.analyzeErrorHandling(resolvedPath, files);
+    const codeStyle = await practiceAnalyzer.analyzeCodeStyle(resolvedPath, files);
+    const componentPattern = await practiceAnalyzer.analyzeComponentPatterns(resolvedPath, files);
+    const projectPractice = { errorHandling, codeStyle, componentPattern };
+    console.log(`✅ 已分析项目实践规范\n`);
+
+    // 检测自定义模式
+    console.log("🔍 检测自定义工具与模式...");
+    const customHooks = await customPatternDetector.detectCustomHooks(resolvedPath, files);
+    const customUtils = await customPatternDetector.detectCustomUtils(resolvedPath, files);
+    const apiClient = await customPatternDetector.detectAPIClient(resolvedPath, files);
+    const customPatterns = { customHooks, customUtils, apiClient };
+    console.log(`✅ 发现 ${customHooks.length} 个 Hooks, ${customUtils.length} 个工具函数\n`);
+
     // 6. 深度目录分析
     console.log("📂 步骤 6/7: 深度目录分析...");
     const dependencies = techStack.dependencies.map((d) => ({
@@ -86,28 +106,42 @@ async function main() {
 
       // 7. 生成规则
     console.log("📝 步骤 7/7: 生成 Cursor Rules...");
-    const rules = await rulesGenerator.generate(
-      {
-        projectPath: resolvedPath,
-        techStack,
-        modules,
-        codeFeatures,
-        bestPractices: [],
-        includeModuleRules: modules.length > 1,
-        fileOrganization: undefined,
-        deepAnalysis,
-        architecturePattern: undefined,
-          files,
-      },
-      {}
-    );
+    
+    // 构建规则生成上下文
+    const ruleContext = {
+      projectPath: resolvedPath,
+      techStack,
+      modules,
+      codeFeatures,
+      bestPractices: [],
+      includeModuleRules: modules.length > 1,
+      fileOrganization: undefined,
+      deepAnalysis,
+      architecturePattern: undefined,
+      files,
+      projectPractice,
+      customPatterns,
+    };
+
+    const rules = await rulesGenerator.generate(ruleContext, {});
     console.log(`✅ 生成了 ${rules.length} 个规则文件\n`);
+
+    // 生成 instructions.md
+    console.log("📝 生成 instructions.md...");
+    const instructions = await rulesGenerator.generateInstructions(ruleContext);
+    console.log("✅ instructions.md 内容已生成\n");
 
     // 8. 写入文件
     console.log("💾 写入规则文件...");
     const writeResult = await fileWriter.writeRules(resolvedPath, rules);
-    console.log(`✅ 已写入 ${writeResult.writtenFiles.length} 个文件:\n`);
-    writeResult.writtenFiles.forEach((file: string) => {
+    console.log(`✅ 已写入 ${writeResult.writtenFiles.length} 个规则文件\n`);
+
+    // 写入 instructions.md
+    await fileWriter.writeInstructions(instructions);
+    console.log("✅ 已写入 .cursor/instructions.md\n");
+
+    const allWrittenFiles = [...writeResult.writtenFiles, ".cursor/instructions.md"];
+    allWrittenFiles.forEach((file: string) => {
       console.log(`   - ${file}`);
     });
 

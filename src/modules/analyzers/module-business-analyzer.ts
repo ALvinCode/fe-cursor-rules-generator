@@ -154,7 +154,9 @@ export class ModuleBusinessAnalyzer {
       }
 
       // 从目录用途中提取功能
-      if (dir.purpose && dir.purpose !== "其他" && dir.purpose !== "") {
+      // 只判断英文，不判断中文
+      const purposeLower = (dir.purpose || '').toLowerCase();
+      if (dir.purpose && dir.purpose !== "" && purposeLower !== 'other' && purposeLower !== 'unknown') {
         const purposeWords = dir.purpose.split(/[，,、\s]+/);
         for (const word of purposeWords) {
           if (word.length > 1 && !features.includes(word)) {

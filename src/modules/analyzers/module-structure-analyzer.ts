@@ -163,10 +163,13 @@ export class ModuleStructureAnalyzer {
     ) => {
       const connector = isLast ? "└── " : "├── ";
       const dirName = path.basename(dir.path);
-      const purpose =
-        dir.purpose && dir.purpose !== "其他" && dir.purpose !== ""
-          ? ` # ${dir.purpose}`
-          : "";
+      // 只判断英文，不判断中文
+      const purposeLower = (dir.purpose || '').toLowerCase();
+      const hasValidPurpose = dir.purpose && 
+                              dir.purpose !== "" && 
+                              purposeLower !== 'other' && 
+                              purposeLower !== 'unknown';
+      const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
 
       tree.push(`${prefix}${connector}${dirName}/${purpose}`);
 
@@ -230,7 +233,7 @@ export class ModuleStructureAnalyzer {
 
     return keyDirectories.slice(0, 20).map((dir) => ({
       path: dir.path,
-      purpose: dir.purpose || "其他",
+      purpose: dir.purpose || "other",
       category: dir.category || "其他",
       fileCount: dir.fileCount,
       fileTypes: dir.primaryFileTypes || [],

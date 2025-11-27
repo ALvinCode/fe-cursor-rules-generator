@@ -1100,31 +1100,74 @@ ${this.generateDetailedStructureContent(context)}
     ) => {
       const connector = isLast ? "└── " : "├── ";
       const dirName = path.basename(dir.path);
-      // 保持与 test-report 完全一致的显示格式
-      const purpose = dir.purpose && dir.purpose !== "其他" && dir.purpose !== "" 
-        ? ` # ${dir.purpose}` 
-        : "";
 
-      tree.push(`${prefix}${connector}${dirName}/${purpose}`);
-
-      // 找到所有子目录（确保包含所有子目录，不遗漏）
+      // 找到所有子目录
       const children = deepAnalysis.filter(
         (d) => d.parentDirectory === dir.path
       );
       
-      // 恢复排序逻辑，确保子目录也按字母排序
-      children.sort((a, b) => {
+      // 分离职能子目录和业务子目录
+      const functionalChildren = children.filter(child => 
+        !this.isBusinessFolder(child, deepAnalysis)
+      );
+      const businessChildren = children.filter(child => 
+        this.isBusinessFolder(child, deepAnalysis)
+      );
+      
+      // 如果有业务子目录，显示为折叠形式
+      if (businessChildren.length > 0 && functionalChildren.length === 0) {
+        // 只有业务子目录，显示为 ... (N个业务文件夹)
+        // 只判断英文，不判断中文
+        const purposeLower = (dir.purpose || '').toLowerCase();
+        const hasValidPurpose = dir.purpose && 
+                                dir.purpose !== "" && 
+                                purposeLower !== 'other' && 
+                                purposeLower !== 'unknown';
+        const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
+        tree.push(`${prefix}${connector}${dirName}/ ... (${businessChildren.length}个业务文件夹)${purpose}`);
+        return; // 不展开业务文件夹
+      }
+      
+      // 如果有职能子目录，正常显示
+      if (functionalChildren.length > 0) {
+        // 只判断英文，不判断中文
+        const purposeLower = (dir.purpose || '').toLowerCase();
+        const hasValidPurpose = dir.purpose && 
+                                dir.purpose !== "" && 
+                                purposeLower !== 'other' && 
+                                purposeLower !== 'unknown';
+        const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
+        tree.push(`${prefix}${connector}${dirName}/${purpose}`);
+        
+        // 只递归处理职能子目录
+        functionalChildren.sort((a, b) => {
         const aName = path.basename(a.path);
         const bName = path.basename(b.path);
         return aName.localeCompare(bName);
       });
 
-      // 递归构建子树（确保所有子目录都被包含）
-      children.forEach((child, index) => {
-        const isLastChild = index === children.length - 1;
+        functionalChildren.forEach((child, index) => {
+          const isLastChild = index === functionalChildren.length - 1 && businessChildren.length === 0;
         const childPrefix = prefix + (isLast ? "    " : "│   ");
         buildTree(child, childPrefix, isLastChild);
       });
+        
+        // 如果有业务子目录，在最后显示折叠提示
+        if (businessChildren.length > 0) {
+          const businessPrefix = prefix + (isLast ? "    " : "│   ");
+          tree.push(`${businessPrefix}└── ... (${businessChildren.length}个业务文件夹)`);
+        }
+      } else {
+        // 没有子目录，正常显示
+        // 只判断英文，不判断中文
+        const purposeLower = (dir.purpose || '').toLowerCase();
+        const hasValidPurpose = dir.purpose && 
+                                dir.purpose !== "" && 
+                                purposeLower !== 'other' && 
+                                purposeLower !== 'unknown';
+        const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
+        tree.push(`${prefix}${connector}${dirName}/${purpose}`);
+      }
     };
 
     // 构建所有根目录的树（确保所有根目录都被包含）
@@ -1141,15 +1184,281 @@ ${this.generateDetailedStructureContent(context)}
       tree.push("\n# 其他目录（未分类）");
       orphanDirs.forEach((dir) => {
         const dirName = path.basename(dir.path);
-        const purpose = dir.purpose && dir.purpose !== "其他" && dir.purpose !== "" 
-          ? ` # ${dir.purpose}` 
-          : "";
+        // 只判断英文，不判断中文
+        const purposeLower = (dir.purpose || '').toLowerCase();
+        const hasValidPurpose = dir.purpose && 
+                                dir.purpose !== "" && 
+                                purposeLower !== 'other' && 
+                                purposeLower !== 'unknown';
+        const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
         tree.push(`├── ${dirName}/${purpose}`);
       });
     }
 
     // 返回带代码块的格式（使用 text 类型以保持纯文本显示）
     return `\`\`\`text\n${tree.join("\n")}\n\`\`\`\n\n`;
+  }
+
+  /**
+   * 判断目录是否为业务性文件夹（需要过滤掉）
+   * 
+   * 判断标准：
+   * 1. purpose 包含业务性或非类别或非职能关键词列表内的词汇
+   *    例如："payment page"、"payment component"（包含业务词汇）
+   *    而不是单纯的"page"、"component"（纯职能关键词）
+   * 2. 同级下有其他带有业务性词汇，但属于同类别的文件夹
+   *    例如：component 下的 "Auth"、"Loading"、"ErrorBoundary"
+   *    pages 下的 "case-center"、"apply-access"、"insurance"
+   * 3. 其他无法识别类别或无法匹配职能关键词列表的文件夹
+   */
+  private isBusinessFolder(dir: any, deepAnalysis: any[]): boolean {
+    // 定义职能文件夹的关键词（用于判断是否为职能文件夹）
+    const functionalFolderKeywords = [
+      // 组件和页面容器（职能层）
+      'component', 'components', 'cmp',
+      'page', 'pages', 'view', 'views',
+      // Hooks 和工具
+      'hook', 'hooks',
+      'util', 'utils', 'utilities', 'helper', 'helpers',
+      // API 和服务
+      'api', 'apis', 'service', 'services',
+      // 类型和模型
+      'type', 'types', 'interface', 'interfaces',
+      'model', 'models', 'entity', 'entities',
+      'dto', 'dao', 'schema', 'schemas',
+      // 状态管理
+      'store', 'stores', 'state',
+      // 样式
+      'style', 'styles', 'css', 'scss', 'sass', 'less',
+      // 配置
+      'config', 'configs', 'configuration',
+      // 测试
+      'test', 'tests', '__tests__', '__mocks__', 'mock', 'mocks',
+      // 功能模块
+      'feature', 'features', 'module', 'modules',
+      // 共享和公共
+      'shared', 'common', 'lib', 'libs', 'library',
+      // 路由
+      'route', 'routes', 'router',
+      // 后端相关
+      'middleware', 'controller', 'controllers',
+      'repository', 'repositories',
+      'guard', 'guards', 'interceptor', 'interceptors',
+      'pipe', 'pipes', 'filter', 'filters',
+      'decorator', 'decorators',
+      // 布局
+      'layout', 'layouts',
+      // 常量
+      'constant', 'constants', 'enum', 'enums',
+      // 验证和格式化
+      'validator', 'validators', 'formatter', 'formatters',
+      // 适配器
+      'adapter', 'adapters',
+      // 提供者
+      'provider', 'providers', 'factory', 'factories',
+      // 策略
+      'strategy', 'strategies',
+      // 数据库相关
+      'migration', 'migrations', 'seed', 'seeds',
+      // 资源
+      'asset', 'assets', 'static', 'public',
+      // 国际化
+      'locale', 'locales', 'i18n',
+      // 主题
+      'theme', 'themes',
+      // 模板
+      'template', 'templates', 'partial', 'partials',
+      // 容器
+      'container', 'containers',
+      // 架构层
+      'presentation', 'presentations', 'domain', 'domains',
+      'infrastructure', 'infrastructures', 'application', 'applications',
+      // 核心
+      'core', 'kernel', 'base', 'bases',
+      // 内部和外部
+      'internal', 'internals', 'external', 'externals',
+      // 第三方
+      'vendor', 'vendors', 'third-party', 'thirdparties',
+      // 插件和扩展
+      'plugin', 'plugins', 'extension', 'extensions',
+      // 工具和脚本
+      'tool', 'tools', 'script', 'scripts',
+      // 构建输出
+      'bin', 'build', 'dist', 'out',
+      // 文档
+      'doc', 'docs', 'documentation',
+      // 示例
+      'example', 'examples', 'demo', 'demos', 'sample', 'samples',
+    ];
+
+    // 优先检查目录名：如果目录名本身是强职能关键词，直接认定为职能文件夹（非业务）
+    // 这可以防止因 purpose 描述不准确（如包含中文）导致的误判
+    const dirName = path.basename(dir.path).toLowerCase();
+    // 完全匹配或常见的复数形式
+    const isExactFunctionalName = functionalFolderKeywords.some(keyword => 
+      dirName === keyword
+    );
+    
+    if (isExactFunctionalName) {
+      return false;
+    }
+
+    // 标准1: purpose 包含业务性词汇
+    if (dir.purpose) {
+      const purpose = dir.purpose.toLowerCase();
+      
+      // 纯职能关键词列表（英文），用于判断 purpose 是否为纯职能描述
+      // 如果 purpose 只包含这些关键词，说明是纯职能，不是业务性
+      const pureFunctionalKeywords = [
+        // 组件和页面
+        'page', 'pages', 'component', 'components', 'view', 'views',
+        // Hooks 和工具
+        'hook', 'hooks', 'util', 'utils', 'utilities', 'helper', 'helpers',
+        // API 和服务
+        'api', 'apis', 'service', 'services',
+        // 类型和模型
+        'type', 'types', 'interface', 'interfaces', 'model', 'models', 
+        'entity', 'entities', 'dto', 'dao', 'schema', 'schemas',
+        // 状态管理
+        'store', 'stores', 'state',
+        // 样式
+        'style', 'styles', 'css', 'scss', 'sass', 'less',
+        // 配置
+        'config', 'configs', 'configuration',
+        // 测试
+        'test', 'tests', 'mock', 'mocks',
+        // 功能模块
+        'feature', 'features', 'module', 'modules',
+        // 共享和公共
+        'shared', 'common', 'lib', 'libs', 'library',
+        // 路由
+        'route', 'routes', 'router',
+        // 后端相关
+        'middleware', 'controller', 'controllers', 'repository', 'repositories',
+        'guard', 'guards', 'interceptor', 'interceptors', 'pipe', 'pipes',
+        'filter', 'filters', 'decorator', 'decorators',
+        // 布局
+        'layout', 'layouts',
+        // 常量
+        'constant', 'constants', 'enum', 'enums',
+        // 验证和格式化
+        'validator', 'validators', 'formatter', 'formatters',
+        // 适配器
+        'adapter', 'adapters',
+        // 提供者
+        'provider', 'providers', 'factory', 'factories',
+        // 策略
+        'strategy', 'strategies',
+        // 数据库相关
+        'migration', 'migrations', 'seed', 'seeds',
+        // 资源
+        'asset', 'assets', 'static', 'public',
+        // 国际化
+        'locale', 'locales', 'i18n',
+        // 主题
+        'theme', 'themes',
+        // 模板
+        'template', 'templates', 'partial', 'partials',
+        // 容器
+        'container', 'containers',
+        // 架构层
+        'presentation', 'presentations', 'domain', 'domains',
+        'infrastructure', 'infrastructures', 'application', 'applications',
+        // 核心
+        'core', 'kernel', 'base', 'bases',
+        // 内部和外部
+        'internal', 'internals', 'external', 'externals',
+        // 第三方
+        'vendor', 'vendors',
+        // 插件和扩展
+        'plugin', 'plugins', 'extension', 'extensions',
+        // 工具和脚本
+        'tool', 'tools', 'script', 'scripts',
+        // 构建输出
+        'bin', 'build', 'dist', 'out',
+        // 文档
+        'doc', 'docs', 'documentation',
+        // 示例
+        'example', 'examples', 'demo', 'demos', 'sample', 'samples',
+      ];
+      
+      // 检查 purpose 是否为纯职能描述
+      // 如果 purpose 只包含职能关键词（如 "page"、"component"），则是纯职能
+      // 如果包含其他词汇（如 "payment page"），则是业务性
+      const isPureFunctional = pureFunctionalKeywords.some(keyword => {
+        // 精确匹配或作为独立单词出现
+        const regex = new RegExp(`^${keyword}$|\\b${keyword}\\b`, 'i');
+        return regex.test(purpose);
+      });
+      
+      // 如果 purpose 不是纯职能关键词，且包含其他描述性词汇，则认为是业务文件夹
+      if (!isPureFunctional) {
+        // 检查是否包含业务性描述（非职能关键词的其他词汇）
+        // 如果 purpose 长度超过单个职能关键词，可能包含业务描述
+        const purposeWords = purpose.split(/\s+/).filter((w: string) => w.length > 0);
+        const hasNonFunctionalWords = purposeWords.some((word: string) => {
+          // 检查单词是否不在职能关键词列表中
+          return !pureFunctionalKeywords.some(keyword => 
+            word === keyword || word.includes(keyword) || keyword.includes(word)
+          );
+        });
+        
+        if (hasNonFunctionalWords) {
+          return true; // 包含业务性词汇
+        }
+      }
+    }
+    
+    // 标准2: 同级下有其他带有业务性词汇的同类文件夹
+    if (dir.parentDirectory) {
+      const siblings = deepAnalysis.filter(d => 
+        d.parentDirectory === dir.parentDirectory && d.path !== dir.path
+      );
+      
+      // 检查同级目录是否都是业务性命名（非职能关键词）
+      const siblingNames = siblings.map(s => path.basename(s.path).toLowerCase());
+      const hasBusinessSiblings = siblings.some(sibling => {
+        const siblingName = path.basename(sibling.path).toLowerCase();
+        // 如果同级目录名不包含职能关键词，可能是业务文件夹
+        const isFunctionalSibling = functionalFolderKeywords.some(keyword => 
+          siblingName === keyword || siblingName.includes(keyword)
+        );
+        return !isFunctionalSibling;
+      });
+      
+      // 如果当前目录名也不包含职能关键词，且同级有业务性文件夹，则认为是业务文件夹
+      const dirName = path.basename(dir.path).toLowerCase();
+      const isFunctionalName = functionalFolderKeywords.some(keyword => 
+        dirName === keyword || dirName.includes(keyword)
+      );
+      
+      if (!isFunctionalName && hasBusinessSiblings && siblings.length > 0) {
+        return true;
+      }
+    }
+    
+    // 标准3: 无法识别类别或无法匹配职能关键词列表
+    if (dir.category === 'other' || !dir.category) {
+      const dirName = path.basename(dir.path).toLowerCase();
+      const dirPath = dir.path.toLowerCase();
+      const isFunctional = functionalFolderKeywords.some(keyword => 
+        dirName === keyword || dirName.includes(keyword) ||
+        dirPath.includes(`/${keyword}/`) || dirPath.includes(`/${keyword}`)
+      );
+      
+      // 判断 purpose 是否为 "other" 或空（只判断英文，不判断中文）
+      const purposeLower = (dir.purpose || '').toLowerCase();
+      const isOtherPurpose = !dir.purpose || 
+                            purposeLower === 'other' || 
+                            purposeLower === 'unknown' ||
+                            purposeLower === '';
+      
+      if (!isFunctional && isOtherPurpose) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -1255,11 +1564,14 @@ ${this.generateDetailedStructureContent(context)}
       );
       
       // 如果目录有明确的职能说明（非业务相关），也认为是职能文件夹
+      // 只判断英文，不判断中文
+      const purposeLower = (dir.purpose || '').toLowerCase();
       const hasFunctionalPurpose = dir.purpose && 
-        !dir.purpose.includes('页面') && 
-        !dir.purpose.includes('组件') &&
-        dir.purpose !== '其他' &&
-        dir.purpose !== '';
+        dir.purpose !== '' &&
+        purposeLower !== 'other' &&
+        purposeLower !== 'unknown' &&
+        // 检查是否包含业务性描述（非纯职能关键词）
+        !this.isBusinessFolder(dir, deepAnalysis);
       
       return hasFunctionalKeyword || pathHasFunctionalKeyword || hasFunctionalPurpose;
     };
@@ -1269,6 +1581,10 @@ ${this.generateDetailedStructureContent(context)}
       .filter((d) => {
         // 只保留职能文件夹（过滤掉业务类页面和组件）
         if (!isFunctionalFolder(d)) return false;
+        
+        // 新增：过滤掉业务性文件夹
+        if (this.isBusinessFolder(d, deepAnalysis)) return false;
+        
         // 过滤掉无意义的目录（空目录且无子目录）
         if (d.fileCount === 0 && (!d.childDirectories || d.childDirectories.length === 0)) return false;
         // 保留有文件或子目录的目录
@@ -1318,25 +1634,27 @@ ${this.generateDetailedStructureContent(context)}
       if (dir.childDirectories && dir.childDirectories.length > 0) {
         const functionalChildren = dir.childDirectories.filter((c: string) => {
           const childDir = deepAnalysis.find((d) => d.path === c);
-          return childDir && isFunctionalFolder(childDir);
+          return childDir && 
+                 isFunctionalFolder(childDir) && 
+                 !this.isBusinessFolder(childDir, deepAnalysis); // 新增：过滤业务文件夹
         });
         
         if (functionalChildren.length > 0) {
           const childCount = functionalChildren.length;
           const displayChildren = functionalChildren.slice(0, 5);
           content += `- 职能子目录 (${childCount} 个): ${displayChildren.map((c: string) => {
-            const childName = c.split("/").pop() || c;
-            return `\`${childName}\``;
-          }).join(", ")}`;
-          if (childCount > 5) {
-            content += ` ...`;
-          }
-          content += `\n`;
+          const childName = c.split("/").pop() || c;
+          return `\`${childName}\``;
+        }).join(", ")}`;
+        if (childCount > 5) {
+          content += ` ...`;
+        }
+        content += `\n`;
         }
       }
       
       content += `\n`;
-    }
+      }
       
     // 添加深层目录的简要说明
     const deepDirectories = sorted.filter((d) => d.depth > 3);
@@ -3536,7 +3854,12 @@ ${p.content}
     
     if (structureAnalysis && structureAnalysis.mainDirectories.length > 0) {
       const dirs = structureAnalysis.mainDirectories
-        .filter((d: any) => d.fileCount > 0 && d.purpose && d.purpose !== "其他" && d.purpose !== "")
+        .filter((d: any) => {
+          if (d.fileCount === 0 || !d.purpose || d.purpose === "") return false;
+          // 只判断英文，不判断中文
+          const purposeLower = d.purpose.toLowerCase();
+          return purposeLower !== 'other' && purposeLower !== 'unknown';
+        })
         .slice(0, 8);
       
       if (dirs.length > 0) {
@@ -4578,7 +4901,11 @@ ${this.generateKeyFileReferences(context)}
 
     // 检查职能识别的完整性（是否有大量"其他"分类）
     const otherCount = deepAnalysis.filter(
-      (d) => d.purpose === "其他" || d.category === "other"
+      (d) => {
+        // 只判断英文，不判断中文
+        const purposeLower = (d.purpose || '').toLowerCase();
+        return purposeLower === 'other' || purposeLower === 'unknown' || d.category === "other";
+      }
     ).length;
     const otherRatio = otherCount / deepAnalysis.length;
 

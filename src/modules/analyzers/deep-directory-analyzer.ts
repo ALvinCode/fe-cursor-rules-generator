@@ -1162,35 +1162,36 @@ export class DeepDirectoryAnalyzer {
     purpose: string,
     primaryTypes: FileTypeCategory[]
   ): string {
-    // 根据用途和文件类型确定分类
-    if (purpose.includes("组件") || primaryTypes.includes("component")) {
+    // 根据用途和文件类型确定分类（只判断英文，不判断中文）
+    const purposeLower = purpose.toLowerCase();
+    if (purposeLower.includes("component") || primaryTypes.includes("component")) {
       return "component";
     }
-    if (purpose.includes("页面") || primaryTypes.includes("page")) {
+    if (purposeLower.includes("page") || primaryTypes.includes("page")) {
       return "page";
     }
-    if (purpose.includes("Hook") || primaryTypes.includes("hook")) {
+    if (purposeLower.includes("hook") || primaryTypes.includes("hook")) {
       return "hook";
     }
-    if (purpose.includes("工具") || primaryTypes.includes("utility")) {
+    if (purposeLower.includes("util") || purposeLower.includes("utility") || purposeLower.includes("helper") || primaryTypes.includes("utility")) {
       return "utility";
     }
-    if (purpose.includes("服务") || primaryTypes.includes("service")) {
+    if (purposeLower.includes("service") || purposeLower.includes("api") || primaryTypes.includes("service")) {
       return "service";
     }
-    if (purpose.includes("类型") || primaryTypes.includes("type")) {
+    if (purposeLower.includes("type") || purposeLower.includes("interface") || primaryTypes.includes("type")) {
       return "type";
     }
-    if (purpose.includes("模型") || primaryTypes.includes("model")) {
+    if (purposeLower.includes("model") || purposeLower.includes("entity") || primaryTypes.includes("model")) {
       return "model";
     }
-    if (purpose.includes("路由") || primaryTypes.includes("route")) {
+    if (purposeLower.includes("route") || purposeLower.includes("router") || primaryTypes.includes("route")) {
       return "route";
     }
-    if (purpose.includes("功能")) {
+    if (purposeLower.includes("feature") || purposeLower.includes("module")) {
       return "feature";
     }
-    if (purpose.includes("共享")) {
+    if (purposeLower.includes("shared") || purposeLower.includes("common")) {
       return "shared";
     }
 
@@ -1584,7 +1585,9 @@ export class DeepDirectoryAnalyzer {
     for (const analysis of analyses) {
       const dirParts = analysis.path.split(path.sep).filter(Boolean);
       if (dirParts.includes("features") || dirParts.includes("modules")) {
-        if (analysis.purpose.includes("共享") || analysis.category === "shared") {
+        // 只判断英文，不判断中文
+        const analysisPurposeLower = (analysis.purpose || '').toLowerCase();
+        if (analysisPurposeLower.includes("shared") || analysisPurposeLower.includes("common") || analysis.category === "shared") {
           shared.push(analysis.path);
         } else {
           features.push(analysis.path);

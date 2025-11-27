@@ -1087,7 +1087,11 @@ class CursorRulesGeneratorsServer {
       // 评估数据质量
       const rootDirs = deepAnalysis.filter((d: any) => d.depth === 1);
       const otherCount = deepAnalysis.filter(
-        (d: any) => d.purpose === "其他" || d.category === "other"
+        (d: any) => {
+          // 只判断英文，不判断中文
+          const purposeLower = (d.purpose || '').toLowerCase();
+          return purposeLower === 'other' || purposeLower === 'unknown' || d.category === "other";
+        }
       ).length;
       const otherRatio = otherCount / deepAnalysis.length;
       
@@ -1944,7 +1948,12 @@ class CursorRulesGeneratorsServer {
       const dir = topDirs[i];
       const isLast = i === topDirs.length - 1;
       const prefix = isLast ? "└──" : "├──";
-      const purpose = dir.purpose !== "其他" ? ` # ${dir.purpose}` : "";
+      // 只判断英文，不判断中文
+      const purposeLower = (dir.purpose || '').toLowerCase();
+      const hasValidPurpose = dir.purpose && 
+                              purposeLower !== 'other' && 
+                              purposeLower !== 'unknown';
+      const purpose = hasValidPurpose ? ` # ${dir.purpose}` : "";
 
       tree += `${prefix} ${dir.path}/ (${dir.fileCount} 个文件)${purpose}\n`;
 
@@ -1963,8 +1972,12 @@ class CursorRulesGeneratorsServer {
           const childName = child.path.split("/").pop();
           const childIsLast = j === children.length - 1;
           const childPrefix = childIsLast ? "    └──" : "    ├──";
-          const childPurpose =
-            child.purpose !== "其他" ? ` # ${child.purpose}` : "";
+          // 只判断英文，不判断中文
+          const childPurposeLower = (child.purpose || '').toLowerCase();
+          const hasValidChildPurpose = child.purpose && 
+                                       childPurposeLower !== 'other' && 
+                                       childPurposeLower !== 'unknown';
+          const childPurpose = hasValidChildPurpose ? ` # ${child.purpose}` : "";
 
           tree += `${childPrefix} ${childName}/  (${child.fileCount})${childPurpose}\n`;
         }
