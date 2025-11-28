@@ -628,6 +628,7 @@ class CursorRulesGeneratorsServer {
       { id: 4, title: "分析项目实践规范", status: "pending", details: [] },
       { id: 5, title: "检测自定义工具与模式", status: "pending", details: [] },
       { id: 6, title: "学习文件组织结构", status: "pending", details: [] },
+      { id: 6.5, title: "深度目录分析", status: "pending", details: [] },
       { id: 7, title: "识别路由系统", status: "pending", details: [] },
       { id: 8, title: "评估动态路由生成方式", status: "pending", details: [] },
       { id: 9, title: "生成规则与一致性检查", status: "pending", details: [] },
