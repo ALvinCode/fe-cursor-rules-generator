@@ -35,9 +35,7 @@ Add this configuration:
   "mcpServers": {
     "cursor-rules-generators": {
       "command": "npx",
-      "args": ["-y", "cursor-rules-generators"],
-      "disabled": false,
-      "alwaysAllow": []
+      "args": ["-y", "cursor-rules-generators"]
     }
   }
 }
